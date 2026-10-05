@@ -36,8 +36,7 @@ export default function DonateScreen() {
     <Screen>
       <HeroBanner
         badge="Community supported"
-        badgeTone="green"
-        tint="green"
+        tone="green"
         icon={HandHeart}
         title="Help local trading stay open to everyone."
         text="Your support funds safety tools, community events, and better ways to keep useful things in circulation.">

@@ -92,8 +92,8 @@ function DisputeContent() {
             {evidence.map((uri, index) => (
               <Pressable key={uri + index} onPress={() => setEvidence((current) => current.filter((_, i) => i !== index))} style={styles.thumb}>
                 <Image source={uri} style={StyleSheet.absoluteFill} contentFit="cover" />
-                <View style={styles.remove}>
-                  <X size={11} color="#fff" />
+                <View style={[styles.remove, { backgroundColor: colors.scrim }]}>
+                  <X size={11} color={colors.onPhoto} />
                 </View>
               </Pressable>
             ))}
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   upload: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderStyle: 'dashed', borderRadius: 14, padding: 14 },
   evidence: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   thumb: { width: 64, height: 64, borderRadius: 10, overflow: 'hidden' },
-  remove: { position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  remove: { position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   timeline: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   stage: { alignItems: 'center', gap: 6, flex: 1 },
   stageDot: { width: 16, height: 16, borderRadius: 8 },

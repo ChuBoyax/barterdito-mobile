@@ -1,4 +1,4 @@
-import { CalendarDays, Check, CheckCircle2, MessageCircle } from 'lucide-react-native';
+import { CalendarDays, Check, CheckCircle2, MessageCircle, X } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText, Avatar, Badge, Button, Card } from '@/components/ui';
@@ -19,34 +19,38 @@ export function OfferCard({ offer, onChat, onUpdate, onMeetup }: OfferCardProps)
   return (
     <Card style={styles.card}>
       <View style={styles.head}>
-        <Avatar initials={offer.initials} size="small" />
+        <Avatar initials={offer.initials} size="small" online />
         <View style={styles.flex}>
           <AppText variant="h3">{offer.person}</AppText>
-          <AppText variant="caption">{offer.time}</AppText>
+          <AppText variant="caption">
+            {offer.received ? 'Sent you an offer' : 'You sent an offer'} · {offer.time}
+          </AppText>
         </View>
-        <Badge label={offer.status} tone={statusTone[offer.status]} />
+        <Badge label={offer.status} tone={statusTone[offer.status]} dot />
       </View>
       <SwapPreview theirs={offer.theirs} yours={offer.yours} />
       <View style={styles.actions}>
-        <Button label="View chat" icon={MessageCircle} variant="secondary" compact onPress={onChat} />
-        {pendingReceived ? <Button label="Accept" icon={Check} compact onPress={() => onUpdate('Accepted')} /> : null}
         {pendingReceived ? (
-          <Button label="Decline" variant="ghost" compact onPress={() => onUpdate('Declined')} />
+          <>
+            <Button label="Accept" icon={Check} compact style={styles.flex} onPress={() => onUpdate('Accepted')} />
+            <Button label="Decline" icon={X} variant="danger" compact style={styles.flex} onPress={() => onUpdate('Declined')} />
+          </>
         ) : null}
         {offer.status === 'Accepted' ? (
-          <Button label="Mark completed" icon={CheckCircle2} compact onPress={() => onUpdate('Completed')} />
+          <Button label="Mark completed" icon={CheckCircle2} variant="success" compact style={styles.flex} onPress={() => onUpdate('Completed')} />
         ) : null}
         {!offer.received && offer.status !== 'Completed' ? (
-          <Button label="Schedule meetup" icon={CalendarDays} variant="secondary" compact onPress={onMeetup} />
+          <Button label="Meetup" icon={CalendarDays} variant="secondary" compact style={styles.flex} onPress={onMeetup} />
         ) : null}
+        <Button label="Chat" icon={MessageCircle} variant="secondary" compact style={pendingReceived ? undefined : styles.flex} onPress={onChat} />
       </View>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: 14 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  card: { gap: 16 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   flex: { flex: 1 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  actions: { flexDirection: 'row', gap: 8 },
 });

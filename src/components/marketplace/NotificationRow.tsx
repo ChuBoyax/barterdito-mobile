@@ -1,34 +1,28 @@
-import { ArrowRight, Award, BellRing, CheckCircle2, Heart, UserPlus, type LucideIcon } from 'lucide-react-native';
+import { ArrowRightLeft, Award, BellRing, CheckCircle2, Heart, UserPlus, type LucideIcon } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/ui';
+import { AppText, IconTile } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
+import type { Tone } from '@/theme';
 import type { AppNotification, NotificationKind } from '@/types/models';
 
-const icons: Record<NotificationKind, LucideIcon> = {
-  offer: ArrowRight,
-  heart: Heart,
-  trade: CheckCircle2,
-  follow: UserPlus,
-  badge: Award,
-  system: BellRing,
+const kinds: Record<NotificationKind, { icon: LucideIcon; tone: Tone }> = {
+  offer: { icon: ArrowRightLeft, tone: 'orange' },
+  heart: { icon: Heart, tone: 'red' },
+  trade: { icon: CheckCircle2, tone: 'green' },
+  follow: { icon: UserPlus, tone: 'blue' },
+  badge: { icon: Award, tone: 'yellow' },
+  system: { icon: BellRing, tone: 'violet' },
 };
 
 export function NotificationRow({ notification }: { notification: AppNotification }) {
   const { colors } = useTheme();
-  const Icon = icons[notification.kind];
+  const kind = kinds[notification.kind];
   return (
-    <View
-      style={[
-        styles.row,
-        { borderBottomColor: colors.line },
-        notification.unread && { backgroundColor: colors.orangePale },
-      ]}>
-      <View style={[styles.icon, { backgroundColor: colors.orangeSoft }]}>
-        <Icon size={18} color={colors.orange} />
-      </View>
+    <View style={styles.row}>
+      <IconTile icon={kind.icon} tone={kind.tone} size={44} rounded />
       <View style={styles.body}>
-        <AppText variant="small" weight="bold" color="ink">
+        <AppText variant="small" weight={notification.unread ? 'bold' : 'medium'} color="ink">
           {notification.text}
         </AppText>
         <AppText variant="caption">{notification.time} ago</AppText>
@@ -39,8 +33,7 @@ export function NotificationRow({ notification }: { notification: AppNotificatio
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, paddingHorizontal: 14, paddingVertical: 13 },
-  icon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 11 },
   body: { flex: 1, gap: 2 },
   dot: { width: 8, height: 8, borderRadius: 4 },
 });

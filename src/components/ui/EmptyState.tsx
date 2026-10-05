@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTheme } from '@/providers/ThemeProvider';
 import { AppText } from './AppText';
 import { Button } from './Button';
+import { IconTile } from './IconTile';
 
 type EmptyStateProps = {
   icon: LucideIcon;
@@ -14,26 +15,29 @@ type EmptyStateProps = {
   actionIcon?: LucideIcon;
 };
 
-export function EmptyState({ icon: Icon, title, text, action, onAction, actionIcon = Plus }: EmptyStateProps) {
+export function EmptyState({ icon, title, text, action, onAction, actionIcon = Plus }: EmptyStateProps) {
   const { colors } = useTheme();
   return (
     <View style={styles.wrap}>
-      <View style={[styles.icon, { backgroundColor: colors.orangeSoft }]}>
-        <Icon size={32} color={colors.orange} />
+      <View style={[styles.halo, { backgroundColor: colors.orangeSoft }]}>
+        <View style={[styles.haloInner, { backgroundColor: colors.orangePale }]}>
+          <IconTile icon={icon} size={64} rounded />
+        </View>
       </View>
-      <AppText variant="h2" align="center">
+      <AppText variant="h1" align="center">
         {title}
       </AppText>
       <AppText variant="small" align="center" style={styles.text}>
         {text}
       </AppText>
-      {action && onAction ? <Button label={action} icon={actionIcon} compact onPress={onAction} /> : null}
+      {action && onAction ? <Button label={action} icon={actionIcon} onPress={onAction} /> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', gap: 10, paddingVertical: 36, paddingHorizontal: 20 },
-  icon: { width: 74, height: 74, borderRadius: 37, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  text: { maxWidth: 300, marginBottom: 6 },
+  wrap: { alignItems: 'center', gap: 10, paddingVertical: 36, paddingHorizontal: 24 },
+  halo: { width: 132, height: 132, borderRadius: 66, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  haloInner: { width: 98, height: 98, borderRadius: 49, alignItems: 'center', justifyContent: 'center' },
+  text: { maxWidth: 300, marginBottom: 10 },
 });

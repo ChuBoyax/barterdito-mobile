@@ -14,7 +14,7 @@ const labels = [
 ] as const;
 
 export default function MapScreen() {
-  const { colors, dark } = useTheme();
+  const { colors } = useTheme();
   const { items } = useMarketplace();
   const [query, setQuery] = useState('');
   const pins = items.slice(0, 6);
@@ -24,10 +24,10 @@ export default function MapScreen() {
 
   return (
     <Screen>
-      <View style={[styles.map, { backgroundColor: dark ? '#22302a' : '#e8efe3' }]}>
-        <View style={[styles.road, styles.roadOne, { backgroundColor: dark ? '#3a3a35' : '#ffffff' }]} />
-        <View style={[styles.road, styles.roadTwo, { backgroundColor: dark ? '#3a3a35' : '#ffffff' }]} />
-        <View style={[styles.water, { backgroundColor: dark ? '#1d2d48' : '#cfe1f7' }]} />
+      <View style={[styles.map, { backgroundColor: colors.mapLand }]}>
+        <View style={[styles.road, styles.roadOne, { backgroundColor: colors.mapRoad }]} />
+        <View style={[styles.road, styles.roadTwo, { backgroundColor: colors.mapRoad }]} />
+        <View style={[styles.water, { backgroundColor: colors.mapWater }]} />
         {labels.map((label) => (
           <View key={label.text} style={[styles.label, { top: label.top, left: label.left, backgroundColor: colors.surface }]}>
             <AppText variant="caption" color="ink" weight="bold">
@@ -46,9 +46,10 @@ export default function MapScreen() {
                 left: `${12 + ((index * 13) % 70)}%` as DimensionValue,
                 top: `${20 + ((index * 17) % 55)}%` as DimensionValue,
                 backgroundColor: colors.orange,
+                borderColor: colors.surface,
               },
             ]}>
-            <MapPin size={16} color="#fff" fill="#fff" />
+            <MapPin size={16} color={colors.onPrimary} fill={colors.onPrimary} />
           </Pressable>
         ))}
         <View style={[styles.compass, { backgroundColor: colors.surface }]}>
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
   roadTwo: { width: '140%', top: '62%', left: '-20%', transform: [{ rotate: '24deg' }] },
   water: { position: 'absolute', width: 160, height: 160, borderRadius: 80, right: -40, bottom: -50 },
   label: { position: 'absolute', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
-  pin: { position: 'absolute', width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#fff' },
+  pin: { position: 'absolute', width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 3 },
   compass: { position: 'absolute', right: 12, top: 12, width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   list: { gap: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },

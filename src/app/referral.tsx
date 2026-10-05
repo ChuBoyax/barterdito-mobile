@@ -34,7 +34,7 @@ function ReferralContent() {
         <View style={[styles.art, { backgroundColor: colors.orangeSoft }]}>
           <Gift size={64} color={colors.orange} strokeWidth={1.6} />
           <View style={[styles.points, { backgroundColor: colors.orange }]}>
-            <AppText variant="h3" style={styles.white}>
+            <AppText variant="h3" style={{ color: colors.onPrimary }}>
               +50
             </AppText>
           </View>
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
   card: { gap: 12 },
   art: { alignSelf: 'center', width: 130, height: 130, borderRadius: 65, alignItems: 'center', justifyContent: 'center' },
   points: { position: 'absolute', right: -4, top: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  white: { color: '#fff' },
   center: { alignSelf: 'center' },
   link: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
   flex: { flex: 1 },

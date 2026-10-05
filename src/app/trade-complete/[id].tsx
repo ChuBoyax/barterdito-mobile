@@ -9,7 +9,6 @@ import { useAsync } from '@/hooks/useAsync';
 import { useTheme } from '@/providers';
 import { tradeService } from '@/services';
 
-const confettiColors = ['#ff6e00', '#174ea6', '#3fa879', '#ffcd57', '#e84545', '#8c5de7'];
 
 export default function TradeCompleteScreen() {
   return (
@@ -23,6 +22,7 @@ function TradeComplete() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
   const { data: offer, loading } = useAsync(() => tradeService.getOffer(id), [id]);
+  const confetti = [colors.orange, colors.blue, colors.green, colors.yellow, colors.red, colors.violet];
   if (loading) return <LoadingView />;
 
   return (
@@ -35,7 +35,7 @@ function TradeComplete() {
               style={[
                 styles.piece,
                 {
-                  backgroundColor: confettiColors[index % confettiColors.length],
+                  backgroundColor: confetti[index % confetti.length],
                   left: `${(index * 37) % 100}%`,
                   top: (index * 23) % 90,
                   transform: [{ rotate: `${index * 29}deg` }],

@@ -88,7 +88,7 @@ export function ChatView({ kind, threadId, name, initials, header, typingName }:
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
       <View style={[styles.chatHeader, { borderBottomColor: colors.line, backgroundColor: colors.surface }]}>
-        <Avatar initials={initials} size="small" />
+        <Avatar initials={initials} size="small" online />
         <View style={styles.flex}>
           <AppText variant="h3">{name}</AppText>
           <View style={styles.online}>
@@ -136,7 +136,7 @@ export function ChatView({ kind, threadId, name, initials, header, typingName }:
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 10 },
+  chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, paddingHorizontal: 20, paddingVertical: 12 },
   online: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 7, height: 7, borderRadius: 4 },
   list: { padding: 16, gap: 12 },

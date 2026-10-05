@@ -1,16 +1,16 @@
 import type { LucideIcon } from 'lucide-react-native';
-import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, radius } from '@/theme';
+import { brand, fonts, type ThemeColors } from '@/theme';
+import { PressableScale } from './PressableScale';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 
 type ButtonProps = {
   label: string;
   onPress?: () => void;
-  variant?: Variant;
+  variant?: ButtonVariant;
   icon?: LucideIcon;
   iconRight?: LucideIcon;
   compact?: boolean;
@@ -18,8 +18,22 @@ type ButtonProps = {
   loading?: boolean;
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
-  children?: ReactNode;
 };
+
+function variantStyle(variant: ButtonVariant, colors: ThemeColors) {
+  switch (variant) {
+    case 'primary':
+      return { bg: colors.orange, fg: colors.onPrimary, border: colors.orange };
+    case 'success':
+      return { bg: colors.green, fg: colors.onPrimary, border: colors.green };
+    case 'secondary':
+      return { bg: colors.surface, fg: colors.ink, border: colors.line };
+    case 'danger':
+      return { bg: colors.redSoft, fg: colors.red, border: colors.redSoft };
+    default:
+      return { bg: 'transparent', fg: colors.orange, border: 'transparent' };
+  }
+}
 
 export function Button({
   label,
@@ -34,58 +48,43 @@ export function Button({
   style,
 }: ButtonProps) {
   const { colors } = useTheme();
-  const palette = {
-    primary: { bg: colors.orange, fg: colors.white, border: colors.orange },
-    secondary: { bg: colors.surface, fg: colors.ink, border: colors.line },
-    ghost: { bg: 'transparent', fg: colors.orange, border: 'transparent' },
-    danger: { bg: colors.redSoft, fg: colors.red, border: colors.redSoft },
-  }[variant];
   const inactive = disabled || loading;
+  const palette = variantStyle(variant, colors);
+  const iconSize = compact ? 15 : 18;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inactive }}
       disabled={inactive}
       onPress={onPress}
-      style={({ pressed }) => [
+      scaleTo={0.97}
+      style={[
         styles.base,
-        compact && styles.compact,
-        fullWidth && styles.full,
+        compact ? styles.compact : styles.regular,
         { backgroundColor: palette.bg, borderColor: palette.border },
-        variant === 'primary' && styles.primaryShadow,
-        variant === 'ghost' && styles.ghost,
-        (pressed || inactive) && { opacity: inactive ? 0.55 : 0.85 },
+        variant === 'primary' && !inactive && styles.primaryShadow,
+        fullWidth && styles.full,
+        inactive && styles.inactive,
         style,
       ]}>
-      {loading ? <ActivityIndicator size="small" color={palette.fg} /> : Icon ? <Icon size={17} color={palette.fg} /> : null}
-      <Text style={[styles.label, { color: palette.fg }]}>{label}</Text>
-      {IconRight ? <IconRight size={17} color={palette.fg} /> : null}
-    </Pressable>
+      {loading ? <ActivityIndicator size="small" color={palette.fg} /> : Icon ? <Icon size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
+      <Text style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={1}>
+        {label}
+      </Text>
+      {IconRight ? <IconRight size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  base: {
-    minHeight: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-  },
-  compact: { minHeight: 36, paddingHorizontal: 13 },
+  base: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1 },
+  regular: { height: 50, paddingHorizontal: 20 },
+  compact: { height: 38, paddingHorizontal: 14, borderRadius: 12 },
   full: { alignSelf: 'stretch' },
-  ghost: { paddingHorizontal: 6 },
-  primaryShadow: {
-    shadowColor: '#ff6e00',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  label: { fontFamily: fonts.bold, fontSize: 13.5 },
+  inactive: { opacity: 0.5 },
+  primaryShadow: { shadowColor: brand.orange, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
+  label: { fontFamily: fonts.bold, fontSize: 14 },
+  labelCompact: { fontSize: 12.5 },
 });

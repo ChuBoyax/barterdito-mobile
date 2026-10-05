@@ -1,23 +1,25 @@
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts } from '@/theme';
+import { PressableScale } from './PressableScale';
 
 type ChipProps = { label: string; active?: boolean; onPress?: () => void };
 
 export function Chip({ label, active, onPress }: ChipProps) {
   const { colors } = useTheme();
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       onPress={onPress}
+      scaleTo={0.94}
       style={[
         styles.chip,
-        { borderColor: active ? colors.orange : colors.line, backgroundColor: active ? colors.orange : colors.surface },
+        { backgroundColor: active ? colors.orange : colors.surface, borderColor: active ? colors.orange : colors.line },
       ]}>
-      <Text style={[styles.text, { color: active ? colors.white : colors.muted }]}>{label}</Text>
-    </Pressable>
+      <Text style={[styles.text, { color: active ? colors.onPrimary : colors.muted }]}>{label}</Text>
+    </PressableScale>
   );
 }
 
@@ -27,7 +29,6 @@ type ChipRowProps = {
   onChange: (value: string) => void;
 };
 
-/** Horizontally scrolling single-select pill row (categories, status filters). */
 export function ChipRow({ options, value, onChange }: ChipRowProps) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
@@ -39,13 +40,7 @@ export function ChipRow({ options, value, onChange }: ChipRowProps) {
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    minHeight: 36,
-    justifyContent: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 15,
-  },
-  text: { fontFamily: fonts.bold, fontSize: 12 },
-  row: { gap: 8, paddingHorizontal: 16 },
+  chip: { height: 36, justifyContent: 'center', borderRadius: 999, borderWidth: 1, paddingHorizontal: 15 },
+  text: { fontFamily: fonts.bold, fontSize: 12.5 },
+  row: { gap: 8, paddingHorizontal: 20 },
 });

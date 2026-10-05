@@ -44,6 +44,34 @@ src/
 └── utils/                  # Formatting and AsyncStorage helpers
 ```
 
+## Design system
+
+Colors and fonts match the website. `src/theme/colors.ts` mirrors the CSS
+variables in `baterdito-web/app/globals.css` (`--orange`, `--ink`, `--muted`,
+`--line`, `--surface`, `--background`…) for both light and dark mode, so a color
+change on the web maps 1:1 to the app. Colors are flat — no decorative gradients.
+
+Rules that keep the UI consistent:
+
+- Never hardcode a color in a screen or component. Use `colors.*` from `useTheme()`.
+- For accent pairs (soft background + strong foreground) use `tone(colors, 'orange' | 'green' | 'blue' | 'red' | 'yellow' | 'violet')` from `src/theme/tones.ts`. Components take a `tone` prop instead of raw colors.
+- Shadows come from `elevation(1 | 2 | 3, colors)`.
+- Text over photos uses `colors.onPhoto` on top of `<PhotoScrim />`.
+
+| Building block   | Where                               | Use it for                                  |
+| ---------------- | ----------------------------------- | ------------------------------------------- |
+| Tokens           | `src/theme/colors.ts`, `tones.ts`   | All colors, light/dark                      |
+| Tab config       | `src/navigation/tabs.ts`            | Add, remove, or reorder bottom tabs          |
+| `TabBar`         | `components/layout/TabBar.tsx`      | Bottom navigation (reads the tab config)     |
+| `AppHeader`      | `components/layout/AppHeader.tsx`   | Large-title header for tab screens           |
+| `IconTile`       | `components/ui/IconTile.tsx`        | Soft or solid icon squares by `tone`         |
+| `PressableScale` | `components/ui/PressableScale.tsx`  | Press feedback on anything tappable          |
+| `Glass`          | `components/ui/Glass.tsx`           | Frosted buttons/bars placed over photos      |
+| `PhotoScrim`     | `components/ui/PhotoScrim.tsx`      | Readable text on top of images               |
+
+To add a tab: create `src/app/(tabs)/<name>.tsx` and add one entry to
+`src/navigation/tabs.ts`.
+
 ## Connecting the real backend
 
 1. Keep each function signature in `src/services/*.ts`, and keep its return type

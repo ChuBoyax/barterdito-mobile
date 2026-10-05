@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react-native';
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
@@ -10,18 +10,18 @@ type TextFieldProps = TextInputProps & {
   hint?: string;
   error?: string;
   icon?: LucideIcon;
-  /** Element rendered inside the field on the right (e.g. GPS button, eye toggle). */
   right?: ReactNode;
-  /** Element rendered next to the label (e.g. "Write with AI"). */
   labelAction?: ReactNode;
   showCount?: boolean;
 };
 
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, hint, error, icon: Icon, right, labelAction, showCount, multiline, style, value, maxLength, ...rest },
+  { label, hint, error, icon: Icon, right, labelAction, showCount, multiline, style, value, maxLength, onFocus, onBlur, ...rest },
   ref,
 ) {
   const { colors } = useTheme();
+  const [focused, setFocused] = useState(false);
+  const borderColor = error ? colors.red : focused ? colors.orange : colors.hairline;
   return (
     <View style={styles.wrap}>
       {label ? (
@@ -34,16 +34,26 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
         style={[
           styles.field,
           multiline && styles.multiline,
-          { backgroundColor: colors.surface, borderColor: error ? colors.red : colors.line },
+          { backgroundColor: focused ? colors.surface : colors.surface2, borderColor },
+          focused && { shadowColor: colors.orange, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
         ]}>
-        {Icon ? <Icon size={18} color={colors.muted} /> : null}
+        {Icon ? <Icon size={18} color={focused ? colors.orange : colors.muted} strokeWidth={2.1} /> : null}
         <TextInput
           ref={ref}
           value={value}
           maxLength={maxLength}
           multiline={multiline}
           placeholderTextColor={colors.muted2}
+          selectionColor={colors.orange}
           textAlignVertical={multiline ? 'top' : 'center'}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
           style={[styles.input, multiline && styles.inputMultiline, { color: colors.ink }, style]}
           {...rest}
         />
@@ -64,21 +74,13 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 });
 
 const styles = StyleSheet.create({
-  wrap: { gap: 7 },
+  wrap: { gap: 8 },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label: { fontFamily: fonts.bold, fontSize: 12.5 },
-  field: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 13,
-  },
-  multiline: { minHeight: 110, alignItems: 'flex-start', paddingVertical: 11 },
-  input: { flex: 1, fontFamily: fonts.medium, fontSize: 14, paddingVertical: 10 },
-  inputMultiline: { minHeight: 88, paddingVertical: 0 },
+  label: { fontFamily: fonts.bold, fontSize: 13, letterSpacing: -0.1 },
+  field: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, borderWidth: 1.5, paddingHorizontal: 15 },
+  multiline: { minHeight: 120, alignItems: 'flex-start', paddingVertical: 13 },
+  input: { flex: 1, fontFamily: fonts.medium, fontSize: 14.5, paddingVertical: 12 },
+  inputMultiline: { minHeight: 92, paddingVertical: 0 },
   footer: { flexDirection: 'row', justifyContent: 'space-between' },
-  hint: { fontFamily: fonts.medium, fontSize: 11 },
+  hint: { fontFamily: fonts.medium, fontSize: 11.5 },
 });

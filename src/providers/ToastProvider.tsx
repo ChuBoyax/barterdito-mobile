@@ -3,27 +3,31 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Animated, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fonts } from '@/theme';
+import { elevation, fonts } from '@/theme';
+import { useTheme } from './ThemeProvider';
 
 type ToastContextValue = { showToast: (message: string) => void };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { colors } = useTheme();
   const [message, setMessage] = useState('');
-  const [opacity] = useState(() => new Animated.Value(0));
+  const [progress] = useState(() => new Animated.Value(0));
   const insets = useSafeAreaInsets();
 
   const showToast = useCallback((next: string) => setMessage(next), []);
 
   useEffect(() => {
     if (!message) return;
-    Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+    Animated.spring(progress, { toValue: 1, useNativeDriver: true, damping: 16, stiffness: 180 }).start();
     const id = setTimeout(() => {
-      Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => setMessage(''));
+      Animated.timing(progress, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setMessage(''));
     }, 2600);
     return () => clearTimeout(id);
-  }, [message, opacity]);
+  }, [message, progress]);
+
+  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] });
 
   return (
     <ToastContext.Provider value={{ showToast }}>
@@ -31,10 +35,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {message ? (
         <Animated.View
           pointerEvents="none"
-          style={[styles.toast, { bottom: insets.bottom + 90, opacity }]}
+          style={[styles.toast, { top: insets.top + 10, backgroundColor: colors.toast, opacity: progress, transform: [{ translateY }] }, elevation(3, colors)]}
           accessibilityLiveRegion="polite">
-          <CheckCircle2 size={18} color="#7ee2b8" />
-          <Text style={styles.text}>{message}</Text>
+          <CheckCircle2 size={18} color={colors.green} strokeWidth={2.4} />
+          <Text style={[styles.text, { color: colors.onToast }]}>{message}</Text>
         </Animated.View>
       ) : null}
     </ToastContext.Provider>
@@ -50,20 +54,14 @@ export function useToast() {
 const styles = StyleSheet.create({
   toast: {
     position: 'absolute',
-    left: 20,
-    right: 20,
+    alignSelf: 'center',
+    maxWidth: '90%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderRadius: 14,
-    backgroundColor: '#2c2c2c',
+    borderRadius: 999,
     paddingHorizontal: 16,
-    paddingVertical: 13,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    paddingVertical: 11,
   },
-  text: { flex: 1, color: '#fff', fontFamily: fonts.semibold, fontSize: 13 },
+  text: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 13 },
 });

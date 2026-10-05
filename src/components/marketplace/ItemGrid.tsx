@@ -49,8 +49,8 @@ export function ItemGrid({ items, loading, columns = 2 }: ItemGridProps) {
 }
 
 const styles = StyleSheet.create({
-  grid: { gap: 12 },
-  row: { flexDirection: 'row', gap: 12 },
+  grid: { gap: 22 },
+  row: { flexDirection: 'row', gap: 14 },
   cell: { flex: 1 },
 });
 

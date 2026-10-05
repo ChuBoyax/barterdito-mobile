@@ -3,7 +3,7 @@ import { ArrowRight, CheckCircle2, Search } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 
-import { RequireAuth } from '@/components/layout';
+import { AppHeader, RequireAuth } from '@/components/layout';
 import { ThreadRow } from '@/components/marketplace';
 import { Card, EmptyState, LoadingView, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
@@ -37,7 +37,7 @@ function InboxContent() {
   }
 
   return (
-    <Screen refreshing={loading} onRefresh={() => void reload()}>
+    <Screen refreshing={loading} onRefresh={() => void reload()} header={<AppHeader eyebrow="Conversations" title="Inbox" />}>
       <SegmentedControl<Tab>
         value={tab}
         onChange={setTab}
@@ -53,7 +53,7 @@ function InboxContent() {
           {loading && !threads.length ? (
             <LoadingView />
           ) : visible.length ? (
-            <Card padded={false} style={styles.list}>
+            <Card style={styles.list}>
               {visible.map((thread) => (
                 <ThreadRow
                   key={thread.id}
@@ -84,5 +84,7 @@ function InboxContent() {
 }
 
 const styles = StyleSheet.create({
-  list: { overflow: 'hidden' },
+  list: { paddingVertical: 6 },
 });
+
+

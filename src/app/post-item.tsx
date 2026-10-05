@@ -147,9 +147,9 @@ function PostItemForm() {
             <Pressable key={label} onPress={() => goTo(index)} style={styles.step}>
               <View style={[styles.stepDot, { backgroundColor: active ? colors.orange : colors.surface2 }]}>
                 {step > index ? (
-                  <Check size={14} color="#fff" />
+                  <Check size={14} color={colors.onPrimary} />
                 ) : (
-                  <AppText variant="caption" weight="extrabold" style={{ color: active ? '#fff' : colors.muted }}>
+                  <AppText variant="caption" weight="extrabold" style={{ color: active ? colors.onPrimary : colors.muted }}>
                     {index + 1}
                   </AppText>
                 )}
@@ -187,8 +187,8 @@ function PostItemForm() {
                   onPress={() => update('photos', draft.photos.filter((_, photoIndex) => photoIndex !== index))}
                   style={styles.photoSlot}>
                   <Image source={uri} style={StyleSheet.absoluteFill} contentFit="cover" />
-                  <View style={styles.remove}>
-                    <X size={12} color="#fff" />
+                  <View style={[styles.remove, { backgroundColor: colors.scrim }]}>
+                    <X size={12} color={colors.onPhoto} />
                   </View>
                 </Pressable>
               ))}
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   photoAdd: { width: 96, height: 96, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 4 },
   photoSlot: { width: 70, height: 70, borderRadius: 12, overflow: 'hidden' },
   photoEmpty: { borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
-  remove: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  remove: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   ai: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   review: { gap: 8 },
   cover: { height: 200, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', gap: 6 },

@@ -25,8 +25,7 @@ export default function EventsScreen() {
     <Screen>
       <HeroBanner
         badge="Swap in person"
-        badgeTone="green"
-        tint="green"
+        tone="green"
         icon={CalendarDays}
         title="Meet your trading community"
         text="Browse, barter, and build trust at verified local events."

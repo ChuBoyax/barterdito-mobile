@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { ArrowRight } from 'lucide-react-native';
 import { useState } from 'react';
 
-import { RequireAuth } from '@/components/layout';
+import { AppHeader, RequireAuth } from '@/components/layout';
 import { OfferCard } from '@/components/marketplace';
 import { EmptyState, LoadingView, Screen, SegmentedControl } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
@@ -35,7 +35,10 @@ function OffersContent() {
   }
 
   return (
-    <Screen refreshing={loading} onRefresh={() => void reload()}>
+    <Screen
+      refreshing={loading}
+      onRefresh={() => void reload()}
+      header={<AppHeader eyebrow="Your swaps" title="Trade Offers" subtitle="Review proposals, accept fair swaps, and plan safe meetups." />}>
       <SegmentedControl<Tab>
         value={tab}
         onChange={setTab}

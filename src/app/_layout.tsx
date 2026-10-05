@@ -72,16 +72,21 @@ function RootStack() {
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.ink,
           headerTitleStyle: { fontFamily: fonts.extrabold, fontSize: 17 },
+          headerTitleAlign: 'center',
           headerShadowVisible: false,
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: colors.background },
+          animation: 'slide_from_right',
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="menu" options={{ presentation: 'modal', title: 'Explore' }} />
-        {Object.entries(screenTitles).map(([name, title]) => (
-          <Stack.Screen key={name} name={name} options={{ title }} />
-        ))}
+        <Stack.Screen name="login" options={{ presentation: 'modal', headerShown: false, animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="menu" options={{ presentation: 'modal', title: 'Explore', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="items/[id]" options={{ headerShown: false }} />
+        {Object.entries(screenTitles)
+          .filter(([name]) => name !== 'items/[id]')
+          .map(([name, title]) => (
+            <Stack.Screen key={name} name={name} options={{ title }} />
+          ))}
       </Stack>
       <Onboarding
         visible={showOnboarding}

@@ -1,46 +1,40 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import type { LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { AppText, Badge, type BadgeTone } from '@/components/ui';
+import { AppText, Badge, IconTile } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
+import { tone as getTone, type Tone } from '@/theme';
 
 type HeroBannerProps = {
   badge: string;
-  badgeTone?: BadgeTone;
   title: string;
   text?: string;
   icon?: LucideIcon;
-  tint?: 'orange' | 'green' | 'blue';
+  tone?: Tone;
   children?: ReactNode;
 };
 
-export function HeroBanner({ badge, badgeTone = 'orange', title, text, icon: Icon, tint = 'orange', children }: HeroBannerProps) {
-  const { colors, dark } = useTheme();
-  const gradients: Record<typeof tint, readonly [string, string]> = {
-    orange: dark ? ['#3a2518', '#211f1d'] : ['#fff2e7', '#f3ede6'],
-    green: dark ? ['#19382d', '#254237'] : ['#e9f7f0', '#dff1e8'],
-    blue: dark ? ['#1d2d48', '#19352b'] : ['#e9f0ff', '#e9f7f0'],
-  };
-  const iconColor = { orange: colors.orange, green: colors.green, blue: colors.blue }[tint];
+export function HeroBanner({ badge, title, text, icon, tone = 'orange', children }: HeroBannerProps) {
+  const { colors } = useTheme();
+  const palette = getTone(colors, tone);
   return (
-    <LinearGradient colors={gradients[tint]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+    <View style={[styles.hero, { backgroundColor: palette.bg }]}>
       <View style={styles.row}>
         <View style={styles.copy}>
-          <Badge label={badge} tone={badgeTone} />
+          <Badge label={badge} tone={tone} style={{ backgroundColor: colors.surface }} />
           <AppText variant="h1">{title}</AppText>
           {text ? <AppText variant="small">{text}</AppText> : null}
         </View>
-        {Icon ? <Icon size={54} color={iconColor} strokeWidth={1.6} /> : null}
+        {icon ? <IconTile icon={icon} tone={tone} variant="solid" size={60} rounded /> : null}
       </View>
       {children}
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { borderRadius: 24, padding: 20, gap: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  hero: { borderRadius: 24, padding: 20, gap: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   copy: { flex: 1, gap: 8 },
 });

@@ -14,17 +14,25 @@ import { useTheme } from '@/providers/ThemeProvider';
 
 type ScreenProps = {
   children: ReactNode;
-  /** Use false for screens that manage their own list (FlatList). */
   scroll?: boolean;
   padded?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
   contentStyle?: StyleProp<ViewStyle>;
   footer?: ReactNode;
+  header?: ReactNode;
 };
 
-/** Standard page container: themed background, padding, keyboard handling, pull to refresh. */
-export function Screen({ children, scroll = true, padded = true, refreshing, onRefresh, contentStyle, footer }: ScreenProps) {
+export function Screen({
+  children,
+  scroll = true,
+  padded = true,
+  refreshing,
+  onRefresh,
+  contentStyle,
+  footer,
+  header,
+}: ScreenProps) {
   const { colors } = useTheme();
   return (
     <KeyboardAvoidingView
@@ -34,16 +42,19 @@ export function Screen({ children, scroll = true, padded = true, refreshing, onR
       {scroll ? (
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[padded && styles.padded, styles.gap, contentStyle]}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[padded && styles.padded, styles.gap, styles.bottom, contentStyle]}
           refreshControl={
-            onRefresh ? (
-              <RefreshControl refreshing={Boolean(refreshing)} onRefresh={onRefresh} tintColor={colors.orange} />
-            ) : undefined
+            onRefresh ? <RefreshControl refreshing={Boolean(refreshing)} onRefresh={onRefresh} tintColor={colors.orange} colors={[colors.orange]} /> : undefined
           }>
+          {header}
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.flex, padded && styles.padded, contentStyle]}>{children}</View>
+        <View style={[styles.flex, padded && styles.padded, contentStyle]}>
+          {header}
+          {children}
+        </View>
       )}
       {footer}
     </KeyboardAvoidingView>
@@ -52,6 +63,7 @@ export function Screen({ children, scroll = true, padded = true, refreshing, onR
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  padded: { padding: 16, paddingBottom: 40 },
-  gap: { gap: 16 },
+  padded: { paddingHorizontal: 20, paddingTop: 12 },
+  gap: { gap: 18 },
+  bottom: { paddingBottom: 40 },
 });

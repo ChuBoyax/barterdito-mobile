@@ -33,7 +33,7 @@ function NotificationsContent() {
     <Screen refreshing={loading} onRefresh={() => void reload()}>
       <Button label="Mark all read" variant="ghost" compact style={styles.right} onPress={() => void markAllRead()} />
       {notifications.length ? (
-        <Card padded={false} style={styles.list}>
+        <Card style={styles.list}>
           {notifications.map((notification) => (
             <NotificationRow key={notification.id} notification={notification} />
           ))}
@@ -48,5 +48,5 @@ function NotificationsContent() {
 
 const styles = StyleSheet.create({
   right: { alignSelf: 'flex-end' },
-  list: { overflow: 'hidden' },
+  list: { paddingVertical: 6 },
 });

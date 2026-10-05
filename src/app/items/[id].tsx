@@ -1,18 +1,38 @@
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowRight, Bookmark, Eye, Flag, Heart, MapPin, Package, Share2, ShieldCheck, Star, UserPlus } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  ArrowRightLeft,
+  BadgeCheck,
+  Bookmark,
+  Eye,
+  Flag,
+  Heart,
+  MapPin,
+  Package,
+  Share2,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Tag,
+  UserPlus,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ReportSheet } from '@/components/marketplace';
-import { AppText, Avatar, Badge, Button, Card, EmptyState, IconButton, InfoNote, LoadingView, Screen, SectionHeading } from '@/components/ui';
+import { AppText, Avatar, Badge, Button, EmptyState, Glass, IconButton, InfoNote, LoadingView, PhotoScrim, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth, useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService, tradeService, userService } from '@/services';
+import { elevation, fonts } from '@/theme';
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { requireAuth } = useAuth();
   const showToast = useToast();
@@ -35,84 +55,60 @@ export default function ItemDetailScreen() {
   const saved = savedIds.includes(item.id);
   const hearted = heartedIds.includes(item.id);
   const more = items.filter((other) => other.userId === item.userId && other.id !== item.id);
+  const heroHeight = width * 1.12;
 
   return (
-    <>
-      <Stack.Screen options={{ title: item.title }} />
-      <Screen
-        padded={false}
-        contentStyle={styles.content}
-        footer={
-          <View style={[styles.actionbar, { backgroundColor: colors.surface, borderTopColor: colors.line }]}>
-            <Button
-              label="Propose a Trade"
-              icon={ArrowRight}
-              style={styles.flex}
-              disabled={item.mine}
-              onPress={() =>
-                requireAuth(() => {
-                  void tradeService.proposeTrade(item.id).then(() => showToast('Trade proposal started'));
-                })
-              }
-            />
-            <IconButton icon={Bookmark} label={saved ? 'Saved' : 'Save'} active={saved} filled={saved} onPress={() => toggleSaved(item.id)} />
-            <IconButton icon={Flag} label="Report item" tone="danger" onPress={() => setReportOpen(true)} />
-          </View>
-        }>
-        <View>
+    <View style={[styles.flex, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={{ height: heroHeight }}>
           <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={(event) => setActiveImage(Math.round(event.nativeEvent.contentOffset.x / width))}>
             {gallery.map((uri, index) => (
-              <Image key={uri + index} source={uri} style={{ width, height: width * 0.9 }} contentFit="cover" accessibilityLabel={`${item.title} photo ${index + 1}`} />
+              <Image key={uri + index} source={uri} style={{ width, height: heroHeight }} contentFit="cover" transition={250} accessibilityLabel={`${item.title} photo ${index + 1}`} />
             ))}
           </ScrollView>
-          <View style={styles.galleryActions}>
-            <Pressable accessibilityLabel="Heart item" onPress={() => toggleHeart(item.id)} style={[styles.pill, { backgroundColor: colors.surface }]}>
-              <Heart size={18} color={hearted ? colors.red : colors.ink} fill={hearted ? colors.red : 'none'} />
-              <AppText variant="small" color="ink" weight="bold">
-                {item.hearts}
-              </AppText>
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Share item"
-              onPress={() => void Share.share({ message: `${item.title} on Barterdito — https://barterdito.ph/items/${item.id}` })}
-              style={[styles.pill, { backgroundColor: colors.surface }]}>
-              <Share2 size={18} color={colors.ink} />
-            </Pressable>
-          </View>
+          <PhotoScrim position="top" />
           {gallery.length > 1 ? (
             <View style={styles.dots}>
               {gallery.map((_, index) => (
-                <View key={index} style={[styles.dot, { backgroundColor: index === activeImage ? colors.white : 'rgba(255,255,255,0.5)' }]} />
+                <View key={index} style={[styles.dot, { backgroundColor: colors.onPhoto }, index === activeImage ? styles.dotActive : styles.dotIdle]} />
               ))}
             </View>
           ) : null}
         </View>
 
-        <View style={styles.body}>
+        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
           <View style={styles.badges}>
-            <Badge label={item.category} tone="orange" />
-            <Badge label={item.status} tone={item.status === 'Active' ? 'green' : 'orange'} />
+            <Badge label={item.category} tone="orange" icon={Tag} />
+            <Badge label={item.status} tone={item.status === 'Active' ? 'green' : 'orange'} dot />
+            {item.hot ? <Badge label="Trending" tone="red" icon={Sparkles} /> : null}
           </View>
-          <AppText variant="h1">{item.title}</AppText>
-          <View style={styles.row}>
-            <MapPin size={14} color={colors.muted} />
-            <AppText variant="small">
-              {item.location} · Posted {item.age}
-            </AppText>
-            <View style={styles.flex} />
-            <Eye size={14} color={colors.muted} />
-            <AppText variant="small">{item.views} views</AppText>
+          <AppText variant="hero">{item.title}</AppText>
+          <View style={styles.metaRow}>
+            <Meta icon={MapPin} label={item.location} />
+            <Meta icon={Eye} label={`${item.views} views`} />
+            <Meta icon={Heart} label={`${item.hearts}`} />
+          </View>
+
+          <View style={[styles.wants, { backgroundColor: colors.orangeSoft, borderColor: colors.orange }]}>
+            <View style={[styles.wantsIcon, { backgroundColor: colors.orange }]}>
+              <ArrowRightLeft size={20} color={colors.onPrimary} strokeWidth={2.2} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={[styles.wantsLabel, { color: colors.orange }]}>LOOKING TO SWAP FOR</Text>
+              <Text style={[styles.wantsText, { color: colors.ink }]}>{item.wanted}</Text>
+            </View>
           </View>
 
           <View style={styles.facts}>
             <Fact label="Condition" value={item.condition} />
             <Fact label="Category" value={item.category} />
+            <Fact label="Posted" value={item.age} />
           </View>
-          <Fact label="Looking for" value={item.wanted} />
 
           <View style={styles.section}>
             <AppText variant="h2">About this item</AppText>
@@ -121,16 +117,25 @@ export default function ItemDetailScreen() {
             </AppText>
           </View>
 
-          <Card style={styles.owner}>
-            <Avatar initials={item.ownerAvatar} imageUrl={item.ownerAvatarUrl} size="large" />
+          <PressableScale
+            onPress={() => item.userId && !item.mine && router.push(`/traders/${item.userId}`)}
+            scaleTo={0.98}
+            style={[styles.owner, { backgroundColor: colors.surface, borderColor: colors.hairline }, elevation(1, colors)]}>
+            <Avatar initials={item.ownerAvatar} imageUrl={item.ownerAvatarUrl} size="large" ring online />
             <View style={styles.flex}>
-              <AppText variant="caption">Offered by</AppText>
-              <AppText variant="h3">{item.owner}</AppText>
-              <View style={styles.row}>
+              <AppText variant="eyebrow" color="muted">
+                Offered by
+              </AppText>
+              <View style={styles.inline}>
+                <AppText variant="h2">{item.owner}</AppText>
+                <BadgeCheck size={16} color={colors.blue} fill={colors.blueSoft} />
+              </View>
+              <View style={styles.inline}>
                 <Star size={12} color={colors.yellow} fill={colors.yellow} />
-                <AppText variant="caption">
-                  {item.rating} · {item.trades} completed trades
+                <AppText variant="caption" color="ink" weight="bold">
+                  {item.rating}
                 </AppText>
+                <AppText variant="caption">· {item.trades} completed trades</AppText>
               </View>
             </View>
             <IconButton
@@ -143,19 +148,19 @@ export default function ItemDetailScreen() {
                 })
               }
             />
-          </Card>
-          {item.userId && !item.mine ? (
-            <Button label="View trader profile" variant="secondary" onPress={() => router.push(`/traders/${item.userId}`)} />
-          ) : null}
+          </PressableScale>
 
           <InfoNote icon={ShieldCheck} title="Trade safely" text="Meet in a public place, inspect the item, and confirm together in Barterdito." />
 
           {more.length ? (
             <View>
-              <SectionHeading eyebrow="" title={`More from ${item.owner}`} />
+              <SectionHeading eyebrow="Same trader" title={`More from ${item.owner.split(' ')[0]}`} />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moreRow}>
                 {more.map((other) => (
-                  <Pressable key={other.id} onPress={() => router.push(`/items/${other.id}`)} style={[styles.mini, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+                  <PressableScale
+                    key={other.id}
+                    onPress={() => router.push(`/items/${other.id}`)}
+                    style={[styles.mini, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
                     <Image source={other.image} style={styles.miniImage} contentFit="cover" />
                     <View style={styles.flex}>
                       <AppText variant="small" color="ink" weight="bold" numberOfLines={1}>
@@ -163,53 +168,108 @@ export default function ItemDetailScreen() {
                       </AppText>
                       <AppText variant="caption">{other.condition}</AppText>
                     </View>
-                  </Pressable>
+                  </PressableScale>
                 ))}
               </ScrollView>
             </View>
           ) : null}
-        </View>
 
-        <ReportSheet
-          visible={reportOpen}
-          title="Report this item"
-          onClose={() => setReportOpen(false)}
-          onSubmit={async (reason, details) => {
-            await itemService.reportItem(item.id, reason, details);
-            showToast(`Report submitted: ${reason}`);
-          }}
+          <PressableScale onPress={() => setReportOpen(true)} style={styles.report}>
+            <Flag size={14} color={colors.muted} />
+            <AppText variant="caption" weight="bold">
+              Report this listing
+            </AppText>
+          </PressableScale>
+        </View>
+      </ScrollView>
+
+      <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
+        <IconButton icon={ArrowLeft} label="Back" tone="glass" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+        <View style={styles.topRight}>
+          <IconButton
+            icon={Share2}
+            label="Share item"
+            tone="glass"
+            size={18}
+            onPress={() => void Share.share({ message: `${item.title} on Barterdito — https://barterdito.ph/items/${item.id}` })}
+          />
+          <IconButton icon={Heart} label="Heart item" tone="glass" size={18} active={hearted} filled={hearted} onPress={() => toggleHeart(item.id)} />
+        </View>
+      </View>
+
+      <Glass strong intensity={70} style={[styles.actionbar, { bottom: Math.max(insets.bottom, 12) }, elevation(3, colors)]}>
+        <IconButton icon={Bookmark} label={saved ? 'Saved' : 'Save'} active={saved} filled={saved} onPress={() => toggleSaved(item.id)} />
+        <Button
+          label={item.mine ? 'This is your listing' : 'Propose a swap'}
+          icon={ArrowRightLeft}
+          style={styles.flex}
+          disabled={item.mine}
+          onPress={() => requireAuth(() => void tradeService.proposeTrade(item.id).then(() => showToast('Trade proposal started')))}
         />
-      </Screen>
-    </>
+      </Glass>
+
+      <ReportSheet
+        visible={reportOpen}
+        title="Report this item"
+        onClose={() => setReportOpen(false)}
+        onSubmit={async (reason, details) => {
+          await itemService.reportItem(item.id, reason, details);
+          showToast(`Report submitted: ${reason}`);
+        }}
+      />
+    </View>
+  );
+}
+
+function Meta({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.meta, { backgroundColor: colors.surface2 }]}>
+      <Icon size={13} color={colors.muted} strokeWidth={2.3} />
+      <AppText variant="caption" color="ink" weight="semibold">
+        {label}
+      </AppText>
+    </View>
   );
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.fact, { backgroundColor: colors.surface2 }]}>
+    <View style={[styles.fact, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
       <AppText variant="caption">{label}</AppText>
-      <AppText variant="h3">{value}</AppText>
+      <AppText variant="h3" numberOfLines={1}>
+        {value}
+      </AppText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: 24 },
   flex: { flex: 1 },
-  galleryActions: { position: 'absolute', right: 14, bottom: 14, flexDirection: 'row', gap: 8 },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 9 },
-  dots: { position: 'absolute', bottom: 22, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  scroll: { paddingBottom: 130 },
+  dots: { position: 'absolute', bottom: 44, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  body: { padding: 16, gap: 14 },
-  badges: { flexDirection: 'row', gap: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dotIdle: { opacity: 0.55 },
+  dotActive: { width: 22 },
+  sheet: { marginTop: -30, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20, paddingTop: 24, gap: 16 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  wants: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, borderWidth: 1, padding: 14 },
+  wantsIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  wantsLabel: { fontFamily: fonts.extrabold, fontSize: 10, letterSpacing: 1.4 },
+  wantsText: { fontFamily: fonts.bold, fontSize: 15.5, lineHeight: 21, marginTop: 2 },
   facts: { flexDirection: 'row', gap: 10 },
-  fact: { flex: 1, gap: 2, borderRadius: 14, padding: 12 },
-  section: { gap: 6 },
-  owner: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  fact: { flex: 1, gap: 3, borderWidth: 1, borderRadius: 18, padding: 13 },
+  section: { gap: 8 },
+  owner: { flexDirection: 'row', alignItems: 'center', gap: 13, borderWidth: 1, borderRadius: 26, padding: 14 },
+  inline: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   moreRow: { gap: 10 },
-  mini: { width: 220, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, padding: 8 },
-  miniImage: { width: 54, height: 54, borderRadius: 10 },
-  actionbar: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28 },
+  mini: { width: 230, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 20, padding: 8 },
+  miniImage: { width: 58, height: 58, borderRadius: 14 },
+  report: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 },
+  topBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
+  topRight: { flexDirection: 'row', gap: 8 },
+  actionbar: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 30, padding: 8 },
 });

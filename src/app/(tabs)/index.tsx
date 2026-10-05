@@ -1,28 +1,43 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import {
+  ArrowUpRight,
+  Bell,
   CalendarDays,
-  ChevronRight,
   Heart,
   Leaf,
-  MapPin,
+  Map,
   Plus,
   Search,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Trophy,
   Zap,
   type LucideIcon,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { AppHeader, MenuButton } from '@/components/layout';
 import { FeaturedCard, FilterSheet, ItemGrid, TraderRow } from '@/components/marketplace';
-import { AppText, Badge, ChipRow, EmptyState, Screen, SectionHeading } from '@/components/ui';
+import {
+  AppText,
+  Avatar,
+  ChipRow,
+  EmptyState,
+  Glass,
+  IconButton,
+  IconTile,
+  PhotoScrim,
+  PressableScale,
+  Screen,
+  SectionHeading,
+} from '@/components/ui';
 import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
-import { avatarPalette, fonts } from '@/theme';
+import { avatarPalette, elevation, fonts, type Tone } from '@/theme';
 import type { ItemFilters, Trader } from '@/types/models';
 
 const defaultFilters: ItemFilters = {
@@ -33,9 +48,16 @@ const defaultFilters: ItemFilters = {
   sort: 'Newest first',
 };
 
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Magandang umaga';
+  if (hour < 18) return 'Magandang hapon';
+  return 'Magandang gabi';
+}
+
 export default function BrowseScreen() {
-  const { colors, dark } = useTheme();
-  const { requireAuth } = useAuth();
+  const { colors } = useTheme();
+  const { user, requireAuth } = useAuth();
   const { items, loading, refresh } = useMarketplace();
   const [filters, setFilters] = useState(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -44,17 +66,15 @@ export default function BrowseScreen() {
   const visibleItems = useMemo(() => itemService.filterItems(items, filters), [items, filters]);
   const locations = useMemo(() => [...new Set(items.map((item) => item.location))].sort(), [items]);
   const hotItems = items.filter((item) => item.hot);
-  const featured = items[1] ?? items[0];
+  const spotlight = items[1] ?? items[0];
   const filtersActive =
-    filters.condition !== defaultFilters.condition ||
-    filters.location !== defaultFilters.location ||
-    filters.sort !== defaultFilters.sort;
+    filters.condition !== defaultFilters.condition || filters.location !== defaultFilters.location || filters.sort !== defaultFilters.sort;
 
   const traders = useMemo<Trader[]>(() => {
-    const byOwner = new Map<string, Trader>();
+    const byOwner = new globalThis.Map<string, Trader>();
     items.forEach((item, index) => {
       const id = item.userId ?? item.owner;
-      if (byOwner.has(id)) return;
+      if (byOwner.has(id) || item.mine) return;
       byOwner.set(id, {
         id,
         name: item.owner,
@@ -77,91 +97,131 @@ export default function BrowseScreen() {
   const update = (next: Partial<ItemFilters>) => setFilters((current) => ({ ...current, ...next }));
 
   return (
-    <Screen padded={false} refreshing={refreshing} onRefresh={() => void onRefresh()} contentStyle={styles.content}>
-      <View style={styles.section}>
-        <LinearGradient
-          colors={dark ? [colors.heroStart, colors.heroEnd] : ['#fff2e7', '#fffaf4', '#f3ede6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}>
-          <Badge label="🇵🇭 Built for local traders" tone="orange" />
-          <AppText variant="hero">
-            Good finds deserve a{' '}
-            <AppText variant="hero" color="orange" style={styles.italic}>
-              second story.
-            </AppText>
-          </AppText>
-          <AppText variant="body" color="muted">
-            Swap things you have for things you’ll love—no cash needed.
-          </AppText>
-          <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-            <Search size={19} color={colors.muted} />
-            <TextInput
-              value={filters.search}
-              onChangeText={(search) => update({ search })}
-              placeholder="Search cameras, bikes, services…"
-              placeholderTextColor={colors.muted2}
-              style={[styles.searchInput, { color: colors.ink }]}
-              accessibilityLabel="Search marketplace"
-              returnKeyType="search"
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Filters"
-              onPress={() => setFiltersOpen(true)}
-              style={[styles.filterButton, { backgroundColor: colors.orange }]}>
-              <SlidersHorizontal size={17} color="#fff" />
-              {filtersActive ? <View style={[styles.filterDot, { borderColor: colors.orange }]} /> : null}
-            </Pressable>
-          </View>
-          <View style={styles.trust}>
-            <TrustPill icon={ShieldCheck} label="Verified traders" />
-            <TrustPill icon={MapPin} label="Meet locally" />
-            <TrustPill icon={Leaf} label="Waste less" />
-          </View>
-          {featured ? (
-            <Pressable onPress={() => router.push(`/items/${featured.id}`)} style={styles.heroPhoto}>
-              <Image source={featured.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-              <View style={[styles.heroInfo, { backgroundColor: colors.surface }]}>
-                <View style={styles.flex}>
-                  <AppText variant="caption">Trending near you</AppText>
-                  <AppText variant="h3" numberOfLines={1}>
-                    {featured.title}
-                  </AppText>
-                </View>
-                <Badge label="4.8 ★" tone="green" />
+    <Screen
+      padded={false}
+      refreshing={refreshing}
+      onRefresh={() => void onRefresh()}
+      contentStyle={styles.content}
+      header={
+        <View style={styles.pad}>
+          <AppHeader
+            eyebrow={greeting()}
+            title={user ? `Hi, ${user.fullName.split(' ')[0]}` : 'Barterdito'}
+            leading={
+              <PressableScale onPress={() => router.push(user ? '/profile' : '/login')} scaleTo={0.92}>
+                <Avatar initials={user?.initials ?? 'BD'} size="medium" ring online={Boolean(user)} />
+              </PressableScale>
+            }
+            actions={
+              <View style={styles.actions}>
+                <IconButton icon={Bell} label="Notifications" size={19} badge={2} onPress={() => router.push('/notifications')} />
+                <MenuButton />
               </View>
-              <View style={[styles.float, styles.floatOne, { backgroundColor: colors.surface }]}>
-                <Heart size={14} color={colors.red} fill={colors.red} />
-                <AppText variant="caption" color="ink" weight="bold">
-                  28 traders like this
+            }
+          />
+        </View>
+      }>
+      <Animated.View entering={FadeInDown.duration(450)} style={[styles.pad, styles.headline]}>
+        <AppText variant="display">
+          Good finds deserve a{' '}
+          <AppText variant="display" color="orange">
+            second story.
+          </AppText>
+        </AppText>
+        <AppText variant="body" color="muted">
+          Swap things you have for things you’ll love — no cash needed.
+        </AppText>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(60).duration(450)} style={styles.pad}>
+        <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+          <Search size={20} color={colors.muted} strokeWidth={2} />
+          <TextInput
+            value={filters.search}
+            onChangeText={(search) => update({ search })}
+            placeholder="Search cameras, bikes, services…"
+            placeholderTextColor={colors.muted2}
+            selectionColor={colors.orange}
+            style={[styles.searchInput, { color: colors.ink }]}
+            accessibilityLabel="Search marketplace"
+            returnKeyType="search"
+          />
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Filters"
+            onPress={() => setFiltersOpen(true)}
+            scaleTo={0.9}
+            style={[styles.filterButton, { backgroundColor: colors.orange }]}>
+            <SlidersHorizontal size={18} color={colors.onPrimary} strokeWidth={2.2} />
+            {filtersActive ? <View style={[styles.filterDot, { backgroundColor: colors.yellow, borderColor: colors.orange }]} /> : null}
+          </PressableScale>
+        </View>
+        <View style={styles.trust}>
+          <TrustPill icon={ShieldCheck} label="Verified traders" />
+          <TrustPill icon={Heart} label="Meet locally" />
+          <TrustPill icon={Leaf} label="Waste less" />
+        </View>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(120).duration(450)}>
+        <ChipRow options={itemService.getCategories()} value={filters.category} onChange={(category) => update({ category })} />
+      </Animated.View>
+
+      {spotlight ? (
+        <Animated.View entering={FadeInDown.delay(180).duration(500)} style={styles.pad}>
+          <PressableScale onPress={() => router.push(`/items/${spotlight.id}`)} scaleTo={0.98} style={[styles.spotlight, elevation(2, colors)]}>
+            <Image source={spotlight.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <PhotoScrim position="both" />
+            <View style={styles.spotTop}>
+              <Glass style={styles.pill} intensity={35}>
+                <Heart size={13} color={colors.red} fill={colors.red} />
+                <Text style={[styles.pillText, { color: colors.ink }]}>28 traders like this</Text>
+              </Glass>
+              <Glass style={styles.pill} intensity={35}>
+                <Zap size={13} color={colors.orange} fill={colors.orange} />
+                <Text style={[styles.pillText, { color: colors.ink }]}>12 new today</Text>
+              </Glass>
+            </View>
+            <View style={[styles.spotInfo, { backgroundColor: colors.surface }]}>
+              <View style={styles.flex}>
+                <AppText variant="caption">Trending near you</AppText>
+                <AppText variant="h2" numberOfLines={1}>
+                  {spotlight.title}
                 </AppText>
               </View>
-              <View style={[styles.float, styles.floatTwo, { backgroundColor: colors.surface }]}>
-                <Zap size={14} color={colors.orange} />
-                <AppText variant="caption" color="ink" weight="bold">
-                  12 new finds today
-                </AppText>
+              <View style={[styles.spotArrow, { backgroundColor: colors.orange }]}>
+                <ArrowUpRight size={20} color={colors.onPrimary} strokeWidth={2.2} />
               </View>
-            </Pressable>
-          ) : null}
-        </LinearGradient>
-      </View>
+            </View>
+          </PressableScale>
+        </Animated.View>
+      ) : null}
 
-      <ChipRow options={itemService.getCategories()} value={filters.category} onChange={(category) => update({ category })} />
-
-      <View style={[styles.section, styles.shortcuts]}>
-        <Shortcut icon={Plus} title="Post a Trade" text="List an item in minutes" tone="orange" onPress={() => requireAuth(() => router.push('/post-item'))} />
-        <Shortcut icon={Trophy} title="Leaderboard" text="Meet top local traders" tone="cream" onPress={() => router.push('/leaderboard')} />
-        <Shortcut icon={CalendarDays} title="Trade Events" text="Swap face-to-face" tone="green" onPress={() => router.push('/events')} />
-      </View>
+      <Animated.View entering={FadeInDown.delay(240).duration(500)} style={[styles.pad, styles.shortcuts]}>
+        <PrimaryShortcut onPress={() => requireAuth(() => router.push('/post-item'))} />
+        <View style={styles.shortcutRow}>
+          <Shortcut icon={Trophy} tone="yellow" title="Leaderboard" text="Top traders" onPress={() => router.push('/leaderboard')} />
+          <Shortcut icon={CalendarDays} tone="green" title="Events" text="Swap face-to-face" onPress={() => router.push('/events')} />
+        </View>
+        <View style={styles.shortcutRow}>
+          <Shortcut icon={Map} tone="blue" title="Nearby map" text="Trades around you" onPress={() => router.push('/map')} />
+          <Shortcut icon={Sparkles} tone="violet" title="For you" text="Recommended swaps" onPress={() => requireAuth(() => router.push('/recommendations'))} />
+        </View>
+        <View style={[styles.impact, { backgroundColor: colors.greenSoft }]}>
+          <IconTile icon={Leaf} tone="green" variant="solid" size={44} />
+          <View style={styles.flex}>
+            <AppText variant="h2">4,812 items</AppText>
+            <AppText variant="caption">given a second life this month</AppText>
+          </View>
+        </View>
+      </Animated.View>
 
       {hotItems.length ? (
         <View>
-          <View style={styles.section}>
-            <SectionHeading title="Hot swaps near you" action="View map" onAction={() => router.push('/map')} />
+          <View style={styles.pad}>
+            <SectionHeading eyebrow="Discover" title="Hot swaps near you" action="Map" onAction={() => router.push('/map')} />
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow} decelerationRate="fast" snapToInterval={240}>
             {hotItems.map((item) => (
               <FeaturedCard key={item.id} item={item} onPress={() => router.push(`/items/${item.id}`)} />
             ))}
@@ -170,8 +230,8 @@ export default function BrowseScreen() {
       ) : null}
 
       <View>
-        <View style={styles.section}>
-          <SectionHeading title="Featured traders" action="Leaderboard" onAction={() => router.push('/leaderboard')} />
+        <View style={styles.pad}>
+          <SectionHeading eyebrow="Community" title="Featured traders" action="Ranks" onAction={() => router.push('/leaderboard')} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow}>
           {traders.map((trader) => (
@@ -180,8 +240,8 @@ export default function BrowseScreen() {
         </ScrollView>
       </View>
 
-      <View style={styles.section}>
-        <SectionHeading title={`${visibleItems.length} fresh finds`} />
+      <View style={styles.pad}>
+        <SectionHeading eyebrow="Fresh finds" title={`${visibleItems.length} items to swap`} />
         {loading || visibleItems.length ? (
           <ItemGrid items={visibleItems} loading={loading} />
         ) : (
@@ -205,73 +265,71 @@ function TrustPill({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   const { colors } = useTheme();
   return (
     <View style={styles.trustPill}>
-      <Icon size={15} color={colors.green} />
-      <AppText variant="caption" weight="bold">
+      <Icon size={14} color={colors.green} strokeWidth={2.2} />
+      <AppText variant="caption" weight="semibold">
         {label}
       </AppText>
     </View>
   );
 }
 
-function Shortcut({
-  icon: Icon,
-  title,
-  text,
-  tone,
-  onPress,
-}: {
-  icon: LucideIcon;
-  title: string;
-  text: string;
-  tone: 'orange' | 'cream' | 'green';
-  onPress: () => void;
-}) {
-  const { colors, dark } = useTheme();
-  const palette = {
-    orange: { bg: colors.orange, fg: '#fff', iconBg: 'rgba(255,255,255,0.2)' },
-    cream: { bg: dark ? '#352b1d' : '#fff4dc', fg: colors.ink, iconBg: colors.yellow },
-    green: { bg: colors.greenSoft, fg: colors.ink, iconBg: colors.green },
-  }[tone];
+function PrimaryShortcut({ onPress }: { onPress: () => void }) {
+  const { colors } = useTheme();
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.shortcut, { backgroundColor: palette.bg }, pressed && { opacity: 0.85 }]}>
-      <View style={[styles.shortcutIcon, { backgroundColor: palette.iconBg }]}>
-        <Icon size={20} color="#fff" />
+    <PressableScale onPress={onPress} scaleTo={0.98} style={[styles.primary, { backgroundColor: colors.orange }]}>
+      <View style={[styles.primaryIcon, { borderColor: colors.onPrimary }]}>
+        <Plus size={22} color={colors.onPrimary} strokeWidth={2.4} />
       </View>
       <View style={styles.flex}>
-        <AppText variant="h3" style={{ color: palette.fg }}>
-          {title}
-        </AppText>
-        <AppText variant="caption" style={{ color: palette.fg, opacity: 0.8 }}>
-          {text}
-        </AppText>
+        <Text style={[styles.primaryTitle, { color: colors.onPrimary }]}>Post a trade</Text>
+        <Text style={[styles.primaryText, { color: colors.onPrimary }]}>List an item in minutes</Text>
       </View>
-      <ChevronRight size={18} color={palette.fg} />
-    </Pressable>
+      <ArrowUpRight size={20} color={colors.onPrimary} strokeWidth={2.2} />
+    </PressableScale>
+  );
+}
+
+function Shortcut({ icon, tone, title, text, onPress }: { icon: LucideIcon; tone: Tone; title: string; text: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <PressableScale
+      onPress={onPress}
+      scaleTo={0.96}
+      style={[styles.shortcut, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+      <IconTile icon={icon} tone={tone} size={40} />
+      <View>
+        <AppText variant="h3">{title}</AppText>
+        <AppText variant="caption">{text}</AppText>
+      </View>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { gap: 24, paddingTop: 8, paddingBottom: 40 },
-  section: { paddingHorizontal: 16 },
+  content: { gap: 24, paddingTop: 0 },
+  pad: { paddingHorizontal: 20 },
   flex: { flex: 1 },
-  hero: { borderRadius: 24, padding: 20, gap: 12, overflow: 'hidden' },
-  italic: { fontStyle: 'italic' },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 16, paddingLeft: 14, padding: 6, marginTop: 4 },
-  searchInput: { flex: 1, fontFamily: fonts.medium, fontSize: 14, paddingVertical: 8 },
-  filterButton: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  filterDot: { position: 'absolute', top: 6, right: 6, width: 9, height: 9, borderRadius: 5, backgroundColor: '#ffcd57', borderWidth: 2 },
-  trust: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  actions: { flexDirection: 'row', gap: 8 },
+  headline: { gap: 8, marginTop: 4 },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, height: 56, paddingLeft: 16, paddingRight: 6 },
+  searchInput: { flex: 1, fontFamily: fonts.medium, fontSize: 15, paddingVertical: 10 },
+  filterButton: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  filterDot: { position: 'absolute', top: 8, right: 8, width: 9, height: 9, borderRadius: 5, borderWidth: 2 },
+  trust: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 12 },
   trustPill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  heroPhoto: { height: 220, borderRadius: 20, overflow: 'hidden', marginTop: 8, justifyContent: 'flex-end' },
-  heroInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, margin: 10, borderRadius: 14, padding: 10 },
-  float: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  floatOne: { top: 12, left: 12 },
-  floatTwo: { top: 52, right: 12 },
-  shortcuts: { gap: 10 },
-  shortcut: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14 },
-  shortcutIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  hRow: { gap: 12, paddingHorizontal: 16 },
+  spotlight: { height: 340, borderRadius: 24, overflow: 'hidden', justifyContent: 'space-between' },
+  spotTop: { flexDirection: 'row', justifyContent: 'space-between', padding: 12 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 7 },
+  pillText: { fontFamily: fonts.bold, fontSize: 11.5 },
+  spotInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 10, borderRadius: 18, padding: 14 },
+  spotArrow: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  shortcuts: { gap: 12 },
+  shortcutRow: { flexDirection: 'row', gap: 12 },
+  primary: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 16 },
+  primaryIcon: { width: 46, height: 46, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', opacity: 0.95 },
+  primaryTitle: { fontFamily: fonts.extrabold, fontSize: 17 },
+  primaryText: { fontFamily: fonts.medium, fontSize: 12.5, opacity: 0.88 },
+  shortcut: { flex: 1, gap: 12, borderWidth: 1, borderRadius: 20, padding: 14 },
+  impact: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 14 },
+  hRow: { gap: 12, paddingHorizontal: 20, paddingBottom: 6 },
 });

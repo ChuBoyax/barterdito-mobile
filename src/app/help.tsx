@@ -18,8 +18,7 @@ export default function HelpScreen() {
     <Screen>
       <HeroBanner
         badge="Trade with confidence"
-        badgeTone="green"
-        tint="blue"
+        tone="blue"
         icon={ShieldCheck}
         title="We’re here to help."
         text="Quick answers, practical safety guidance, and a clear path when something goes wrong."

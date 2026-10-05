@@ -27,7 +27,7 @@ function DirectMessagesContent() {
       {loading ? (
         <LoadingView />
       ) : (
-        <Card padded={false} style={styles.list}>
+        <Card style={styles.list}>
           {threads.map((thread) => (
             <ThreadRow key={thread.id} thread={{ ...thread, item: undefined }} onPress={() => router.push(`/direct-messages/${thread.id}`)} />
           ))}
@@ -38,5 +38,5 @@ function DirectMessagesContent() {
 }
 
 const styles = StyleSheet.create({
-  list: { overflow: 'hidden' },
+  list: { paddingVertical: 6 },
 });

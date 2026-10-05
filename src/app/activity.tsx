@@ -19,7 +19,7 @@ function ActivityContent() {
   if (loading && !activity.length) return <LoadingView />;
   return (
     <Screen refreshing={loading} onRefresh={() => void reload()}>
-      <Card padded={false} style={styles.list}>
+      <Card style={styles.list}>
         {activity.map((entry) => (
           <NotificationRow key={entry.id} notification={entry} />
         ))}
@@ -29,5 +29,5 @@ function ActivityContent() {
 }
 
 const styles = StyleSheet.create({
-  list: { overflow: 'hidden' },
+  list: { paddingVertical: 6 },
 });

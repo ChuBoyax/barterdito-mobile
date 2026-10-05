@@ -3,22 +3,22 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
+import type { Tone } from '@/theme';
 import { AppText } from './AppText';
+import { IconTile } from './IconTile';
 
 type ListRowProps = {
   icon?: LucideIcon;
-  iconColor?: string;
+  iconTone?: Tone;
   title: string;
   subtitle?: string;
   onPress?: () => void;
-  /** Renders a switch instead of a chevron. */
   toggle?: { value: boolean; onChange: (value: boolean) => void };
   right?: ReactNode;
   showChevron?: boolean;
 };
 
-/** Icon + title + subtitle row used in settings, menus and action lists. */
-export function ListRow({ icon: Icon, iconColor, title, subtitle, onPress, toggle, right, showChevron = true }: ListRowProps) {
+export function ListRow({ icon, iconTone = 'orange', title, subtitle, onPress, toggle, right, showChevron = true }: ListRowProps) {
   const { colors } = useTheme();
   const handlePress = toggle ? () => toggle.onChange(!toggle.value) : onPress;
   return (
@@ -26,12 +26,8 @@ export function ListRow({ icon: Icon, iconColor, title, subtitle, onPress, toggl
       accessibilityRole={toggle ? 'switch' : 'button'}
       accessibilityState={toggle ? { checked: toggle.value } : undefined}
       onPress={handlePress}
-      style={({ pressed }) => [styles.row, pressed && handlePress && { opacity: 0.7 }]}>
-      {Icon ? (
-        <View style={[styles.icon, { backgroundColor: colors.orangeSoft }]}>
-          <Icon size={19} color={iconColor ?? colors.orange} />
-        </View>
-      ) : null}
+      style={({ pressed }) => [styles.row, pressed && handlePress && { opacity: 0.6 }]}>
+      {icon ? <IconTile icon={icon} tone={iconTone} size={42} /> : null}
       <View style={styles.body}>
         <AppText variant="h3">{title}</AppText>
         {subtitle ? <AppText variant="caption">{subtitle}</AppText> : null}
@@ -43,16 +39,19 @@ export function ListRow({ icon: Icon, iconColor, title, subtitle, onPress, toggl
           onValueChange={toggle.onChange}
           trackColor={{ true: colors.orange, false: colors.line }}
           thumbColor={colors.white}
+          ios_backgroundColor={colors.line}
         />
       ) : showChevron && onPress ? (
-        <ChevronRight size={18} color={colors.muted} />
+        <View style={[styles.chevron, { backgroundColor: colors.surface2 }]}>
+          <ChevronRight size={16} color={colors.muted} strokeWidth={2.4} />
+        </View>
       ) : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
-  icon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 10 },
   body: { flex: 1, gap: 1 },
+  chevron: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 });

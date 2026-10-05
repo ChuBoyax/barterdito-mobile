@@ -1,76 +1,77 @@
-import { ArrowRight, Bike, Camera, ShieldCheck, ShoppingBag, Users, type LucideIcon } from 'lucide-react-native';
+import { ArrowRight, ArrowRightLeft, Bike, Camera, ShieldCheck, ShoppingBag, Users, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText, Button, Logo } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
+import { elevation, tone as getTone, type Tone } from '@/theme';
 
-const pages: { icon: LucideIcon; title: string; text: string; color: string }[] = [
-  { icon: ShoppingBag, title: 'From markets to gadgets', text: 'Discover useful finds from trusted traders in your community.', color: '#ff7a1a' },
-  { icon: ArrowRight, title: 'Trade goods for electronics', text: 'Turn what you no longer use into something you really need.', color: '#174ea6' },
-  { icon: Users, title: 'Connect with local traders', text: 'Chat, make an offer, and schedule safe public meetups nearby.', color: '#3fa879' },
-  { icon: ShieldCheck, title: 'Safe & trusted swaps', text: 'Profiles, ratings, reports, and trade records help everyone barter confidently.', color: '#8c5de7' },
+const pages: { icon: LucideIcon; title: string; text: string; tone: Tone }[] = [
+  { icon: ShoppingBag, title: 'From markets\nto gadgets', text: 'Discover useful finds from trusted traders in your community.', tone: 'orange' },
+  { icon: ArrowRightLeft, title: 'Swap, don’t\nspend', text: 'Turn what you no longer use into something you really need.', tone: 'blue' },
+  { icon: Users, title: 'Meet local\ntraders', text: 'Chat, make an offer, and schedule safe public meetups nearby.', tone: 'green' },
+  { icon: ShieldCheck, title: 'Safe & trusted\nswaps', text: 'Profiles, ratings, reports, and trade records help everyone barter confidently.', tone: 'violet' },
 ];
 
 export function Onboarding({ visible, onFinish }: { visible: boolean; onFinish: () => void }) {
   const { colors } = useTheme();
   const [page, setPage] = useState(0);
   const current = pages[page];
+  const palette = getTone(colors, current.tone);
   const Icon = current.icon;
   const last = page === pages.length - 1;
 
   return (
-    <Modal visible={visible} animationType="fade" onRequestClose={onFinish}>
+    <Modal visible={visible} animationType="fade" onRequestClose={onFinish} statusBarTranslucent>
       <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
         <View style={styles.top}>
           <Logo />
-          <Pressable accessibilityRole="button" onPress={onFinish} hitSlop={10}>
-            <AppText variant="small" weight="bold">
+          <Pressable accessibilityRole="button" onPress={onFinish} hitSlop={10} style={[styles.skip, { backgroundColor: colors.surface2 }]}>
+            <AppText variant="caption" color="ink" weight="bold">
               Skip
             </AppText>
           </Pressable>
         </View>
+
         <View style={styles.art}>
-          <View style={[styles.orb, { backgroundColor: `${current.color}22` }]} />
-          <View style={[styles.iconCircle, { backgroundColor: current.color }]}>
-            <Icon size={64} color="#fff" />
+          <View style={[styles.halo, { backgroundColor: palette.bg }]} />
+          <Animated.View key={`orb-${page}`} entering={ZoomIn.springify().damping(14)}>
+            <View style={[styles.orb, { backgroundColor: palette.solid }, elevation(2, colors)]}>
+              <Icon size={68} color={colors.onPrimary} strokeWidth={1.8} />
+            </View>
+          </Animated.View>
+          <View style={[styles.mini, styles.miniA, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+            <Camera size={20} color={colors.orange} />
+            <AppText variant="caption" color="ink" weight="bold">
+              Your item
+            </AppText>
           </View>
-          <View style={[styles.mini, styles.miniA, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-            <Camera size={22} color={colors.orange} />
-            <AppText variant="caption">Your item</AppText>
-          </View>
-          <View style={[styles.mini, styles.miniB, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-            <Bike size={22} color={colors.blue} />
-            <AppText variant="caption">Their item</AppText>
+          <View style={[styles.mini, styles.miniB, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+            <Bike size={20} color={colors.blue} />
+            <AppText variant="caption" color="ink" weight="bold">
+              Their item
+            </AppText>
           </View>
         </View>
-        <View style={styles.copy}>
-          <AppText variant="eyebrow" align="center">
-            A better way to exchange
-          </AppText>
-          <AppText variant="hero" align="center">
-            {current.title}
-          </AppText>
-          <AppText variant="body" color="muted" align="center">
+
+        <Animated.View key={`copy-${page}`} entering={FadeInDown.duration(450)} style={styles.copy}>
+          <AppText variant="eyebrow">A better way to exchange</AppText>
+          <AppText variant="display">{current.title}</AppText>
+          <AppText variant="body" color="muted">
             {current.text}
           </AppText>
-        </View>
-        <View style={styles.bottom}>
+        </Animated.View>
+
+        <Animated.View entering={FadeIn.delay(200)} style={styles.bottom}>
           <View style={styles.dots}>
             {pages.map((_, index) => (
-              <View
-                key={index}
-                style={[styles.dot, { backgroundColor: index === page ? colors.orange : colors.line }, index === page && styles.dotActive]}
-              />
+              <View key={index} style={[styles.dot, { backgroundColor: index === page ? colors.orange : colors.line }, index === page && styles.dotActive]} />
             ))}
           </View>
-          <Button
-            label={last ? 'Start browsing' : 'Next'}
-            iconRight={ArrowRight}
-            onPress={() => (last ? onFinish() : setPage(page + 1))}
-          />
-        </View>
+          <Button label={last ? 'Start swapping' : 'Next'} iconRight={ArrowRight} onPress={() => (last ? onFinish() : setPage(page + 1))} />
+        </Animated.View>
       </SafeAreaView>
     </Modal>
   );
@@ -79,13 +80,14 @@ export function Onboarding({ visible, onFinish }: { visible: boolean; onFinish: 
 const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: 24 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8 },
+  skip: { borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
   art: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  orb: { position: 'absolute', width: 260, height: 260, borderRadius: 130 },
-  iconCircle: { width: 150, height: 150, borderRadius: 75, alignItems: 'center', justifyContent: 'center' },
-  mini: { position: 'absolute', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
-  miniA: { top: '22%', left: 4 },
-  miniB: { bottom: '20%', right: 4 },
-  copy: { gap: 10, paddingBottom: 24 },
+  halo: { position: 'absolute', width: 260, height: 260, borderRadius: 130 },
+  orb: { width: 150, height: 150, borderRadius: 48, alignItems: 'center', justifyContent: 'center' },
+  mini: { position: 'absolute', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 11 },
+  miniA: { top: '18%', left: 0, transform: [{ rotate: '-6deg' }] },
+  miniB: { bottom: '16%', right: 0, transform: [{ rotate: '6deg' }] },
+  copy: { gap: 10, paddingBottom: 28 },
   bottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16 },
   dots: { flexDirection: 'row', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },

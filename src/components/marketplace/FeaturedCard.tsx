@@ -1,35 +1,47 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MapPin } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ArrowRightLeft, MapPin } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Badge } from '@/components/ui';
+import { Badge, PhotoScrim, PressableScale } from '@/components/ui';
+import { useTheme } from '@/providers/ThemeProvider';
 import { fonts } from '@/theme';
 import type { Item } from '@/types/models';
 
 export function FeaturedCard({ item, onPress }: { item: Item; onPress: () => void }) {
+  const { colors } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={item.title} onPress={onPress} style={styles.card}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={item.title} onPress={onPress} scaleTo={0.97} style={styles.card}>
       <Image source={item.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.78)']} style={StyleSheet.absoluteFill} />
+      <PhotoScrim />
+      <View style={styles.top}>
+        <Badge label={item.category} tone="glass" />
+      </View>
       <View style={styles.body}>
-        <Badge label={item.category} tone="orange" />
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={[styles.title, { color: colors.onPhoto }]} numberOfLines={2}>
           {item.title}
         </Text>
         <View style={styles.row}>
-          <MapPin size={12} color="#fff" />
-          <Text style={styles.location}>{item.location}</Text>
+          <MapPin size={12} color={colors.onPhoto} />
+          <Text style={[styles.meta, { color: colors.onPhoto }]}>{item.location}</Text>
+        </View>
+        <View style={[styles.wants, { backgroundColor: colors.glass }]}>
+          <ArrowRightLeft size={12} color={colors.orange} strokeWidth={2.4} />
+          <Text style={[styles.wantsText, { color: colors.ink }]} numberOfLines={1}>
+            {item.wanted}
+          </Text>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { width: 220, height: 270, borderRadius: 20, overflow: 'hidden', justifyContent: 'flex-end' },
+  card: { width: 228, height: 288, borderRadius: 22, overflow: 'hidden', justifyContent: 'space-between' },
+  top: { padding: 12 },
   body: { padding: 14, gap: 6 },
-  title: { color: '#fff', fontFamily: fonts.extrabold, fontSize: 17 },
+  title: { fontFamily: fonts.extrabold, fontSize: 19, lineHeight: 23, letterSpacing: -0.4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  location: { color: 'rgba(255,255,255,0.88)', fontFamily: fonts.medium, fontSize: 12 },
+  meta: { fontFamily: fonts.medium, fontSize: 12, opacity: 0.9 },
+  wants: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, marginTop: 4 },
+  wantsText: { flex: 1, fontFamily: fonts.semibold, fontSize: 11.5 },
 });

@@ -1,10 +1,10 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Archive, Edit3, Eye, Heart, Package, Plus } from 'lucide-react-native';
+import { Archive, ArrowRightLeft, Edit3, Eye, Heart, Package, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
-import { RequireAuth } from '@/components/layout';
+import { AppHeader, RequireAuth } from '@/components/layout';
 import { StatGrid } from '@/components/marketplace';
 import { AppText, Badge, Button, Card, ChipRow, EmptyState, IconButton, LoadingView, Screen } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
@@ -47,15 +47,23 @@ function MyItemsContent() {
   }
 
   return (
-    <Screen refreshing={loading} onRefresh={() => void reload()}>
+    <Screen
+      refreshing={loading}
+      onRefresh={() => void reload()}
+      header={
+        <AppHeader
+          eyebrow="Your listings"
+          title="My Items"
+          actions={<IconButton icon={Plus} label="New listing" tone="glass" onPress={() => router.push('/post-item')} />}
+        />
+      }>
       <StatGrid
         stats={[
-          { label: 'Total listings', value: items.length, icon: Package },
-          { label: 'Total views', value: formatNumber(items.reduce((sum, item) => sum + item.views, 0)), icon: Eye },
-          { label: 'Total hearts', value: items.reduce((sum, item) => sum + item.hearts, 0), icon: Heart },
+          { label: 'Listings', value: items.length, icon: Package },
+          { label: 'Views', value: formatNumber(items.reduce((sum, item) => sum + item.views, 0)), icon: Eye, tone: 'blue' },
+          { label: 'Hearts', value: items.reduce((sum, item) => sum + item.hearts, 0), icon: Heart, tone: 'red' },
         ]}
       />
-      <Button label="New listing" icon={Plus} onPress={() => router.push('/post-item')} />
       <View style={styles.bleed}>
         <ChipRow options={tabs} value={tab} onChange={setTab} />
       </View>
@@ -64,13 +72,7 @@ function MyItemsContent() {
       ) : visible.length ? (
         visible.map((item) => <ManagedItem key={item.id} item={item} onArchive={() => confirmArchive(item)} />)
       ) : (
-        <EmptyState
-          icon={Package}
-          title="No items here"
-          text="Post an item or choose a different status."
-          action="Post an item"
-          onAction={() => router.push('/post-item')}
-        />
+        <EmptyState icon={Package} title="No items here" text="Post an item or choose a different status." action="Post an item" onAction={() => router.push('/post-item')} />
       )}
     </Screen>
   );
@@ -79,23 +81,28 @@ function MyItemsContent() {
 function ManagedItem({ item, onArchive }: { item: Item; onArchive: () => void }) {
   const { colors } = useTheme();
   return (
-    <Card style={styles.managed}>
+    <Card onPress={() => router.push(`/items/${item.id}`)} style={styles.managed}>
       <Image source={item.image} style={styles.thumb} contentFit="cover" />
       <View style={styles.flex}>
-        <Badge label={item.status} tone={item.status === 'Active' ? 'green' : 'orange'} />
+        <Badge label={item.status} tone={item.status === 'Active' ? 'green' : 'orange'} dot />
         <AppText variant="h3" numberOfLines={1}>
           {item.title}
         </AppText>
         <View style={styles.meta}>
-          <Heart size={13} color={colors.muted} />
+          <ArrowRightLeft size={11} color={colors.orange} strokeWidth={2.6} />
+          <AppText variant="caption" color="orange" weight="bold" numberOfLines={1} style={styles.flex}>
+            {item.wanted}
+          </AppText>
+        </View>
+        <View style={styles.meta}>
+          <Heart size={12} color={colors.muted} />
           <AppText variant="caption">{item.hearts}</AppText>
-          <Eye size={13} color={colors.muted} />
+          <Eye size={12} color={colors.muted} style={styles.gapLeft} />
           <AppText variant="caption">{item.views}</AppText>
         </View>
         <View style={styles.actions}>
           <Button label="Edit" icon={Edit3} variant="secondary" compact onPress={() => router.push('/post-item')} />
-          <Button label="View" variant="ghost" compact onPress={() => router.push(`/items/${item.id}`)} />
-          <IconButton icon={Archive} label="Archive listing" tone="danger" size={17} onPress={onArchive} />
+          <IconButton icon={Archive} label="Archive listing" tone="danger" size={16} dimension={38} onPress={onArchive} />
         </View>
       </View>
     </Card>
@@ -103,10 +110,11 @@ function ManagedItem({ item, onArchive }: { item: Item; onArchive: () => void })
 }
 
 const styles = StyleSheet.create({
-  bleed: { marginHorizontal: -16 },
-  managed: { flexDirection: 'row', gap: 12 },
-  thumb: { width: 96, height: 96, borderRadius: 14 },
-  flex: { flex: 1, gap: 4 },
+  bleed: { marginHorizontal: -20 },
+  managed: { flexDirection: 'row', gap: 14, padding: 12 },
+  thumb: { width: 112, height: 140, borderRadius: 18 },
+  flex: { flex: 1, gap: 5 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  gapLeft: { marginLeft: 8 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
 });

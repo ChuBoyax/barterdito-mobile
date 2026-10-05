@@ -1,8 +1,10 @@
 import type { LucideIcon } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts } from '@/theme';
+import { Glass } from './Glass';
+import { PressableScale } from './PressableScale';
 
 type IconButtonProps = {
   icon: LucideIcon;
@@ -10,9 +12,10 @@ type IconButtonProps = {
   onPress?: () => void;
   size?: number;
   active?: boolean;
-  tone?: 'default' | 'danger' | 'plain';
+  tone?: 'default' | 'danger' | 'plain' | 'glass';
   filled?: boolean;
   badge?: number;
+  dimension?: number;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -25,55 +28,40 @@ export function IconButton({
   tone = 'default',
   filled,
   badge,
+  dimension = 44,
   style,
 }: IconButtonProps) {
   const { colors } = useTheme();
   const color = tone === 'danger' ? colors.red : active ? colors.orange : colors.ink;
+  const shape = { width: dimension, height: dimension, borderRadius: dimension / 2 };
+  const icon = <Icon size={size} color={color} fill={filled ? color : 'none'} strokeWidth={2} />;
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={6}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.base,
-        tone !== 'plain' && { backgroundColor: active ? colors.orangeSoft : colors.surface, borderColor: colors.line },
-        tone === 'danger' && { backgroundColor: colors.redSoft, borderColor: colors.redSoft },
-        tone === 'plain' && styles.plain,
-        pressed && { opacity: 0.7 },
-        style,
-      ]}>
-      <Icon size={size} color={color} fill={filled ? color : 'none'} />
+    <PressableScale accessibilityRole="button" accessibilityLabel={label} hitSlop={6} onPress={onPress} scaleTo={0.9} style={style}>
+      {tone === 'glass' ? (
+        <Glass style={[styles.center, shape]}>{icon}</Glass>
+      ) : (
+        <View
+          style={[
+            styles.center,
+            shape,
+            tone === 'default' && { backgroundColor: active ? colors.orangeSoft : colors.surface, borderWidth: 1, borderColor: colors.line },
+            tone === 'danger' && { backgroundColor: colors.redSoft },
+          ]}>
+          {icon}
+        </View>
+      )}
       {badge ? (
         <View style={[styles.badge, { backgroundColor: colors.orange, borderColor: colors.background }]}>
-          <Text style={styles.badgeText}>{badge}</Text>
+          <Text style={[styles.badgeText, { color: colors.onPrimary }]}>{badge}</Text>
         </View>
       ) : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  base: {
-    width: 42,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  plain: { borderWidth: 0, width: 36, height: 36 },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 9,
-    borderWidth: 2,
-    paddingHorizontal: 3,
-  },
-  badgeText: { color: '#fff', fontFamily: fonts.extrabold, fontSize: 9 },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -3, right: -3, minWidth: 19, height: 19, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 2, paddingHorizontal: 4 },
+  badgeText: { fontFamily: fonts.extrabold, fontSize: 9.5 },
 });

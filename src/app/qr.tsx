@@ -33,8 +33,8 @@ function QRContent() {
         <AppText variant="small" align="center">
           Scan to open this Barterdito trader profile.
         </AppText>
-        <View style={styles.qr}>
-          <QRCode value={url} size={220} color="#174ea6" backgroundColor="#ffffff" ecl="H" />
+        <View style={[styles.qr, { backgroundColor: colors.white }]}>
+          <QRCode value={url} size={220} color={colors.blue} backgroundColor={colors.white} ecl="H" />
         </View>
         <View style={[styles.pill, { backgroundColor: colors.surface2 }]}>
           <Avatar initials={user.initials} size="small" />
@@ -54,7 +54,7 @@ function QRContent() {
 
 const styles = StyleSheet.create({
   card: { alignItems: 'center', gap: 12 },
-  qr: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
+  qr: { borderRadius: 20, padding: 16 },
   pill: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, padding: 10 },
   flex: { flex: 1 },
 });
