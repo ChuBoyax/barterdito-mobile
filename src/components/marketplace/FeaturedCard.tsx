@@ -9,7 +9,7 @@ import { fonts, maxFontScale } from '@/theme';
 import type { Item } from '@/types/models';
 
 export function featuredCardWidth(screenWidth: number, isTablet: boolean) {
-  return isTablet ? 260 : Math.round(Math.min(228, screenWidth * 0.62));
+  return isTablet ? 220 : Math.round(Math.min(184, screenWidth * 0.5));
 }
 
 export function FeaturedCard({ item, onPress }: { item: Item; onPress: () => void }) {
@@ -17,7 +17,7 @@ export function FeaturedCard({ item, onPress }: { item: Item; onPress: () => voi
   const { width, isTablet } = useResponsive();
   const cardWidth = featuredCardWidth(width, isTablet);
   return (
-    <PressableScale accessibilityRole="button" accessibilityLabel={item.title} onPress={onPress} scaleTo={0.97} style={[styles.card, { width: cardWidth, height: Math.round(cardWidth * 1.26) }]}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={item.title} onPress={onPress} scaleTo={0.97} style={[styles.card, { width: cardWidth, height: Math.round(cardWidth * 1.22) }]}>
       <Image source={item.image} style={StyleSheet.absoluteFill} contentFit="cover" />
       <PhotoScrim />
       <View style={styles.top}>
@@ -43,12 +43,12 @@ export function FeaturedCard({ item, onPress }: { item: Item; onPress: () => voi
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 22, overflow: 'hidden', justifyContent: 'space-between' },
-  top: { padding: 12 },
-  body: { padding: 14, gap: 6 },
-  title: { fontFamily: fonts.extrabold, fontSize: 19, lineHeight: 23, letterSpacing: -0.4 },
+  card: { borderRadius: 18, overflow: 'hidden', justifyContent: 'space-between' },
+  top: { padding: 10 },
+  body: { padding: 12, gap: 5 },
+  title: { fontFamily: fonts.extrabold, fontSize: 16, lineHeight: 20, letterSpacing: -0.3 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  meta: { fontFamily: fonts.medium, fontSize: 12, opacity: 0.9 },
-  wants: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, marginTop: 4 },
-  wantsText: { flex: 1, fontFamily: fonts.semibold, fontSize: 11.5 },
+  meta: { fontFamily: fonts.medium, fontSize: 11.5, opacity: 0.9 },
+  wants: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginTop: 2 },
+  wantsText: { flex: 1, fontFamily: fonts.semibold, fontSize: 11 },
 });
