@@ -1,23 +1,27 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowRight, Flag, MapPin, Share2, User, UserPlus } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { Flag, MapPin, MessageCircle, Package, Share2, Star, User, UserCheck, UserPlus } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
 import { Share, StyleSheet, View } from 'react-native';
 
 import { ItemGrid, ReportSheet, StatGrid } from '@/components/marketplace';
-import { AppText, Avatar, Button, Card, EmptyState, LoadingView, Screen, SectionHeading } from '@/components/ui';
+import { AppText, Avatar, Button, Card, EmptyState, IconButton, LoadingView, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth, useTheme, useToast } from '@/providers';
-import { itemService, userService } from '@/services';
+import { itemService, messageService, userService } from '@/services';
 
 export default function TraderProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
-  const { requireAuth, authenticated } = useAuth();
+  const { user, requireAuth, authenticated } = useAuth();
   const showToast = useToast();
   const { data: trader, loading, error } = useAsync(() => userService.getTrader(id), [id]);
   const { data: listings = [], loading: listingsLoading } = useAsync(() => itemService.getItemsByTrader(id), [id]);
+  const { data: reviews = [] } = useAsync(() => userService.getReviews(), []);
   const [following, setFollowing] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [opening, setOpening] = useState(false);
+
+  const available = useMemo(() => listings.filter((item) => item.status !== 'Traded'), [listings]);
 
   useEffect(() => {
     if (authenticated) void userService.isFollowing(id).then(setFollowing);
@@ -27,23 +31,53 @@ export default function TraderProfileScreen() {
   if (!trader || error) {
     return (
       <Screen>
-        <EmptyState icon={User} title="Trader not found" text="This profile may no longer be public." />
+        <EmptyState
+          icon={User}
+          title="Trader not found"
+          text="This profile may no longer be public."
+          action="Browse items"
+          onAction={() => router.navigate('/')}
+        />
       </Screen>
     );
   }
+
+  const isMe = user?.id === trader.id;
+  const firstName = trader.name.split(' ')[0];
 
   function toggleFollow() {
     requireAuth(() => {
       const next = !following;
       setFollowing(next);
       void userService.setFollowing(id, next);
-      showToast(next ? 'Trader followed' : 'Trader unfollowed');
+      showToast(next ? `Following ${firstName}` : `Unfollowed ${firstName}`);
     });
   }
 
+  function message() {
+    requireAuth(async () => {
+      setOpening(true);
+      try {
+        const threadId = await messageService.openDirectThread(trader!.name, trader!.initials);
+        router.push(`/direct-messages/${threadId}`);
+      } catch {
+        showToast('Could not open the chat. Please try again.');
+      } finally {
+        setOpening(false);
+      }
+    });
+  }
+
+  const share = () => void Share.share({ message: `${trader.name} on Barterdito — https://barterdito.ph/traders/${trader.id}` });
+
   return (
     <>
-      <Stack.Screen options={{ title: trader.name }} />
+      <Stack.Screen
+        options={{
+          title: trader.name,
+          headerRight: () => <IconButton icon={Share2} label={`Share ${trader.name}'s profile`} size={18} dimension={40} onPress={share} />,
+        }}
+      />
       <Screen>
         <Card style={styles.hero}>
           <View style={styles.main}>
@@ -62,55 +96,81 @@ export default function TraderProfileScreen() {
             </View>
           </View>
           <AppText variant="small">Local Barterdito member offering useful finds and open to fair community swaps.</AppText>
-          <Button
-            label={following ? 'Following' : 'Follow'}
-            icon={UserPlus}
-            variant={following ? 'secondary' : 'primary'}
-            onPress={toggleFollow}
-          />
           <StatGrid
             variant="inline"
             stats={[
               { label: 'Completed', value: trader.trades },
-              { label: 'Active listings', value: listings.length },
+              { label: 'Available', value: available.length },
               { label: 'Avg rating', value: trader.rating ? `${trader.rating}★` : '—' },
             ]}
           />
-          <View style={styles.actions}>
-            <Button label="Propose" icon={ArrowRight} variant="secondary" compact style={styles.flex} onPress={() => requireAuth(() => router.push('/post-item'))} />
-            <Button
-              label="Share"
-              icon={Share2}
-              variant="secondary"
-              compact
-              style={styles.flex}
-              onPress={() => void Share.share({ message: `${trader.name} on Barterdito — https://barterdito.ph/traders/${trader.id}` })}
-            />
-            <Button label="Report" icon={Flag} variant="danger" compact style={styles.flex} onPress={() => setReportOpen(true)} />
-          </View>
+          {!isMe ? (
+            <View style={styles.actions}>
+              <Button
+                label={following ? 'Following' : 'Follow'}
+                icon={following ? UserCheck : UserPlus}
+                variant={following ? 'secondary' : 'primary'}
+                style={styles.flex}
+                onPress={toggleFollow}
+              />
+              <Button label="Message" icon={MessageCircle} variant="secondary" loading={opening} style={styles.flex} onPress={message} />
+            </View>
+          ) : null}
         </Card>
 
         <View>
-          <SectionHeading eyebrow="Listings" title={`${trader.name}’s listings`} />
-          {listingsLoading || listings.length ? (
-            <ItemGrid items={listings} loading={listingsLoading} />
+          <SectionHeading eyebrow={`Listings · ${available.length}`} title="Available for swap" />
+          {listingsLoading || available.length ? (
+            <ItemGrid items={available} loading={listingsLoading} />
           ) : (
-            <AppText variant="small">No active listings right now.</AppText>
+            <EmptyState
+              icon={Package}
+              title="Nothing listed right now"
+              text={following ? `We'll let you know when ${firstName} posts something new.` : `Follow ${firstName} to get notified about new listings.`}
+            />
           )}
         </View>
 
-        <Card style={styles.review}>
-          <View style={styles.row}>
-            <Avatar initials="BD" size="small" />
-            <View>
-              <AppText variant="h3">Recent review</AppText>
-              <AppText variant="caption">★★★★★ · Verified trade</AppText>
+        {reviews.length ? (
+          <View>
+            <SectionHeading eyebrow="Reviews" title="What traders say" />
+            <View style={styles.reviews}>
+              {reviews.slice(0, 2).map((review) => (
+                <Card key={review.id} style={styles.review}>
+                  <View style={styles.row}>
+                    <Avatar initials={review.initials} size="small" />
+                    <View style={styles.flex}>
+                      <AppText variant="h3">{review.author}</AppText>
+                      <View style={styles.stars}>
+                        {Array.from({ length: 5 }, (_, index) => (
+                          <Star
+                            key={index}
+                            size={12}
+                            color={colors.yellow}
+                            fill={index < Math.round(review.rating) ? colors.yellow : 'transparent'}
+                          />
+                        ))}
+                        <AppText variant="caption"> · {review.date}</AppText>
+                      </View>
+                    </View>
+                  </View>
+                  <AppText variant="small" color="ink">
+                    {review.text}
+                  </AppText>
+                </Card>
+              ))}
             </View>
           </View>
-          <AppText variant="small" color="ink">
-            Clear communication, accurate item details, and easy to coordinate with.
-          </AppText>
-        </Card>
+        ) : null}
+
+        {!isMe ? (
+          <PressableScale onPress={() => requireAuth(() => setReportOpen(true))} style={styles.report}>
+            <Flag size={14} color={colors.muted} />
+            <AppText variant="caption" weight="bold">
+              Report this trader
+            </AppText>
+          </PressableScale>
+        ) : null}
 
         <ReportSheet
           visible={reportOpen}
@@ -118,7 +178,7 @@ export default function TraderProfileScreen() {
           onClose={() => setReportOpen(false)}
           onSubmit={async (reason) => {
             await userService.reportUser(trader.id, reason);
-            showToast('User report submitted');
+            showToast('Report submitted. Thanks for keeping Barterdito safe.');
           }}
         />
       </Screen>
@@ -127,10 +187,13 @@ export default function TraderProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { gap: 12 },
+  hero: { gap: 14 },
   main: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   flex: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  actions: { flexDirection: 'row', gap: 8 },
+  stars: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 },
+  actions: { flexDirection: 'row', gap: 10 },
+  reviews: { gap: 10 },
   review: { gap: 10 },
+  report: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 },
 });

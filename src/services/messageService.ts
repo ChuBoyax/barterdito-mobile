@@ -46,6 +46,15 @@ export const messageService = {
     await delay(undefined, 150);
   },
 
+  // Returns the existing direct thread with this trader, or starts a new empty one.
+  async openDirectThread(name: string, initials: string): Promise<string> {
+    const existing = mockThreads.find((thread) => thread.name === name);
+    if (existing) return delay(existing.id, 100);
+    const thread: Thread = { id: `dm-${name.toLowerCase().replace(/\s+/g, '-')}`, name, initials, preview: 'Say hello 👋', time: 'now', unread: 0 };
+    mockThreads.unshift(thread);
+    return delay(thread.id, 150);
+  },
+
   async archiveThread(threadId: string): Promise<void> {
     void threadId;
     await delay(undefined, 150);
