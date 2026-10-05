@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus, X } from 'lucide-react-native';
+import { AlertCircle, ChevronRight, Eye, EyeOff, KeyRound, Lock, LogIn, Mail, User, UserPlus, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, Button, IconButton, SegmentedControl, TextField } from '@/components/ui';
+import { AppText, Button, IconButton, IconTile, PressableScale, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth, useTheme, useToast } from '@/providers';
+import { authService } from '@/services';
 import { elevation, fonts, maxFontScale } from '@/theme';
 import { errorMessage } from '@/utils/format';
 
@@ -25,22 +26,32 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
-  async function submit() {
-    if (!email.includes('@')) return showToast('Enter a valid email address');
-    if (mode === 'signup' && !fullName.trim()) return showToast('Enter your full name');
+  async function submit(credentials = { email, password }) {
+    setError('');
+    if (!credentials.email.includes('@')) return setError('Enter a valid email address');
+    if (!credentials.password) return setError('Enter your password');
+    if (mode === 'signup' && !fullName.trim()) return setError('Enter your full name');
     setSubmitting(true);
     try {
-      const user = mode === 'signup' ? await signUp({ email, password, fullName }) : await signIn({ email, password });
+      const user = mode === 'signup' ? await signUp({ ...credentials, fullName }) : await signIn(credentials);
       showToast(mode === 'signup' ? 'Welcome to Barterdito!' : `Welcome back, ${user.fullName.split(' ')[0]}!`);
       close();
-    } catch (error) {
-      showToast(errorMessage(error));
+    } catch (caught) {
+      setError(errorMessage(caught));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function signInWithDemo(account: { email: string; password: string }) {
+    setMode('login');
+    setEmail(account.email);
+    setPassword(account.password);
+    void submit(account);
   }
 
   async function google() {
@@ -99,7 +110,10 @@ export default function LoginScreen() {
                 label="Email address"
                 icon={Mail}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  setError('');
+                }}
                 placeholder="you@example.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -109,7 +123,10 @@ export default function LoginScreen() {
                 label="Password"
                 icon={Lock}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  setError('');
+                }}
                 placeholder="At least 8 characters"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
@@ -120,6 +137,14 @@ export default function LoginScreen() {
                   </Pressable>
                 }
               />
+              {error ? (
+                <View accessibilityLiveRegion="polite" style={[styles.error, { backgroundColor: colors.redSoft }]}>
+                  <AlertCircle size={16} color={colors.red} />
+                  <AppText variant="small" color="red" weight="semibold" style={styles.flex}>
+                    {error}
+                  </AppText>
+                </View>
+              ) : null}
               <Button
                 label={mode === 'login' ? 'Sign in' : 'Create account'}
                 icon={mode === 'login' ? LogIn : UserPlus}
@@ -142,11 +167,39 @@ export default function LoginScreen() {
             </View>
           </Animated.View>
 
-          <AppText variant="caption" align="center" style={styles.note}>
-            {mode === 'signup'
-              ? 'By joining, you agree to the Terms of Service and Privacy Policy.'
-              : 'Preview sign-in: any email and an 8+ character password works.'}
-          </AppText>
+          <View style={[styles.demo, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+            <View style={styles.demoHead}>
+              <IconTile icon={KeyRound} size={34} />
+              <View style={styles.flex}>
+                <AppText variant="h3">Demo accounts</AppText>
+                <AppText variant="caption">Tap one to sign in instantly</AppText>
+              </View>
+            </View>
+            {authService.demoAccounts.map((account) => (
+              <PressableScale
+                key={account.email}
+                disabled={submitting}
+                onPress={() => signInWithDemo(account)}
+                scaleTo={0.98}
+                style={[styles.demoRow, { backgroundColor: colors.surface2 }]}>
+                <View style={styles.flex}>
+                  <AppText variant="small" color="ink" weight="bold">
+                    {account.label}
+                  </AppText>
+                  <AppText variant="caption" selectable>
+                    {account.email} · {account.password}
+                  </AppText>
+                </View>
+                <ChevronRight size={18} color={colors.muted} />
+              </PressableScale>
+            ))}
+          </View>
+
+          {mode === 'signup' ? (
+            <AppText variant="caption" align="center" style={styles.note}>
+              By joining, you agree to the Terms of Service and Privacy Policy.
+            </AppText>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -167,4 +220,8 @@ const styles = StyleSheet.create({
   google: { height: 52, borderRadius: 999, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   g: { fontFamily: fonts.extrabold, fontSize: 18 },
   note: { paddingHorizontal: 20 },
+  error: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 12 },
+  demo: { borderRadius: 20, borderWidth: 1, padding: 16, gap: 10 },
+  demoHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 },
+  demoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12 },
 });

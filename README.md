@@ -14,7 +14,14 @@ npm install
 npx expo start        # press a (Android), i (iOS), or w (web); or scan the QR with Expo Go
 ```
 
-Demo login: any email plus a password of 8 or more characters.
+Demo accounts (also shown as one-tap buttons on the login screen):
+
+| Role   | Email                 | Password    |
+| ------ | --------------------- | ----------- |
+| Trader | `demo@barterdito.ph`  | `barter123` |
+| Admin  | `admin@barterdito.ph` | `admin123`  |
+
+Accounts live in `src/mocks/accounts.ts`. Sign up still works with any new email for testing.
 
 ## Project structure
 
