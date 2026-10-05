@@ -1,20 +1,46 @@
 import { router } from 'expo-router';
-import { Activity, ArrowRightLeft, BadgeCheck, Bookmark, Camera, Edit3, Gift, LogOut, MapPin, QrCode, Settings, Share2, type LucideIcon } from 'lucide-react-native';
+import {
+  Activity,
+  ArrowRightLeft,
+  BadgeCheck,
+  Bookmark,
+  ChevronRight,
+  Edit3,
+  Gift,
+  LogOut,
+  MapPin,
+  QrCode,
+  Settings,
+  Share2,
+  Star,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { useState } from 'react';
-import { Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeaderActions, RequireAuth } from '@/components/layout';
 import { StatGrid } from '@/components/marketplace';
-import { AppText, Avatar, Button, Card, IconTile, ListRow, PressableScale, ProgressBar, Screen, SegmentedControl } from '@/components/ui';
+import { AppText, Avatar, Button, Card, EmptyState, IconTile, ListRow, PressableScale, ProgressBar, Screen, SegmentedControl } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useTheme, useToast } from '@/providers';
 import { userService } from '@/services';
 import { elevation, fonts, type Tone, maxFontScale } from '@/theme';
-import { stars } from '@/utils/format';
+import type { User } from '@/types/models';
 
 type Tab = 'history' | 'reviews';
+
+const PREVIEW_COUNT = 3;
+const HEADER_ROW = 44;
+
+// The single most useful thing the user can add next to strengthen their profile.
+function nextProfileStep(user: User): string {
+  if (!user.avatarUrl) return 'Add a profile photo so traders recognise you.';
+  if (!user.bio?.trim()) return 'Write a short bio about what you like to trade.';
+  if (!user.location?.trim()) return 'Add your city to appear in nearby searches.';
+  return 'Verify your phone number to earn a trust badge.';
+}
 
 export default function ProfileScreen() {
   return (
@@ -38,15 +64,29 @@ function ProfileContent() {
 
   if (!user) return null;
 
-  async function logout() {
-    await signOut();
-    showToast('You’re signed out');
-    router.navigate('/');
+  function confirmLogout() {
+    Alert.alert('Sign out?', 'You can sign back in anytime with your account.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          showToast('You’re signed out');
+          router.navigate('/');
+        },
+      },
+    ]);
   }
+
+  const share = () => void Share.share({ message: `${user.fullName} on Barterdito: https://barterdito.ph/traders/${user.id}` });
+  const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
+  const strengthDone = (stats?.profileStrength ?? 100) >= 100;
 
   return (
     <Screen padded={false} contentStyle={styles.content}>
-      <View style={[styles.cover, pad, { backgroundColor: colors.orangeSoft, paddingTop: insets.top + 8 }]}>
+      {/* Cover is tall enough that the avatar sits below the header row instead of colliding with it. */}
+      <View style={[styles.cover, pad, { backgroundColor: colors.orangeSoft, paddingTop: insets.top + 8, height: insets.top + 8 + HEADER_ROW + 100 }]}>
         <View style={styles.coverTop}>
           <Text maxFontSizeMultiplier={maxFontScale} style={[styles.coverLabel, { color: colors.orange }]}>MY PROFILE</Text>
           <HeaderActions />
@@ -55,20 +95,14 @@ function ProfileContent() {
 
       <View style={pad}>
         <Card style={[styles.identity, elevation(3, colors)]}>
-          <View style={styles.avatarWrap}>
-            <Avatar initials={user.initials} imageUrl={user.avatarUrl} size="hero" ring online />
-            <PressableScale
-              accessibilityLabel="Change photo"
-              onPress={() => showToast('Photo upload coming soon')}
-              style={[styles.camera, { backgroundColor: colors.orange, borderColor: colors.surface }]}>
-              <Camera size={14} color={colors.onPrimary} />
-            </PressableScale>
-          </View>
+          <PressableScale accessibilityRole="button" accessibilityLabel="Edit profile" onPress={() => router.push('/settings?edit=profile')} scaleTo={0.96} style={styles.avatarWrap}>
+            <Avatar initials={user.initials} imageUrl={user.avatarUrl} size="hero" ring />
+          </PressableScale>
           <View style={styles.nameRow}>
             <AppText variant="h1" align="center">
               {user.fullName}
             </AppText>
-            <BadgeCheck size={20} color={colors.blue} fill={colors.blueSoft} />
+            <BadgeCheck size={20} color={colors.blue} fill={colors.blueSoft} accessibilityLabel="Verified" />
           </View>
           <View style={styles.row}>
             <MapPin size={13} color={colors.muted} />
@@ -76,45 +110,38 @@ function ProfileContent() {
               {user.location} · Joined {user.joined}
             </AppText>
           </View>
-          <AppText variant="small" align="center" style={styles.bio}>
-            {user.bio}
-          </AppText>
+          {user.bio ? (
+            <AppText variant="small" align="center" style={styles.bio}>
+              {user.bio}
+            </AppText>
+          ) : null}
           {stats ? (
             <StatGrid
               variant="inline"
               stats={[
-                { label: 'Trades', value: stats.totalTrades },
-                { label: 'Rating', value: `${stats.rating}★` },
-                { label: 'Followers', value: stats.followers, onPress: () => router.push('/followers') },
-                { label: 'Following', value: stats.following, onPress: () => router.push('/followers') },
+                { label: 'Trades', value: stats.totalTrades, onPress: () => setTab('history') },
+                { label: 'Rating', value: `${stats.rating}★`, onPress: () => setTab('reviews') },
+                { label: 'Followers', value: stats.followers, onPress: () => router.push('/followers?tab=followers') },
+                { label: 'Following', value: stats.following, onPress: () => router.push('/followers?tab=following') },
               ]}
             />
           ) : null}
           <View style={styles.buttons}>
-            <Button label="Edit profile" icon={Edit3} compact style={styles.flex} onPress={() => router.push('/settings')} />
-            <Button
-              label="Share"
-              icon={Share2}
-              variant="secondary"
-              compact
-              style={styles.flex}
-              onPress={() => void Share.share({ message: `${user.fullName} on Barterdito: https://barterdito.ph/traders/${user.id}` })}
-            />
+            <Button label="Edit profile" icon={Edit3} compact style={styles.flex} onPress={() => router.push('/settings?edit=profile')} />
+            <Button label="Share profile" icon={Share2} variant="secondary" compact style={styles.flex} onPress={share} />
           </View>
         </Card>
       </View>
 
-      {stats ? (
+      {stats && !strengthDone ? (
         <View style={pad}>
-          <Card style={styles.strength}>
+          <Card onPress={() => router.push('/settings?edit=profile')} accessibilityLabel={`Profile ${stats.profileStrength}% complete`} style={styles.strength}>
             <View style={styles.row}>
               <View style={styles.flex}>
-                <AppText variant="h3">Profile strength</AppText>
-                <AppText variant="caption">Add one more detail to build trader trust.</AppText>
+                <AppText variant="h3">Profile {stats.profileStrength}% complete</AppText>
+                <AppText variant="caption">{nextProfileStep(user)}</AppText>
               </View>
-              <AppText variant="h1" color="orange">
-                {stats.profileStrength}%
-              </AppText>
+              <ChevronRight size={18} color={colors.muted} />
             </View>
             <ProgressBar value={stats.profileStrength} />
           </Card>
@@ -122,7 +149,7 @@ function ProfileContent() {
       ) : null}
 
       <View style={[pad, styles.quick]}>
-        <QuickAction icon={QrCode} label="QR Profile" tone="blue" onPress={() => router.push('/qr')} />
+        <QuickAction icon={QrCode} label="My QR" tone="blue" onPress={() => router.push('/qr')} />
         <QuickAction icon={Gift} label="Invite" tone="yellow" onPress={() => router.push('/referral')} />
         <QuickAction icon={Bookmark} label="Wishlist" tone="red" onPress={() => router.push('/wishlist')} />
         <QuickAction icon={Activity} label="Activity" tone="violet" onPress={() => router.push('/activity')} />
@@ -133,56 +160,116 @@ function ProfileContent() {
           value={tab}
           onChange={setTab}
           segments={[
-            { value: 'history', label: 'Trade history' },
-            { value: 'reviews', label: 'Reviews', count: reviews.length },
+            { value: 'history', label: 'Trade history', count: history.length || undefined },
+            { value: 'reviews', label: 'Reviews', count: reviews.length || undefined },
           ]}
         />
-        <Card>
-          {tab === 'history'
-            ? history.map((entry) => (
-                <View key={entry.id} style={styles.historyRow}>
-                  <IconTile icon={ArrowRightLeft} size={44} rounded />
+
+        {tab === 'history' ? (
+          history.length ? (
+            <Card style={styles.listCard}>
+              {history.slice(0, PREVIEW_COUNT).map((entry, index) => (
+                <View
+                  key={entry.id}
+                  style={[styles.historyRow, index > 0 && { borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth }]}>
+                  <IconTile icon={ArrowRightLeft} size={40} rounded />
                   <View style={styles.flex}>
-                    <AppText variant="h3">{entry.title}</AppText>
-                    <AppText variant="caption">
+                    <AppText variant="h3" numberOfLines={1}>
+                      {entry.title}
+                    </AppText>
+                    <AppText variant="caption" numberOfLines={1}>
                       with {entry.partner} · {entry.date}
                     </AppText>
                   </View>
-                  <AppText variant="caption" style={{ color: colors.yellow }}>
-                    {stars(entry.rating)}
-                  </AppText>
-                </View>
-              ))
-            : reviews.map((review) => (
-                <View key={review.id} style={styles.review}>
-                  <View style={styles.row}>
-                    <Avatar initials={review.initials} size="small" />
-                    <View style={styles.flex}>
-                      <AppText variant="h3">{review.author}</AppText>
-                      <AppText variant="caption" style={{ color: colors.yellow }}>
-                        {stars(review.rating)} <AppText variant="caption">· {review.date}</AppText>
-                      </AppText>
-                    </View>
+                  <View style={styles.ratingPill}>
+                    <Star size={12} color={colors.yellow} fill={colors.yellow} />
+                    <AppText variant="caption" color="ink" weight="bold">
+                      {entry.rating.toFixed(1)}
+                    </AppText>
                   </View>
-                  <AppText variant="body" color="ink">
-                    “{review.text}”
-                  </AppText>
                 </View>
               ))}
-        </Card>
-        <Card>
-          <ListRow icon={Settings} title="Settings" subtitle="Preferences, privacy and support" onPress={() => router.push('/settings')} />
-          <ListRow icon={LogOut} iconTone="red" title="Sign out" onPress={() => void logout()} />
+              {history.length > PREVIEW_COUNT ? (
+                <SeeAll label={`See all ${history.length} trades`} onPress={() => router.push('/activity')} />
+              ) : null}
+            </Card>
+          ) : (
+            <EmptyState icon={ArrowRightLeft} title="No trades yet" text="Your completed swaps will appear here." action="Browse items" onAction={() => router.navigate('/')} />
+          )
+        ) : reviews.length ? (
+          <Card style={styles.listCard}>
+            <View style={styles.summary}>
+              <AppText variant="hero">{averageRating.toFixed(1)}</AppText>
+              <View style={styles.flex}>
+                <Stars rating={averageRating} size={15} />
+                <AppText variant="caption">
+                  Based on {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
+                </AppText>
+              </View>
+            </View>
+            {reviews.slice(0, PREVIEW_COUNT).map((review) => (
+              <View key={review.id} style={[styles.review, { borderTopColor: colors.hairline }]}>
+                <View style={styles.row}>
+                  <Avatar initials={review.initials} size="small" />
+                  <View style={styles.flex}>
+                    <AppText variant="h3">{review.author}</AppText>
+                    <View style={styles.row}>
+                      <Stars rating={review.rating} size={11} />
+                      <AppText variant="caption">· {review.date}</AppText>
+                    </View>
+                  </View>
+                </View>
+                <AppText variant="small" color="ink">
+                  {review.text}
+                </AppText>
+              </View>
+            ))}
+          </Card>
+        ) : (
+          <EmptyState icon={Star} title="No reviews yet" text="Traders can review you after a completed swap." />
+        )}
+
+        <Card style={styles.listCard}>
+          <ListRow icon={Settings} title="Settings" subtitle="Account, notifications, privacy and help" onPress={() => router.push('/settings')} />
+          <ListRow icon={LogOut} iconTone="red" title="Sign out" showChevron={false} onPress={confirmLogout} />
         </Card>
       </View>
     </Screen>
   );
 }
 
+function Stars({ rating, size }: { rating: number; size: number }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.stars} accessibilityLabel={`${rating.toFixed(1)} out of 5 stars`}>
+      {Array.from({ length: 5 }, (_, index) => (
+        <Star key={index} size={size} color={colors.yellow} fill={index < Math.round(rating) ? colors.yellow : 'transparent'} />
+      ))}
+    </View>
+  );
+}
+
+function SeeAll({ label, onPress }: { label: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <PressableScale accessibilityRole="button" onPress={onPress} style={[styles.seeAll, { borderTopColor: colors.hairline }]}>
+      <AppText variant="small" color="orange" weight="bold">
+        {label}
+      </AppText>
+      <ChevronRight size={15} color={colors.orange} />
+    </PressableScale>
+  );
+}
+
 function QuickAction({ icon, label, tone, onPress }: { icon: LucideIcon; label: string; tone: Tone; onPress: () => void }) {
   const { colors } = useTheme();
   return (
-    <PressableScale onPress={onPress} scaleTo={0.94} style={[styles.action, { backgroundColor: colors.surface, borderColor: colors.hairline }, elevation(1, colors)]}>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      scaleTo={0.94}
+      style={[styles.action, { backgroundColor: colors.surface, borderColor: colors.hairline }, elevation(1, colors)]}>
       <IconTile icon={icon} tone={tone} size={42} />
       <AppText variant="caption" color="ink" weight="bold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
         {label}
@@ -194,12 +281,11 @@ function QuickAction({ icon, label, tone, onPress }: { icon: LucideIcon; label: 
 const styles = StyleSheet.create({
   content: { gap: 16, paddingTop: 0 },
   flex: { flex: 1 },
-  cover: { height: 210, overflow: 'hidden' },
-  coverTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cover: { overflow: 'hidden' },
+  coverTop: { height: HEADER_ROW, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   coverLabel: { fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 2 },
-  identity: { marginTop: -120, alignItems: 'center', gap: 8, paddingTop: 0 },
+  identity: { marginTop: -40, alignItems: 'center', gap: 8, paddingTop: 0 },
   avatarWrap: { marginTop: -52 },
-  camera: { position: 'absolute', right: 2, bottom: 6, width: 32, height: 32, borderRadius: 16, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bio: { maxWidth: 300, marginBottom: 6 },
@@ -208,6 +294,11 @@ const styles = StyleSheet.create({
   quick: { flexDirection: 'row', gap: 10 },
   action: { flex: 1, alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 22, paddingVertical: 14 },
   section: { gap: 14 },
-  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  review: { gap: 10 },
+  listCard: { paddingVertical: 4 },
+  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  ratingPill: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10 },
+  stars: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  review: { gap: 8, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  seeAll: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
 });

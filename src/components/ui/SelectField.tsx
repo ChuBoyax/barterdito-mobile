@@ -12,10 +12,11 @@ type SelectFieldProps = {
   options: string[];
   onChange: (value: string) => void;
   placeholder?: string;
+  error?: string;
 };
 
 
-export function SelectField({ label, value, options, onChange, placeholder = 'Select…' }: SelectFieldProps) {
+export function SelectField({ label, value, options, onChange, placeholder = 'Select…', error }: SelectFieldProps) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   return (
@@ -25,12 +26,13 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
         accessibilityRole="button"
         accessibilityLabel={label ?? placeholder}
         onPress={() => setOpen(true)}
-        style={[styles.field, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+        style={[styles.field, { backgroundColor: colors.surface, borderColor: error ? colors.red : colors.line }]}>
         <Text maxFontSizeMultiplier={maxFontScale} style={[styles.value, { color: value ? colors.ink : colors.muted2 }]} numberOfLines={1}>
           {value || placeholder}
         </Text>
         <ChevronDown size={18} color={colors.muted} />
       </Pressable>
+      {error ? <Text maxFontSizeMultiplier={maxFontScale} style={[styles.error, { color: colors.red }]}>{error}</Text> : null}
       <BottomSheet visible={open} onClose={() => setOpen(false)} title={label ?? placeholder}>
         {options.map((option) => {
           const active = option === value;
@@ -74,4 +76,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   optionText: { fontFamily: fonts.semibold, fontSize: 14 },
+  error: { fontFamily: fonts.semibold, fontSize: 12 },
 });

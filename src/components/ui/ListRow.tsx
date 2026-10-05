@@ -16,9 +16,12 @@ type ListRowProps = {
   toggle?: { value: boolean; onChange: (value: boolean) => void };
   right?: ReactNode;
   showChevron?: boolean;
+  /** Current value shown on the right, e.g. "English". */
+  value?: string;
+  destructive?: boolean;
 };
 
-export function ListRow({ icon, iconTone = 'orange', title, subtitle, onPress, toggle, right, showChevron = true }: ListRowProps) {
+export function ListRow({ icon, iconTone = 'orange', title, subtitle, onPress, toggle, right, showChevron = true, value, destructive }: ListRowProps) {
   const { colors } = useTheme();
   const handlePress = toggle ? () => toggle.onChange(!toggle.value) : onPress;
   return (
@@ -29,9 +32,16 @@ export function ListRow({ icon, iconTone = 'orange', title, subtitle, onPress, t
       style={({ pressed }) => [styles.row, pressed && handlePress && { opacity: 0.6 }]}>
       {icon ? <IconTile icon={icon} tone={iconTone} size={42} /> : null}
       <View style={styles.body}>
-        <AppText variant="h3">{title}</AppText>
+        <AppText variant="h3" color={destructive ? 'red' : 'ink'}>
+          {title}
+        </AppText>
         {subtitle ? <AppText variant="caption">{subtitle}</AppText> : null}
       </View>
+      {value ? (
+        <AppText variant="small" numberOfLines={1}>
+          {value}
+        </AppText>
+      ) : null}
       {right}
       {toggle ? (
         <Switch

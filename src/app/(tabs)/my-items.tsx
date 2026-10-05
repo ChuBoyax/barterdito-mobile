@@ -1,20 +1,26 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Archive, ArrowRightLeft, Edit3, Eye, Heart, Package, Plus } from 'lucide-react-native';
+import { Archive, ArrowRightLeft, CheckCircle2, Edit3, Eye, Heart, Inbox, MoreHorizontal, Package, Plus, Share2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Share, StyleSheet, View } from 'react-native';
 
 import { AppHeader, RequireAuth } from '@/components/layout';
 import { StatGrid } from '@/components/marketplace';
-import { AppText, Badge, Button, Card, ChipRow, EmptyState, IconButton, LoadingView, Screen } from '@/components/ui';
+import { ActionSheet, AppText, Badge, Button, Card, ChipRow, EmptyState, IconButton, LoadingView, Screen, type ActionSheetOption } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService } from '@/services';
-import type { Item } from '@/types/models';
+import type { Item, ItemStatus } from '@/types/models';
 import { formatNumber } from '@/utils/format';
 
-const tabs = ['All', 'Active', 'In Negotiation', 'Traded'];
+const statuses: ItemStatus[] = ['Active', 'In Negotiation', 'Traded'];
+const statusTone = { Active: 'green', 'In Negotiation': 'orange', Traded: 'blue' } as const;
+const emptyCopy: Record<ItemStatus, string> = {
+  Active: 'Listings that are open for offers will show up here.',
+  'In Negotiation': 'Listings with an accepted offer will show up here.',
+  Traded: 'Your completed swaps will show up here.',
+};
 
 export default function MyItemsScreen() {
   return (
@@ -26,14 +32,25 @@ export default function MyItemsScreen() {
 
 function MyItemsContent() {
   const showToast = useToast();
-  const { removeItem, items: marketItems } = useMarketplace();
+  const { removeItem, upsertItem, items: marketItems } = useMarketplace();
   const [tab, setTab] = useState('All');
+  const [menuItem, setMenuItem] = useState<Item | null>(null);
   const { data: items = [], loading, setData, reload } = useAsync(() => itemService.getMyItems(), [marketItems.length]);
   const { gutter } = useResponsive();
+
+  const count = (status: ItemStatus) => items.filter((item) => item.status === status).length;
+  // Chip labels carry the count, e.g. "Active · 1"; strip it back off to get the status.
+  const options = ['All', ...statuses.map((status) => (count(status) ? `${status} · ${count(status)}` : status))];
+  const selected = options.find((option) => option.startsWith(tab)) ?? 'All';
   const visible = items.filter((item) => tab === 'All' || item.status === tab);
 
-  function confirmArchive(item: Item) {
-    Alert.alert('Archive listing?', `${item.title} will be removed from the marketplace.`, [
+  function replace(updated: Item) {
+    setData((current = []) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
+    upsertItem(updated);
+  }
+
+  function archive(item: Item) {
+    Alert.alert('Archive listing?', `${item.title} will be removed from the marketplace. Pending offers on it will be closed.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Archive',
@@ -48,6 +65,36 @@ function MyItemsContent() {
     ]);
   }
 
+  function markTraded(item: Item) {
+    Alert.alert('Mark as traded?', `${item.title} will no longer accept new offers.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Mark as traded',
+        onPress: async () => {
+          replace(await itemService.markTraded(item.id));
+          showToast('Marked as traded');
+        },
+      },
+    ]);
+  }
+
+  const menuOptions = (item: Item): ActionSheetOption[] => [
+    { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => router.push(`/items/${item.id}`) },
+    ...(item.status !== 'Traded'
+      ? [{ label: 'Edit listing', icon: Edit3, description: 'Update photos, details, or what you want', onPress: () => router.push(`/post-item?edit=${item.id}`) }]
+      : []),
+    {
+      label: 'Share',
+      icon: Share2,
+      description: 'Send the link to friends',
+      onPress: () => void Share.share({ message: `${item.title} on Barterdito — https://barterdito.ph/items/${item.id}` }),
+    },
+    ...(item.status !== 'Traded'
+      ? [{ label: 'Mark as traded', icon: CheckCircle2, description: 'Stop receiving new offers', onPress: () => markTraded(item) }]
+      : []),
+    { label: 'Archive listing', icon: Archive, description: 'Remove it from the marketplace', destructive: true, onPress: () => archive(item) },
+  ];
+
   return (
     <Screen
       refreshing={loading}
@@ -59,53 +106,80 @@ function MyItemsContent() {
           actions={<IconButton icon={Plus} label="New listing" tone="glass" onPress={() => router.push('/post-item')} />}
         />
       }>
-      <StatGrid
-        stats={[
-          { label: 'Listings', value: items.length, icon: Package },
-          { label: 'Views', value: formatNumber(items.reduce((sum, item) => sum + item.views, 0)), icon: Eye, tone: 'blue' },
-          { label: 'Hearts', value: items.reduce((sum, item) => sum + item.hearts, 0), icon: Heart, tone: 'red' },
-        ]}
-      />
-      <View style={{ marginHorizontal: -gutter }}>
-        <ChipRow inset={gutter} options={tabs} value={tab} onChange={setTab} />
-      </View>
-      {loading && !items.length ? (
-        <LoadingView />
-      ) : visible.length ? (
-        visible.map((item) => <ManagedItem key={item.id} item={item} onArchive={() => confirmArchive(item)} />)
+      {!loading && !items.length ? (
+        <EmptyState
+          icon={Package}
+          title="You haven't listed anything yet"
+          text="Post an item you no longer need and start receiving swap offers from the community."
+          action="Post your first item"
+          onAction={() => router.push('/post-item')}
+        />
       ) : (
-        <EmptyState icon={Package} title="No items here" text="Post an item or choose a different status." action="Post an item" onAction={() => router.push('/post-item')} />
+        <>
+          <StatGrid
+            stats={[
+              { label: 'Listings', value: items.length, icon: Package },
+              { label: 'Views', value: formatNumber(items.reduce((sum, item) => sum + item.views, 0)), icon: Eye, tone: 'blue' },
+              { label: 'Likes', value: items.reduce((sum, item) => sum + item.hearts, 0), icon: Heart, tone: 'red' },
+            ]}
+          />
+          <View style={{ marginHorizontal: -gutter }}>
+            <ChipRow inset={gutter} options={options} value={selected} onChange={(option) => setTab(option.split(' · ')[0])} />
+          </View>
+          {loading && !items.length ? (
+            <LoadingView />
+          ) : visible.length ? (
+            visible.map((item) => <ManagedItem key={item.id} item={item} onOptions={() => setMenuItem(item)} />)
+          ) : (
+            <EmptyState icon={Package} title={`No ${tab.toLowerCase()} items`} text={emptyCopy[tab as ItemStatus] ?? ''} />
+          )}
+        </>
       )}
+      <ActionSheet
+        visible={Boolean(menuItem)}
+        onClose={() => setMenuItem(null)}
+        title={menuItem?.title}
+        subtitle={menuItem?.status}
+        options={menuItem ? menuOptions(menuItem) : []}
+      />
     </Screen>
   );
 }
 
-function ManagedItem({ item, onArchive }: { item: Item; onArchive: () => void }) {
+function ManagedItem({ item, onOptions }: { item: Item; onOptions: () => void }) {
   const { colors } = useTheme();
+  const traded = item.status === 'Traded';
   return (
-    <Card onPress={() => router.push(`/items/${item.id}`)} style={styles.managed}>
-      <Image source={item.image} style={styles.thumb} contentFit="cover" />
+    <Card onPress={() => router.push(`/items/${item.id}`)} accessibilityLabel={`${item.title}, ${item.status}`} style={styles.managed}>
+      <Image source={item.image} style={[styles.thumb, traded && styles.faded]} contentFit="cover" />
       <View style={styles.flex}>
-        <Badge label={item.status} tone={item.status === 'Active' ? 'green' : 'orange'} dot />
+        <View style={styles.topRow}>
+          <Badge label={item.status} tone={statusTone[item.status]} dot />
+          <IconButton icon={MoreHorizontal} label={`More options for ${item.title}`} size={17} dimension={32} onPress={onOptions} />
+        </View>
         <AppText variant="h3" numberOfLines={1}>
           {item.title}
         </AppText>
         <View style={styles.meta}>
-          <ArrowRightLeft size={11} color={colors.orange} strokeWidth={2.6} />
-          <AppText variant="caption" color="orange" weight="bold" numberOfLines={1} style={styles.flex}>
-            {item.wanted}
+          <ArrowRightLeft size={11} color={colors.muted} strokeWidth={2.6} />
+          <AppText variant="caption" numberOfLines={1} style={styles.flex}>
+            Wants: {item.wanted}
           </AppText>
         </View>
         <View style={styles.meta}>
-          <Heart size={12} color={colors.muted} />
-          <AppText variant="caption">{item.hearts}</AppText>
-          <Eye size={12} color={colors.muted} style={styles.gapLeft} />
-          <AppText variant="caption">{item.views}</AppText>
+          <Eye size={12} color={colors.muted} />
+          <AppText variant="caption">{item.views} views</AppText>
+          <Heart size={12} color={colors.muted} style={styles.gapLeft} />
+          <AppText variant="caption">{item.hearts} likes</AppText>
         </View>
-        <View style={styles.actions}>
-          <Button label="Edit" icon={Edit3} variant="secondary" compact onPress={() => router.push('/post-item')} />
-          <IconButton icon={Archive} label="Archive listing" tone="danger" size={16} dimension={38} onPress={onArchive} />
-        </View>
+        {!traded ? (
+          <View style={styles.actions}>
+            <Button label="Edit" icon={Edit3} variant="secondary" compact style={styles.flex} onPress={() => router.push(`/post-item?edit=${item.id}`)} />
+            {item.status === 'In Negotiation' ? (
+              <Button label="Offers" icon={Inbox} compact style={styles.flex} onPress={() => router.navigate('/offers')} />
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </Card>
   );
@@ -113,11 +187,11 @@ function ManagedItem({ item, onArchive }: { item: Item; onArchive: () => void })
 
 const styles = StyleSheet.create({
   managed: { flexDirection: 'row', gap: 14, padding: 12 },
-  thumb: { width: 112, height: 140, borderRadius: 18 },
-  flex: { flex: 1, gap: 5 },
+  thumb: { width: 104, height: 128, borderRadius: 16 },
+  faded: { opacity: 0.6 },
+  flex: { flex: 1, gap: 4 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -4, marginRight: -4 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   gapLeft: { marginLeft: 8 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
 });
-
-

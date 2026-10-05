@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { ArrowRightLeft } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/ui';
+import { AppText, PressableScale } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
 import type { Item } from '@/types/models';
 
@@ -11,25 +11,27 @@ type SwapPreviewProps = {
   yours: Item;
   theirsLabel?: string;
   yoursLabel?: string;
+  onPressTheirs?: () => void;
+  onPressYours?: () => void;
 };
 
-export function SwapPreview({ theirs, yours, theirsLabel = 'Their item', yoursLabel = 'Your item' }: SwapPreviewProps) {
+export function SwapPreview({ theirs, yours, theirsLabel = 'Their item', yoursLabel = 'Your item', onPressTheirs, onPressYours }: SwapPreviewProps) {
   const { colors } = useTheme();
   return (
     <View style={styles.wrap}>
-      <SwapSide item={theirs} label={theirsLabel} />
+      <SwapSide item={theirs} label={theirsLabel} onPress={onPressTheirs} />
       <View style={[styles.icon, { backgroundColor: colors.orange, borderColor: colors.surface }]}>
         <ArrowRightLeft size={17} color={colors.onPrimary} strokeWidth={2.4} />
       </View>
-      <SwapSide item={yours} label={yoursLabel} />
+      <SwapSide item={yours} label={yoursLabel} onPress={onPressYours} />
     </View>
   );
 }
 
-function SwapSide({ item, label }: { item: Item; label: string }) {
+function SwapSide({ item, label, onPress }: { item: Item; label: string; onPress?: () => void }) {
   const { colors } = useTheme();
-  return (
-    <View style={[styles.side, { backgroundColor: colors.surface2 }]}>
+  const content = (
+    <>
       <Image source={item.image} style={styles.image} contentFit="cover" />
       <View style={styles.text}>
         <AppText variant="caption">{label}</AppText>
@@ -37,7 +39,14 @@ function SwapSide({ item, label }: { item: Item; label: string }) {
           {item.title}
         </AppText>
       </View>
-    </View>
+    </>
+  );
+  const sideStyle = [styles.side, { backgroundColor: colors.surface2 }];
+  if (!onPress) return <View style={sideStyle}>{content}</View>;
+  return (
+    <PressableScale accessibilityRole="button" accessibilityLabel={`${label}: ${item.title}`} onPress={onPress} scaleTo={0.97} style={sideStyle}>
+      {content}
+    </PressableScale>
   );
 }
 

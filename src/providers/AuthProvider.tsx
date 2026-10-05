@@ -14,9 +14,20 @@ type AuthContextValue = {
   signUp: (input: SignUpInput) => Promise<User>;
   signInWithGoogle: () => Promise<User>;
   signOut: () => Promise<void>;
+  updateProfile: (patch: ProfilePatch) => Promise<User>;
 
   requireAuth: (action?: () => void) => void;
 };
+
+export type ProfilePatch = Partial<Pick<User, 'fullName' | 'bio' | 'location'>>;
+
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join('');
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -47,6 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await removeKey(storageKeys.demoAuth);
   }, []);
 
+  // Demo-only: updates the locally stored user until a profile endpoint exists.
+  const updateProfile = useCallback(
+    async (patch: ProfilePatch) => {
+      if (!user) throw new Error('Not signed in');
+      const fullName = patch.fullName?.trim() || user.fullName;
+      return persist({ ...user, ...patch, fullName, initials: initialsOf(fullName) || user.initials });
+    },
+    [user, persist],
+  );
+
   const requireAuth = useCallback(
     (action?: () => void) => {
       if (!user) {
@@ -59,8 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, authenticated: Boolean(user), ready, signIn, signUp, signInWithGoogle, signOut, requireAuth }),
-    [user, ready, signIn, signUp, signInWithGoogle, signOut, requireAuth],
+    () => ({ user, authenticated: Boolean(user), ready, signIn, signUp, signInWithGoogle, signOut, updateProfile, requireAuth }),
+    [user, ready, signIn, signUp, signInWithGoogle, signOut, updateProfile, requireAuth],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

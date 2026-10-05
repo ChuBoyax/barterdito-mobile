@@ -55,8 +55,15 @@ export const messageService = {
     return delay(thread.id, 150);
   },
 
+  async markThreadRead(threadId: string): Promise<void> {
+    const thread = mockThreads.find((entry) => entry.id === threadId);
+    if (thread) thread.unread = 0;
+    await delay(undefined, 100);
+  },
+
   async archiveThread(threadId: string): Promise<void> {
-    void threadId;
+    const index = mockThreads.findIndex((entry) => entry.id === threadId);
+    if (index >= 0) mockThreads.splice(index, 1);
     await delay(undefined, 150);
   },
 };

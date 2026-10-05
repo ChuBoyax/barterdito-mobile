@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { RequireAuth } from '@/components/layout';
@@ -20,7 +20,8 @@ export default function FollowersScreen() {
 
 function FollowersContent() {
   const showToast = useToast();
-  const [tab, setTab] = useState<Tab>('followers');
+  const params = useLocalSearchParams<{ tab?: Tab }>();
+  const [tab, setTab] = useState<Tab>(params.tab === 'following' ? 'following' : 'followers');
   const { data: followers = [], loading } = useAsync(() => userService.getFollowers(), []);
   const { data: following = [] } = useAsync(() => userService.getFollowing(), []);
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText, Avatar, LoadingView } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
@@ -19,9 +19,11 @@ type ChatViewProps = {
   initials: string;
   header?: ReactNode;
   typingName?: string;
+  subtitle?: string;
+  onPressProfile?: () => void;
 };
 
-export function ChatView({ kind, threadId, name, initials, header, typingName }: ChatViewProps) {
+export function ChatView({ kind, threadId, name, initials, header, typingName, subtitle = 'Barterdito trader', onPressProfile }: ChatViewProps) {
   const { colors } = useTheme();
   const pickImages = useImagePicker();
   const scrollRef = useRef<ScrollView>(null);
@@ -87,16 +89,20 @@ export function ChatView({ kind, threadId, name, initials, header, typingName }:
       style={[styles.flex, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
-      <View style={[styles.chatHeader, { borderBottomColor: colors.line, backgroundColor: colors.surface }]}>
-        <Avatar initials={initials} size="small" online />
+      <Pressable
+        accessibilityRole={onPressProfile ? 'button' : undefined}
+        accessibilityLabel={onPressProfile ? `View ${name}'s profile` : undefined}
+        disabled={!onPressProfile}
+        onPress={onPressProfile}
+        style={[styles.chatHeader, { borderBottomColor: colors.line, backgroundColor: colors.surface }]}>
+        <Avatar initials={initials} size="small" />
         <View style={styles.flex}>
           <AppText variant="h3">{name}</AppText>
-          <View style={styles.online}>
-            <View style={[styles.dot, { backgroundColor: colors.green }]} />
-            <AppText variant="caption">Online now</AppText>
-          </View>
+          <AppText variant="caption" numberOfLines={1}>
+            {subtitle}
+          </AppText>
         </View>
-      </View>
+      </Pressable>
       {header}
       {loading ? (
         <LoadingView label="Loading messages…" />
@@ -137,8 +143,6 @@ export function ChatView({ kind, threadId, name, initials, header, typingName }:
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, paddingHorizontal: 20, paddingVertical: 12 },
-  online: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  dot: { width: 7, height: 7, borderRadius: 4 },
   list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
   typing: { fontStyle: 'italic' },
 });

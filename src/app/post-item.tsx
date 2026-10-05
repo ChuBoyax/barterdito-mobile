@@ -1,9 +1,9 @@
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
-import { ArrowRight, Camera, Check, ImagePlus, MapPin, Plus, ShieldCheck, Sparkles, WandSparkles, X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
+import { ArrowRight, Camera, Check, ImagePlus, MapPin, ShieldCheck, Sparkles, WandSparkles, X } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { RequireAuth } from '@/components/layout';
 import { AppText, Badge, Button, Card, InfoNote, Screen, SelectField, TextField } from '@/components/ui';
@@ -15,8 +15,29 @@ import { errorMessage } from '@/utils/format';
 import { readJson, removeKey, storageKeys, writeJson } from '@/utils/storage';
 
 const MAX_PHOTOS = 5;
-const steps = ['Photos & basics', 'Trade details', 'Review & publish'];
-const headings = ['Tell us about your item', 'What makes a good trade?', 'Ready to meet its next owner?'];
+const newCopy = {
+  steps: ['Photos & basics', 'Trade details', 'Review & publish'],
+  headings: ['Tell us about your item', 'What makes a good trade?', 'Ready to meet its next owner?'],
+};
+const editCopy = {
+  steps: ['Photos & basics', 'Trade details', 'Review & save'],
+  headings: ['Update the basics', 'Update trade details', 'Review your changes'],
+};
+
+type DraftErrors = Partial<Record<'photos' | 'title' | 'category' | 'description' | 'lookingFor' | 'location', string>>;
+
+function draftErrors(draft: ItemDraft): DraftErrors {
+  const errors: DraftErrors = {};
+  if (!draft.photos.length) errors.photos = 'Add at least one photo. Listings with photos get far more offers.';
+  if (!draft.title.trim()) errors.title = 'Give your item a title';
+  if (!draft.category) errors.category = 'Choose a category';
+  if (draft.description.trim().length < 20) errors.description = 'Describe your item in at least 20 characters';
+  if (!draft.lookingFor.trim()) errors.lookingFor = 'Tell traders what you would swap for';
+  if (!draft.location.trim()) errors.location = 'Add your city so nearby traders can find you';
+  return errors;
+}
+
+const stepFields: (keyof DraftErrors)[][] = [['photos', 'title', 'category', 'description'], ['lookingFor', 'location'], []];
 
 const emptyDraft: ItemDraft = {
   title: '',
@@ -42,23 +63,68 @@ function PostItemForm() {
   const showToast = useToast();
   const pickImages = useImagePicker();
   const { upsertItem } = useMarketplace();
+  // `?edit=<itemId>` reuses this form to edit an existing listing.
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
   const [draft, setDraft] = useState<ItemDraft>(emptyDraft);
   const [step, setStep] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [locating, setLocating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
+  const [gridWidth, setGridWidth] = useState(0);
+  const navigation = useNavigation();
+  const original = useRef<string | null>(null);
+  const leaving = useRef(false);
+
+  const copy = edit ? editCopy : newCopy;
+  const errors = showErrors ? draftErrors(draft) : {};
+  const tile = gridWidth ? Math.floor((gridWidth - 16) / 3) : 0;
 
   useEffect(() => {
+    if (edit) {
+      void itemService
+        .getItem(edit)
+        .then((item) => {
+          const loaded: ItemDraft = {
+            ...emptyDraft,
+            title: item.title,
+            description: item.description,
+            category: item.category,
+            condition: item.condition,
+            lookingFor: item.wanted,
+            location: item.location,
+            photos: item.imageUrls?.length ? item.imageUrls : [item.image],
+          };
+          original.current = JSON.stringify(loaded);
+          setDraft(loaded);
+        })
+        .catch(() => showToast('Could not load this listing'));
+      return;
+    }
     void readJson<ItemDraft>(storageKeys.postDraft).then((saved) => {
       if (saved) setDraft({ ...emptyDraft, ...saved });
       setHydrated(true);
     });
-  }, []);
+  }, [edit, showToast]);
 
+  // Only new listings are autosaved as a draft; edits are saved explicitly.
   useEffect(() => {
-    if (hydrated) void writeJson(storageKeys.postDraft, draft);
-  }, [draft, hydrated]);
+    if (hydrated && !edit) void writeJson(storageKeys.postDraft, draft);
+  }, [draft, hydrated, edit]);
+
+  // Editing: warn before leaving with unsaved changes (new listings are autosaved as a draft).
+  useEffect(() => {
+    if (!edit) return;
+    return navigation.addListener('beforeRemove', (event) => {
+      if (leaving.current || original.current === null || original.current === JSON.stringify(draft)) return;
+      event.preventDefault();
+      Alert.alert('Discard changes?', 'Your edits to this listing have not been saved.', [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(event.data.action) },
+      ]);
+    });
+  }, [navigation, edit, draft]);
 
   const update = <K extends keyof ItemDraft>(field: K, value: ItemDraft[K]) =>
     setDraft((current) => ({ ...current, [field]: value }));
@@ -68,6 +134,18 @@ function PostItemForm() {
     if (remaining <= 0) return showToast(`Up to ${MAX_PHOTOS} photos`);
     const uris = await pickImages(remaining);
     if (uris.length) update('photos', [...draft.photos, ...uris].slice(0, MAX_PHOTOS));
+  }
+
+  function removePhoto(index: number) {
+    update('photos', draft.photos.filter((_, photoIndex) => photoIndex !== index));
+  }
+
+  function makeCover(index: number) {
+    if (index === 0) return;
+    const photos = [...draft.photos];
+    const [picked] = photos.splice(index, 1);
+    update('photos', [picked, ...photos]);
+    showToast('Cover photo updated');
   }
 
   async function generateDescription() {
@@ -105,26 +183,40 @@ function PostItemForm() {
     }
   }
 
+  // Checks every step before `target`; on failure, jumps to the first step with a problem and highlights it.
   function validate(target: number) {
-    if (target >= 1 && (!draft.title.trim() || !draft.category || !draft.description.trim())) {
-      showToast('Add a title, category, and description first');
-      return false;
-    }
-    if (target >= 2 && (!draft.lookingFor.trim() || !draft.location.trim())) {
-      showToast('Tell traders what you want and where you are');
-      return false;
-    }
-    return true;
+    const all = draftErrors(draft);
+    const failing = stepFields.findIndex((fields, index) => index < target && fields.some((field) => all[field]));
+    if (failing === -1) return true;
+    setShowErrors(true);
+    setStep(failing);
+    showToast('Please complete the highlighted fields');
+    return false;
   }
 
   function goTo(target: number) {
-    if (target > step && !validate(target)) return;
+    // Editing an existing listing: every step is already filled in, so allow jumping freely.
+    if (!edit && target > step && !validate(target)) return;
     setStep(target);
   }
 
   async function publish() {
-    if (!validate(2)) return;
+    if (!validate(3)) return;
     setPublishing(true);
+    if (edit) {
+      try {
+        upsertItem(await itemService.updateItem(edit, draft));
+        leaving.current = true;
+        showToast('Changes saved');
+        if (router.canGoBack()) router.back();
+        else router.replace('/my-items');
+      } catch (error) {
+        showToast(errorMessage(error, 'Could not save your changes'));
+      } finally {
+        setPublishing(false);
+      }
+      return;
+    }
     try {
       const item = await itemService.createItem(draft);
       upsertItem(item);
@@ -140,11 +232,18 @@ function PostItemForm() {
 
   return (
     <Screen>
+      {edit ? <Stack.Screen options={{ title: 'Edit listing' }} /> : null}
       <View style={styles.steps}>
-        {steps.map((label, index) => {
+        {copy.steps.map((label, index) => {
           const active = step >= index;
           return (
-            <Pressable key={label} onPress={() => goTo(index)} style={styles.step}>
+            <Pressable
+              key={label}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: step === index }}
+              accessibilityLabel={`Step ${index + 1}: ${label}`}
+              onPress={() => goTo(index)}
+              style={styles.step}>
               <View style={[styles.stepDot, { backgroundColor: active ? colors.orange : colors.surface2 }]}>
                 {step > index ? (
                   <Check size={14} color={colors.onPrimary} />
@@ -166,39 +265,71 @@ function PostItemForm() {
         <View style={styles.heading}>
           <View style={styles.flex}>
             <AppText variant="eyebrow">Step {step + 1} of 3</AppText>
-            <AppText variant="h2">{headings[step]}</AppText>
+            <AppText variant="h2">{copy.headings[step]}</AppText>
           </View>
-          <Badge label="Draft saved" tone="green" />
+          {!edit ? <Badge label="Draft saved" tone="green" /> : null}
         </View>
 
         {step === 0 ? (
           <>
-            <View style={styles.photos}>
-              <Pressable onPress={() => void addPhotos()} style={[styles.photoAdd, { borderColor: colors.orange, backgroundColor: colors.orangePale }]}>
-                <ImagePlus size={24} color={colors.orange} />
-                <AppText variant="caption" color="orange" weight="bold">
-                  Add photos
+            <View style={styles.photosBlock}>
+              <View style={styles.labelRow}>
+                <AppText variant="small" color="ink" weight="bold">
+                  Photos
                 </AppText>
-              </Pressable>
-              {draft.photos.map((uri, index) => (
-                <Pressable
-                  key={uri + index}
-                  accessibilityLabel="Remove photo"
-                  onPress={() => update('photos', draft.photos.filter((_, photoIndex) => photoIndex !== index))}
-                  style={styles.photoSlot}>
-                  <Image source={uri} style={StyleSheet.absoluteFill} contentFit="cover" />
-                  <View style={[styles.remove, { backgroundColor: colors.scrim }]}>
-                    <X size={12} color={colors.onPhoto} />
-                  </View>
-                </Pressable>
-              ))}
-              {Array.from({ length: Math.max(0, MAX_PHOTOS - 1 - draft.photos.length) }, (_, index) => (
-                <View key={`empty-${index}`} style={[styles.photoSlot, styles.photoEmpty, { borderColor: colors.line }]}>
-                  <Plus size={18} color={colors.muted2} />
-                </View>
-              ))}
+                <AppText variant="caption">
+                  {draft.photos.length}/{MAX_PHOTOS}
+                </AppText>
+              </View>
+              <View onLayout={(event) => setGridWidth(event.nativeEvent.layout.width)} style={styles.photos}>
+                {tile
+                  ? draft.photos.map((uri, index) => (
+                      <Pressable
+                        key={uri + index}
+                        accessibilityRole="button"
+                        accessibilityLabel={index === 0 ? 'Cover photo' : `Photo ${index + 1}, tap to set as cover`}
+                        onPress={() => makeCover(index)}
+                        style={[styles.photoSlot, { width: tile, height: tile, backgroundColor: colors.surface2 }]}>
+                        <Image source={uri} style={StyleSheet.absoluteFill} contentFit="cover" />
+                        {index === 0 ? (
+                          <View style={[styles.coverTag, { backgroundColor: colors.orange }]}>
+                            <AppText variant="caption" weight="bold" style={{ color: colors.onPrimary }}>
+                              Cover
+                            </AppText>
+                          </View>
+                        ) : null}
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove photo ${index + 1}`}
+                          hitSlop={8}
+                          onPress={() => removePhoto(index)}
+                          style={[styles.remove, { backgroundColor: colors.scrim }]}>
+                          <X size={13} color={colors.onPhoto} strokeWidth={2.6} />
+                        </Pressable>
+                      </Pressable>
+                    ))
+                  : null}
+                {tile && draft.photos.length < MAX_PHOTOS ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add photos"
+                    onPress={() => void addPhotos()}
+                    style={[
+                      styles.photoSlot,
+                      styles.photoAdd,
+                      { width: tile, height: tile, borderColor: errors.photos ? colors.red : colors.orange, backgroundColor: colors.orangePale },
+                    ]}>
+                    <ImagePlus size={22} color={colors.orange} />
+                    <AppText variant="caption" color="orange" weight="bold">
+                      Add photo
+                    </AppText>
+                  </Pressable>
+                ) : null}
+              </View>
+              <AppText variant="caption" color={errors.photos ? 'red' : 'muted'}>
+                {errors.photos ?? (draft.photos.length > 1 ? 'Tap a photo to make it the cover.' : 'Clear, well-lit photos get more offers. The first one is your cover.')}
+              </AppText>
             </View>
-            <AppText variant="caption">Up to {MAX_PHOTOS} photos. The first photo is your cover.</AppText>
             <TextField
               label="Item title"
               value={draft.title}
@@ -206,21 +337,32 @@ function PostItemForm() {
               placeholder="e.g. Fujifilm X-T20 with lens"
               maxLength={80}
               showCount
+              error={errors.title}
             />
-            <SelectField
-              label="Category"
-              value={draft.category}
-              options={itemService.getCategories().slice(1)}
-              onChange={(value) => update('category', value)}
-              placeholder="Choose a category"
-            />
-            <SelectField label="Condition" value={draft.condition} options={itemService.getConditions()} onChange={(value) => update('condition', value)} />
+            <View style={styles.pair}>
+              <View style={styles.flex}>
+                <SelectField
+                  label="Category"
+                  value={draft.category}
+                  options={itemService.getCategories().slice(1)}
+                  onChange={(value) => update('category', value)}
+                  placeholder="Choose"
+                  error={errors.category}
+                />
+              </View>
+              <View style={styles.flex}>
+                <SelectField label="Condition" value={draft.condition} options={itemService.getConditions()} onChange={(value) => update('condition', value)} />
+              </View>
+            </View>
             <TextField
               label="Description"
               multiline
               value={draft.description}
               onChangeText={(value) => update('description', value)}
               placeholder="Share the story, condition, and anything a trader should know…"
+              maxLength={1000}
+              showCount
+              error={errors.description}
               labelAction={
                 <Pressable disabled={generating} onPress={() => void generateDescription()} style={styles.ai} hitSlop={6}>
                   <WandSparkles size={14} color={colors.orange} />
@@ -241,6 +383,7 @@ function PostItemForm() {
               value={draft.lookingFor}
               onChangeText={(value) => update('lookingFor', value)}
               placeholder="Tell traders what you’d consider in exchange…"
+              error={errors.lookingFor}
             />
             <TextField
               label="Location"
@@ -248,6 +391,7 @@ function PostItemForm() {
               value={draft.location}
               onChangeText={(value) => update('location', value)}
               placeholder="Barangay or city"
+              error={errors.location}
               right={
                 <Pressable disabled={locating} onPress={() => void fillLocationFromGps()} hitSlop={6}>
                   <AppText variant="caption" color="orange" weight="bold">
@@ -283,14 +427,26 @@ function PostItemForm() {
           </View>
         ) : null}
 
-        <View style={styles.actions}>
-          {step > 0 ? <Button label="Back" variant="secondary" style={styles.flex} onPress={() => setStep(step - 1)} /> : null}
-          {step < 2 ? (
-            <Button label="Continue" iconRight={ArrowRight} style={styles.flex} onPress={() => goTo(step + 1)} />
-          ) : (
-            <Button label="Publish listing" icon={Sparkles} loading={publishing} style={styles.flex} onPress={() => void publish()} />
-          )}
-        </View>
+        {edit ? (
+          // Editing: saving is always one tap away; steps are just sections.
+          <View style={styles.actions}>
+            {step < 2 ? (
+              <Button label="Next" iconRight={ArrowRight} variant="secondary" style={styles.flex} onPress={() => goTo(step + 1)} />
+            ) : (
+              <Button label="Back" variant="secondary" style={styles.flex} onPress={() => setStep(step - 1)} />
+            )}
+            <Button label="Save changes" icon={Check} loading={publishing} style={styles.flex} onPress={() => void publish()} />
+          </View>
+        ) : (
+          <View style={styles.actions}>
+            {step > 0 ? <Button label="Back" variant="secondary" style={styles.flex} onPress={() => setStep(step - 1)} /> : null}
+            {step < 2 ? (
+              <Button label="Continue" iconRight={ArrowRight} style={styles.flex} onPress={() => goTo(step + 1)} />
+            ) : (
+              <Button label="Publish listing" icon={Sparkles} loading={publishing} style={styles.flex} onPress={() => void publish()} />
+            )}
+          </View>
+        )}
       </Card>
     </Screen>
   );
@@ -303,11 +459,14 @@ const styles = StyleSheet.create({
   stepDot: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   form: { gap: 14 },
   heading: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  photosBlock: { gap: 8 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   photos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoAdd: { width: 96, height: 96, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 4 },
-  photoSlot: { width: 70, height: 70, borderRadius: 12, overflow: 'hidden' },
-  photoEmpty: { borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
-  remove: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  photoSlot: { borderRadius: 14, overflow: 'hidden' },
+  photoAdd: { borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  coverTag: { position: 'absolute', left: 6, bottom: 6, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  remove: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  pair: { flexDirection: 'row', gap: 10 },
   ai: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   review: { gap: 8 },
   cover: { height: 200, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', gap: 6 },

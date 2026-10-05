@@ -110,6 +110,32 @@ export const itemService = {
   },
 
 
+  async updateItem(id: string, draft: ItemDraft): Promise<Item> {
+    const existing = items.find((item) => item.id === id);
+    if (!existing) throw new ServiceError('Listing not found');
+    const updated: Item = {
+      ...existing,
+      title: draft.title,
+      category: draft.category,
+      condition: draft.condition,
+      location: draft.location,
+      wanted: draft.lookingFor,
+      description: draft.description,
+      image: draft.photos[0] ?? existing.image,
+      imageUrls: draft.photos.length ? draft.photos : existing.imageUrls,
+    };
+    items = items.map((item) => (item.id === id ? updated : item));
+    return delay(clone(updated), 500);
+  },
+
+  async markTraded(id: string): Promise<Item> {
+    const existing = items.find((item) => item.id === id);
+    if (!existing) throw new ServiceError('Listing not found');
+    const updated: Item = { ...existing, status: 'Traded' };
+    items = items.map((item) => (item.id === id ? updated : item));
+    return delay(clone(updated), 300);
+  },
+
   async archiveItem(id: string): Promise<void> {
     items = items.filter((item) => item.id !== id);
     await delay(undefined);

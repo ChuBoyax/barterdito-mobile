@@ -17,7 +17,8 @@ export function SegmentedControl<T extends string>({ segments, value, onChange }
   const { colors } = useTheme();
   const [width, setWidth] = useState(0);
   const index = Math.max(0, segments.findIndex((segment) => segment.value === value));
-  const segmentWidth = width ? (width - 8) / segments.length : 0;
+  // Layout width includes the 1px border on each side plus 4px padding.
+  const segmentWidth = width ? (width - 10) / segments.length : 0;
 
   const indicatorStyle = useAnimatedStyle(() => ({
     width: segmentWidth,

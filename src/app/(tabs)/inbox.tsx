@@ -1,16 +1,17 @@
 import { router } from 'expo-router';
-import { ArrowRight, CheckCircle2, Search } from 'lucide-react-native';
-import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { Archive, Mail, MailOpen, MessageCircle, Search } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
+import { Alert, StyleSheet } from 'react-native';
 
 import { AppHeader, RequireAuth } from '@/components/layout';
 import { ThreadRow } from '@/components/marketplace';
-import { Card, EmptyState, LoadingView, Screen, SegmentedControl, TextField } from '@/components/ui';
+import { ActionSheet, AppText, Card, EmptyState, LoadingView, Screen, SegmentedControl, TextField, type ActionSheetOption } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useToast } from '@/providers';
 import { messageService } from '@/services';
+import type { Thread } from '@/types/models';
 
-type Tab = 'messages' | 'offers' | 'trades';
+type Filter = 'all' | 'unread';
 
 export default function InboxScreen() {
   return (
@@ -22,69 +23,123 @@ export default function InboxScreen() {
 
 function InboxContent() {
   const showToast = useToast();
-  const [tab, setTab] = useState<Tab>('messages');
+  const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
+  const [menuThread, setMenuThread] = useState<Thread | null>(null);
   const { data: threads = [], loading, setData, reload } = useAsync(() => messageService.getThreads(), []);
-  const unread = threads.reduce((sum, thread) => sum + thread.unread, 0);
-  const visible = threads.filter((thread) =>
-    `${thread.name} ${thread.item ?? ''} ${thread.preview}`.toLowerCase().includes(query.trim().toLowerCase()),
-  );
+  const unreadThreads = threads.filter((thread) => thread.unread > 0).length;
 
-  async function archive(id: string) {
-    await messageService.archiveThread(id);
-    setData((current = []) => current.filter((thread) => thread.id !== id));
-    showToast('Conversation archived');
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return threads.filter(
+      (thread) =>
+        (filter === 'all' || thread.unread > 0) &&
+        `${thread.name} ${thread.item ?? ''} ${thread.preview}`.toLowerCase().includes(needle),
+    );
+  }, [threads, filter, query]);
+
+  const setUnread = (id: string, unread: number) =>
+    setData((current = []) => current.map((thread) => (thread.id === id ? { ...thread, unread } : thread)));
+
+  function open(thread: Thread) {
+    if (thread.unread) {
+      setUnread(thread.id, 0);
+      void messageService.markThreadRead(thread.id);
+    }
+    // Threads tied to an item are trade chats; the rest are direct messages.
+    router.push(thread.item ? `/messages/${thread.id}` : `/direct-messages/${thread.id}`);
   }
+
+  function archive(thread: Thread) {
+    Alert.alert('Archive conversation?', `Your chat with ${thread.name} will be removed from your inbox.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Archive',
+        style: 'destructive',
+        onPress: async () => {
+          setData((current = []) => current.filter((entry) => entry.id !== thread.id));
+          await messageService.archiveThread(thread.id);
+          showToast('Conversation archived');
+        },
+      },
+    ]);
+  }
+
+  const menuOptions = (thread: Thread): ActionSheetOption[] => [
+    { label: 'Open conversation', icon: MessageCircle, onPress: () => open(thread) },
+    thread.unread
+      ? {
+          label: 'Mark as read',
+          icon: MailOpen,
+          onPress: () => {
+            setUnread(thread.id, 0);
+            void messageService.markThreadRead(thread.id);
+          },
+        }
+      : { label: 'Mark as unread', icon: Mail, onPress: () => setUnread(thread.id, 1) },
+    { label: 'Archive conversation', icon: Archive, description: 'Remove it from your inbox', destructive: true, onPress: () => archive(thread) },
+  ];
+
+  const empty = !loading && !threads.length;
 
   return (
     <Screen refreshing={loading} onRefresh={() => void reload()} header={<AppHeader eyebrow="Conversations" title="Inbox" />}>
-      <SegmentedControl<Tab>
-        value={tab}
-        onChange={setTab}
-        segments={[
-          { value: 'messages', label: 'Messages', count: unread || undefined },
-          { value: 'offers', label: 'Offers' },
-          { value: 'trades', label: 'Completed' },
-        ]}
-      />
-      {tab === 'messages' ? (
+      {empty ? (
+        <EmptyState
+          icon={MessageCircle}
+          title="No conversations yet"
+          text="When you propose a swap or message a trader, your chats will show up here."
+          action="Browse items"
+          onAction={() => router.navigate('/')}
+        />
+      ) : (
         <>
-          <TextField icon={Search} value={query} onChangeText={setQuery} placeholder="Search conversations" />
+          <TextField icon={Search} value={query} onChangeText={setQuery} placeholder="Search by name or item" />
+          <SegmentedControl<Filter>
+            value={filter}
+            onChange={setFilter}
+            segments={[
+              { value: 'all', label: 'All' },
+              { value: 'unread', label: 'Unread', count: unreadThreads || undefined },
+            ]}
+          />
           {loading && !threads.length ? (
             <LoadingView />
           ) : visible.length ? (
-            <Card style={styles.list}>
-              {visible.map((thread) => (
-                <ThreadRow
-                  key={thread.id}
-                  thread={thread}
-                  onPress={() => router.push(`/messages/${thread.id}`)}
-                  onArchive={() => void archive(thread.id)}
-                />
-              ))}
-            </Card>
+            <>
+              <Card padded={false} style={styles.list}>
+                {visible.map((thread, index) => (
+                  <ThreadRow
+                    key={thread.id}
+                    thread={thread}
+                    divider={index < visible.length - 1}
+                    onPress={() => open(thread)}
+                    onLongPress={() => setMenuThread(thread)}
+                  />
+                ))}
+              </Card>
+              <AppText variant="caption" align="center">
+                Long press a conversation for more options
+              </AppText>
+            </>
+          ) : query.trim() ? (
+            <EmptyState icon={Search} title="No results" text={`No conversations match “${query.trim()}”.`} action="Clear search" onAction={() => setQuery('')} />
           ) : (
-            <EmptyState icon={Search} title="No conversations" text="Try a different search or start a trade." />
+            <EmptyState icon={MessageCircle} title="You're all caught up" text="No unread messages right now." action="Show all" onAction={() => setFilter('all')} />
           )}
         </>
-      ) : tab === 'offers' ? (
-        <EmptyState
-          icon={ArrowRight}
-          title="Your offers live here"
-          text="Open Trade Offers to review and respond to every proposal."
-          action="View offers"
-          actionIcon={ArrowRight}
-          onAction={() => router.navigate('/offers')}
-        />
-      ) : (
-        <EmptyState icon={CheckCircle2} title="No completed trades yet" text="Finished trade conversations will be archived here." />
       )}
+      <ActionSheet
+        visible={Boolean(menuThread)}
+        onClose={() => setMenuThread(null)}
+        title={menuThread?.name}
+        subtitle={menuThread?.item}
+        options={menuThread ? menuOptions(menuThread) : []}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { paddingVertical: 6 },
+  list: { padding: 6 },
 });
-
-

@@ -1,15 +1,18 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowRightLeft, CalendarDays, ShieldCheck } from 'lucide-react-native';
-import { StyleSheet, View } from 'react-native';
+import { CalendarDays, ChevronRight, Inbox, ShieldCheck, Star } from 'lucide-react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ChatView } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
-import { AppText, Button, LoadingView } from '@/components/ui';
+import { AppText, Badge, Button, LoadingView } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useTheme } from '@/providers';
 import { messageService, tradeService } from '@/services';
 import { elevation } from '@/theme';
+import type { Offer } from '@/types/models';
+
+const statusTone = { Pending: 'orange', Accepted: 'green', Declined: 'red', Completed: 'blue' } as const;
 
 export default function TradeChatScreen() {
   return (
@@ -21,60 +24,101 @@ export default function TradeChatScreen() {
 
 function TradeChat() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { colors } = useTheme();
   const { data: thread, loading } = useAsync(() => messageService.getThread(id), [id]);
   const { data: offer } = useAsync(() => tradeService.getOffer(id).catch(() => undefined), [id]);
 
   if (loading) return <LoadingView />;
   const name = thread?.name ?? offer?.person ?? 'Trader';
   const initials = thread?.initials ?? offer?.initials ?? 'BD';
+  const traderId = offer?.theirs.userId;
 
-  const header = (
+  return (
+    <ChatView
+      kind="trade"
+      threadId={id}
+      name={name}
+      initials={initials}
+      subtitle={traderId ? 'Tap to view profile' : 'Trade conversation'}
+      onPressProfile={traderId ? () => router.push(`/traders/${traderId}`) : undefined}
+      header={offer ? <TradeContext offer={offer} tradeId={id} /> : null}
+    />
+  );
+}
+
+// Compact, always-visible summary of the swap so the chat itself keeps most of the screen.
+function TradeContext({ offer, tradeId }: { offer: Offer; tradeId: string }) {
+  const { colors } = useTheme();
+  const first = offer.person.split(' ')[0];
+
+  const action =
+    offer.status === 'Accepted'
+      ? { label: 'Schedule meetup', icon: CalendarDays, onPress: () => router.push(`/meetups/${tradeId}`) }
+      : offer.status === 'Completed'
+        ? { label: 'Leave a review', icon: Star, onPress: () => router.push(`/trade-review/${tradeId}`) }
+        : offer.status === 'Pending' && offer.received
+          ? { label: 'Respond to offer', icon: Inbox, onPress: () => router.navigate('/offers') }
+          : null;
+
+  const hint =
+    offer.status === 'Pending' && !offer.received
+      ? `Waiting for ${first} to accept your offer.`
+      : offer.status === 'Declined'
+        ? 'This offer was declined.'
+        : null;
+
+  function explainSupport() {
+    Alert.alert(
+      '7-day trade support',
+      'After the trade is completed, both traders can still access this chat and file a dispute for seven days if something goes wrong.',
+    );
+  }
+
+  return (
     <View style={[styles.context, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
-      {offer ? (
-        <View style={styles.swap}>
-          <View style={styles.side}>
-            <Image source={offer.theirs.image} style={styles.thumb} />
-            <View style={styles.flex}>
-              <AppText variant="caption">{name.split(' ')[0]} offers</AppText>
-              <AppText variant="small" color="ink" weight="bold" numberOfLines={1}>
-                {offer.theirs.title}
-              </AppText>
-            </View>
-          </View>
-          <View style={[styles.swapIcon, { backgroundColor: colors.orange }]}>
-            <ArrowRightLeft size={14} color={colors.onPrimary} strokeWidth={2.4} />
-          </View>
-          <View style={styles.side}>
-            <Image source={offer.yours.image} style={styles.thumb} />
-            <View style={styles.flex}>
-              <AppText variant="caption">You offer</AppText>
-              <AppText variant="small" color="ink" weight="bold" numberOfLines={1}>
-                {offer.yours.title}
-              </AppText>
-            </View>
-          </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`View ${offer.theirs.title}`}
+        onPress={() => router.push(`/items/${offer.theirs.id}`)}
+        style={styles.summary}>
+        <View style={styles.thumbs}>
+          <Image source={offer.theirs.image} style={[styles.thumb, { borderColor: colors.surface }]} contentFit="cover" />
+          <Image source={offer.yours.image} style={[styles.thumb, styles.thumbBack, { borderColor: colors.surface }]} contentFit="cover" />
         </View>
-      ) : null}
-      <Button label="Schedule meetup" icon={CalendarDays} compact onPress={() => router.push(`/meetups/${id}`)} />
-      <View style={[styles.warranty, { backgroundColor: colors.greenSoft }]}>
-        <ShieldCheck size={16} color={colors.green} />
-        <AppText variant="caption" color="ink" style={styles.flex}>
-          7-day trade support: after completion, both traders can access this chat and file a dispute for seven days.
+        <View style={styles.flex}>
+          <AppText variant="small" color="ink" weight="bold" numberOfLines={1}>
+            You get {offer.theirs.title}
+          </AppText>
+          <AppText variant="caption" numberOfLines={1}>
+            You give {offer.yours.title}
+          </AppText>
+        </View>
+        <Badge label={offer.status} tone={statusTone[offer.status]} dot />
+      </Pressable>
+
+      {action ? <Button label={action.label} icon={action.icon} compact onPress={action.onPress} /> : null}
+      {hint ? (
+        <AppText variant="caption" align="center">
+          {hint}
         </AppText>
-      </View>
+      ) : null}
+
+      <Pressable accessibilityRole="button" onPress={explainSupport} hitSlop={6} style={styles.support}>
+        <ShieldCheck size={13} color={colors.green} strokeWidth={2.4} />
+        <AppText variant="caption" style={styles.flex}>
+          Protected by 7-day trade support
+        </AppText>
+        <ChevronRight size={14} color={colors.muted2} />
+      </Pressable>
     </View>
   );
-
-  return <ChatView kind="trade" threadId={id} name={name} initials={initials} header={header} typingName={name.split(' ')[0]} />;
 }
 
 const styles = StyleSheet.create({
-  context: { gap: 12, borderWidth: 1, borderRadius: 26, padding: 14, margin: 12, marginBottom: 0 },
-  swapIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  swap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  side: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  thumb: { width: 44, height: 44, borderRadius: 14 },
+  context: { gap: 10, borderWidth: 1, borderRadius: 20, padding: 12, margin: 12, marginBottom: 0 },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  thumbs: { width: 62, height: 44 },
+  thumb: { position: 'absolute', left: 0, width: 44, height: 44, borderRadius: 12, borderWidth: 2, zIndex: 2 },
+  thumbBack: { left: 20, top: 0, zIndex: 1 },
   flex: { flex: 1 },
-  warranty: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, padding: 10 },
+  support: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });

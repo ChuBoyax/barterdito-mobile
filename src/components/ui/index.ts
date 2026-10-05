@@ -1,3 +1,4 @@
+export { ActionSheet, type ActionSheetOption } from './ActionSheet';
 export { AppText } from './AppText';
 export { Avatar } from './Avatar';
 export { Badge, type BadgeTone } from './Badge';
