@@ -12,3 +12,4 @@ export { StatGrid, type Stat } from './StatGrid';
 export { SwapPreview } from './SwapPreview';
 export { ThreadRow } from './ThreadRow';
 export { TraderRow } from './TraderRow';
+export { ProposeSwapSheet } from './ProposeSwapSheet';

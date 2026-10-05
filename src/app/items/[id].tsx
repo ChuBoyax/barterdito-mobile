@@ -15,14 +15,15 @@ import {
   Sparkles,
   Star,
   Tag,
+  UserCheck,
   UserPlus,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useState } from 'react';
-import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ReportSheet } from '@/components/marketplace';
+import { ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
 import { AppText, Avatar, Badge, Button, EmptyState, Glass, IconButton, InfoNote, LoadingView, PhotoScrim, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -35,14 +36,24 @@ export default function ItemDetailScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width, height, contentWidth, gutter } = useResponsive();
-  const { requireAuth } = useAuth();
+  const { requireAuth, authenticated } = useAuth();
   const showToast = useToast();
   const { items, savedIds, heartedIds, toggleSaved, toggleHeart } = useMarketplace();
   const { data: fetched, loading, error } = useAsync(() => itemService.getItem(id), [id]);
   const [activeImage, setActiveImage] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [following, setFollowing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const item = items.find((entry) => entry.id === id) ?? fetched;
+  const ownerId = item?.userId;
+  const myItems = useMemo(() => items.filter((entry) => entry.mine && entry.status === 'Active'), [items]);
+
+  useEffect(() => {
+    if (authenticated && ownerId) void userService.isFollowing(ownerId).then(setFollowing);
+  }, [authenticated, ownerId]);
+
   if (loading && !item) return <LoadingView />;
   if (!item || error) {
     return (
@@ -58,6 +69,30 @@ export default function ItemDetailScreen() {
   const more = items.filter((other) => other.userId === item.userId && other.id !== item.id);
   const heroHeight = Math.round(Math.min(width * 1.1, height * 0.62));
   const sideInset = Math.max(14, (width - contentWidth) / 2 + 14);
+  const traded = item.status === 'Traded';
+  const longDescription = item.description.length > 220;
+
+  function toggleFollow() {
+    requireAuth(() => {
+      if (!ownerId) return;
+      const next = !following;
+      setFollowing(next);
+      void userService.setFollowing(ownerId, next);
+      showToast(next ? `Following ${item!.owner}` : `Unfollowed ${item!.owner}`);
+    });
+  }
+
+  function toggleSave() {
+    showToast(saved ? 'Removed from your wishlist' : 'Saved to your wishlist');
+    toggleSaved(item!.id);
+  }
+
+  function primaryAction() {
+    if (item!.mine) return router.push('/my-items');
+    requireAuth(() => setSwapOpen(true));
+  }
+
+  const primaryLabel = item.mine ? 'Manage your listing' : traded ? 'Already traded' : 'Propose a swap';
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
@@ -91,9 +126,8 @@ export default function ItemDetailScreen() {
           </View>
           <AppText variant="hero">{item.title}</AppText>
           <View style={styles.metaRow}>
-            <Meta icon={MapPin} label={item.location} />
             <Meta icon={Eye} label={`${item.views} views`} />
-            <Meta icon={Heart} label={`${item.hearts}`} />
+            <Meta icon={Heart} label={`${item.hearts} likes`} />
           </View>
 
           <View style={[styles.wants, { backgroundColor: colors.orangeSoft, borderColor: colors.orange }]}>
@@ -108,15 +142,22 @@ export default function ItemDetailScreen() {
 
           <View style={styles.facts}>
             <Fact label="Condition" value={item.condition} />
-            <Fact label="Category" value={item.category} />
+            <Fact label="Meetup area" value={item.location} icon={MapPin} />
             <Fact label="Posted" value={item.age} />
           </View>
 
           <View style={styles.section}>
             <AppText variant="h2">About this item</AppText>
-            <AppText variant="body" color="muted">
+            <AppText variant="body" color="muted" numberOfLines={longDescription && !expanded ? 4 : undefined}>
               {item.description}
             </AppText>
+            {longDescription ? (
+              <Pressable accessibilityRole="button" onPress={() => setExpanded((value) => !value)} hitSlop={8}>
+                <AppText variant="small" color="orange" weight="bold">
+                  {expanded ? 'Show less' : 'Read more'}
+                </AppText>
+              </Pressable>
+            ) : null}
           </View>
 
           <PressableScale
@@ -140,16 +181,14 @@ export default function ItemDetailScreen() {
                 <AppText variant="caption">· {item.trades} completed trades</AppText>
               </View>
             </View>
-            <IconButton
-              icon={UserPlus}
-              label={`Follow ${item.owner}`}
-              onPress={() =>
-                requireAuth(() => {
-                  if (item.userId) void userService.setFollowing(item.userId, true);
-                  showToast(`Following ${item.owner}`);
-                })
-              }
-            />
+            {!item.mine ? (
+              <IconButton
+                icon={following ? UserCheck : UserPlus}
+                label={following ? `Unfollow ${item.owner}` : `Follow ${item.owner}`}
+                active={following}
+                onPress={toggleFollow}
+              />
+            ) : null}
           </PressableScale>
 
           <InfoNote icon={ShieldCheck} title="Trade safely" text="Meet in a public place, inspect the item, and confirm together in Barterdito." />
@@ -176,12 +215,14 @@ export default function ItemDetailScreen() {
             </View>
           ) : null}
 
-          <PressableScale onPress={() => setReportOpen(true)} style={styles.report}>
-            <Flag size={14} color={colors.muted} />
-            <AppText variant="caption" weight="bold">
-              Report this listing
-            </AppText>
-          </PressableScale>
+          {item.mine ? null : (
+            <PressableScale onPress={() => requireAuth(() => setReportOpen(true))} style={styles.report}>
+              <Flag size={14} color={colors.muted} />
+              <AppText variant="caption" weight="bold">
+                Report this listing
+              </AppText>
+            </PressableScale>
+          )}
         </View>
       </ScrollView>
 
@@ -200,15 +241,39 @@ export default function ItemDetailScreen() {
       </View>
 
       <Glass strong intensity={70} style={[styles.actionbar, { bottom: Math.max(insets.bottom, 12), left: sideInset, right: sideInset }, elevation(3, colors)]}>
-        <IconButton icon={Bookmark} label={saved ? 'Saved' : 'Save'} active={saved} filled={saved} onPress={() => toggleSaved(item.id)} />
+        {!item.mine ? (
+          <IconButton icon={Bookmark} label={saved ? 'Remove from wishlist' : 'Save to wishlist'} active={saved} filled={saved} onPress={toggleSave} />
+        ) : null}
         <Button
-          label={item.mine ? 'This is your listing' : 'Propose a swap'}
-          icon={ArrowRightLeft}
+          label={primaryLabel}
+          icon={item.mine ? Package : ArrowRightLeft}
+          variant={item.mine ? 'secondary' : 'primary'}
           style={styles.flex}
-          disabled={item.mine}
-          onPress={() => requireAuth(() => void tradeService.proposeTrade(item.id).then(() => showToast('Trade proposal started')))}
+          disabled={!item.mine && traded}
+          onPress={primaryAction}
         />
       </Glass>
+
+      <ProposeSwapSheet
+        visible={swapOpen}
+        onClose={() => setSwapOpen(false)}
+        target={item}
+        myItems={myItems}
+        onPostItem={() => {
+          setSwapOpen(false);
+          router.push('/post-item');
+        }}
+        onSubmit={async (myItemId) => {
+          try {
+            await tradeService.proposeTrade(item.id, myItemId);
+            setSwapOpen(false);
+            showToast(`Proposal sent to ${item.owner.split(' ')[0]}`);
+            router.navigate('/offers');
+          } catch {
+            showToast('Could not send your proposal. Please try again.');
+          }
+        }}
+      />
 
       <ReportSheet
         visible={reportOpen}
@@ -235,12 +300,17 @@ function Meta({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value, icon: Icon }: { label: string; value: string; icon?: LucideIcon }) {
   const { colors } = useTheme();
   return (
     <View style={[styles.fact, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
-      <AppText variant="caption">{label}</AppText>
-      <AppText variant="h3" numberOfLines={1}>
+      <View style={styles.inline}>
+        {Icon ? <Icon size={11} color={colors.muted} strokeWidth={2.4} /> : null}
+        <AppText variant="caption" numberOfLines={1}>
+          {label}
+        </AppText>
+      </View>
+      <AppText variant="h3" numberOfLines={2}>
         {value}
       </AppText>
     </View>
