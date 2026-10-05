@@ -1,20 +1,35 @@
 import { router } from 'expo-router';
 import { Inbox, Send } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 
 import { AppHeader, RequireAuth } from '@/components/layout';
 import { OfferCard } from '@/components/marketplace';
 import { EmptyState, LoadingView, Screen, SegmentedControl } from '@/components/ui';
+import { offerStatusOrder } from '@/constants/status';
 import { useAsync } from '@/hooks/useAsync';
 import { useToast } from '@/providers';
 import { tradeService } from '@/services';
 import type { Offer, OfferStatus } from '@/types/models';
+import { confirmAction, type ConfirmOptions } from '@/utils/confirm';
+import { firstName } from '@/utils/format';
 
 type Tab = 'received' | 'sent';
 
-// Offers that still need something from the user come first.
-const statusOrder: Record<OfferStatus, number> = { Pending: 0, Accepted: 1, Completed: 2, Declined: 3 };
+// Status changes that can't be undone ask first.
+const confirmations: Partial<Record<OfferStatus, (offer: Offer) => ConfirmOptions>> = {
+  Declined: (offer) => ({
+    title: 'Decline this offer?',
+    message: `${offer.person} will be notified. This can't be undone.`,
+    confirmLabel: 'Decline',
+    destructive: true,
+  }),
+  Completed: (offer) => ({
+    title: 'Mark trade as completed?',
+    message: `Only confirm once you've exchanged items with ${offer.person}.`,
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Not yet',
+  }),
+};
 
 export default function OffersScreen() {
   return (
@@ -31,7 +46,7 @@ function OffersContent() {
   const { data: offers = [], loading, setData, reload } = useAsync(() => tradeService.getOffers(), []);
 
   const list = useMemo(
-    () => offers.filter((offer) => offer.received === (tab === 'received')).sort((a, b) => statusOrder[a.status] - statusOrder[b.status]),
+    () => offers.filter((offer) => offer.received === (tab === 'received')).sort((a, b) => offerStatusOrder[a.status] - offerStatusOrder[b.status]),
     [offers, tab],
   );
   // Badge counts only show what needs attention, not every offer ever made.
@@ -43,7 +58,7 @@ function OffersContent() {
     try {
       const updated = await tradeService.updateOfferStatus(offer.id, status);
       setData((current = []) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-      const first = offer.person.split(' ')[0];
+      const first = firstName(offer.person);
       if (status === 'Accepted') showToast(`Offer accepted. Plan a meetup with ${first}.`);
       if (status === 'Declined') showToast(`Offer declined. ${first} has been notified.`);
       if (status === 'Completed') router.push(`/trade-complete/${offer.id}`);
@@ -54,22 +69,10 @@ function OffersContent() {
     }
   }
 
-  function updateOffer(offer: Offer, status: OfferStatus) {
-    if (status === 'Declined') {
-      Alert.alert('Decline this offer?', `${offer.person} will be notified. This can't be undone.`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Decline', style: 'destructive', onPress: () => void applyStatus(offer, status) },
-      ]);
-      return;
-    }
-    if (status === 'Completed') {
-      Alert.alert('Mark trade as completed?', `Only confirm once you've exchanged items with ${offer.person}.`, [
-        { text: 'Not yet', style: 'cancel' },
-        { text: 'Confirm', onPress: () => void applyStatus(offer, status) },
-      ]);
-      return;
-    }
-    void applyStatus(offer, status);
+  async function updateOffer(offer: Offer, status: OfferStatus) {
+    const ask = confirmations[status];
+    if (ask && !(await confirmAction(ask(offer)))) return;
+    await applyStatus(offer, status);
   }
 
   return (
@@ -97,7 +100,7 @@ function OffersContent() {
             onMeetup={() => router.push(`/meetups/${offer.id}`)}
             onReview={() => router.push(`/trade-review/${offer.id}`)}
             onOpenItem={(itemId) => router.push(`/items/${itemId}`)}
-            onUpdate={(status) => updateOffer(offer, status)}
+            onUpdate={(status) => void updateOffer(offer, status)}
           />
         ))
       ) : tab === 'received' ? (

@@ -6,6 +6,7 @@ import { RequireAuth } from '@/components/layout';
 import { AppText, Avatar, Button, Card, Logo, Screen } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth, useTheme } from '@/providers';
+import { links } from '@/constants/app';
 import { userService } from '@/services';
 
 export default function QRScreen() {
@@ -21,7 +22,7 @@ function QRContent() {
   const { user } = useAuth();
   const { data: stats } = useAsync(() => userService.getProfileStats(), []);
   if (!user) return null;
-  const url = `https://barterdito.ph/traders/${user.id}`;
+  const url = links.trader(user.id);
 
   return (
     <Screen>

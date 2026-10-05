@@ -19,11 +19,12 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { Children, Fragment, useEffect, useState, type ReactNode } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { EditProfileSheet } from '@/components/account';
 import { AppText, Avatar, Button, Card, ListRow, Screen, SegmentedControl } from '@/components/ui';
-import { useAuth, useTheme, useToast } from '@/providers';
+import { useSignOut } from '@/hooks/useSignOut';
+import { useAuth, useTheme } from '@/providers';
 import type { ThemeMode } from '@/providers/ThemeProvider';
 import { userService } from '@/services';
 import type { NotificationPrefs } from '@/types/models';
@@ -38,8 +39,8 @@ const notificationRows: { key: keyof NotificationPrefs; title: string; subtitle:
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
-  const { authenticated, signOut, user } = useAuth();
-  const showToast = useToast();
+  const { authenticated, user } = useAuth();
+  const signOut = useSignOut();
   const params = useLocalSearchParams<{ edit?: string }>();
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [editOpen, setEditOpen] = useState(params.edit === 'profile');
@@ -53,21 +54,6 @@ export default function SettingsScreen() {
     const next = { ...prefs, [key]: value };
     setPrefs(next);
     void userService.updateNotificationPrefs(next);
-  }
-
-  function confirmLogout() {
-    Alert.alert('Sign out?', 'You can sign back in anytime with your account.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          showToast('You’re signed out');
-          router.navigate('/');
-        },
-      },
-    ]);
   }
 
   const allOff = prefs ? Object.values(prefs).every((value) => !value) : false;
@@ -151,7 +137,7 @@ export default function SettingsScreen() {
 
       {authenticated ? (
         <Card style={styles.group}>
-          <ListRow icon={LogOut} iconTone="red" title="Sign out" destructive showChevron={false} onPress={confirmLogout} />
+          <ListRow icon={LogOut} iconTone="red" title="Sign out" destructive showChevron={false} onPress={() => void signOut()} />
         </Card>
       ) : null}
 

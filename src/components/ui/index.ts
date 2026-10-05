@@ -19,4 +19,5 @@ export { Screen } from './Screen';
 export { SectionHeading } from './SectionHeading';
 export { SegmentedControl, type Segment } from './SegmentedControl';
 export { SelectField } from './SelectField';
+export { Stars } from './Stars';
 export { TextField } from './TextField';

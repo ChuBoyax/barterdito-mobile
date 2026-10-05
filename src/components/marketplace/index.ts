@@ -13,3 +13,4 @@ export { SwapPreview } from './SwapPreview';
 export { ThreadRow } from './ThreadRow';
 export { TraderRow } from './TraderRow';
 export { ProposeSwapSheet } from './ProposeSwapSheet';
+export { ItemStatusBadge, OfferStatusBadge } from './StatusBadge';

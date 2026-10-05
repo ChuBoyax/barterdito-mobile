@@ -8,6 +8,7 @@ import { AppText, Badge, Button, Card, LoadingView, Screen } from '@/components/
 import { useAsync } from '@/hooks/useAsync';
 import { useTheme } from '@/providers';
 import { tradeService } from '@/services';
+import { firstName } from '@/utils/format';
 
 
 export default function TradeCompleteScreen() {
@@ -58,7 +59,7 @@ function TradeComplete() {
           <SwapPreview
             theirs={offer.theirs}
             yours={offer.yours}
-            theirsLabel={`${offer.person.split(' ')[0]} traded`}
+            theirsLabel={`${firstName(offer.person)} traded`}
             yoursLabel="You traded"
           />
         ) : null}

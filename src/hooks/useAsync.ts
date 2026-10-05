@@ -44,6 +44,8 @@ export function useAsync<T>(loader: () => Promise<T>, deps: DependencyList): Asy
     return () => {
       active = false;
     };
+    // `deps` is supplied by the caller (like useEffect's own deps); `run` is stable and reads the latest loader from a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   const setData = useCallback((updater: T | ((current: T | undefined) => T)) => {

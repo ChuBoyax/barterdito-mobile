@@ -1,13 +1,15 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Flag, MapPin, MessageCircle, Package, Share2, Star, User, UserCheck, UserPlus } from 'lucide-react-native';
+import { Flag, MapPin, MessageCircle, Package, Share2, User, UserCheck, UserPlus } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Share, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ItemGrid, ReportSheet, StatGrid } from '@/components/marketplace';
-import { AppText, Avatar, Button, Card, EmptyState, IconButton, LoadingView, PressableScale, Screen, SectionHeading } from '@/components/ui';
+import { AppText, Avatar, Button, Card, EmptyState, IconButton, LoadingView, PressableScale, Screen, SectionHeading, Stars } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth, useTheme, useToast } from '@/providers';
 import { itemService, messageService, userService } from '@/services';
+import { firstName as getFirstName } from '@/utils/format';
+import { shareTrader } from '@/utils/share';
 
 export default function TraderProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,7 +45,7 @@ export default function TraderProfileScreen() {
   }
 
   const isMe = user?.id === trader.id;
-  const firstName = trader.name.split(' ')[0];
+  const firstName = getFirstName(trader.name);
 
   function toggleFollow() {
     requireAuth(() => {
@@ -68,7 +70,7 @@ export default function TraderProfileScreen() {
     });
   }
 
-  const share = () => void Share.share({ message: `${trader.name} on Barterdito — https://barterdito.ph/traders/${trader.id}` });
+  const share = () => void shareTrader(trader);
 
   return (
     <>
@@ -142,15 +144,8 @@ export default function TraderProfileScreen() {
                     <View style={styles.flex}>
                       <AppText variant="h3">{review.author}</AppText>
                       <View style={styles.stars}>
-                        {Array.from({ length: 5 }, (_, index) => (
-                          <Star
-                            key={index}
-                            size={12}
-                            color={colors.yellow}
-                            fill={index < Math.round(review.rating) ? colors.yellow : 'transparent'}
-                          />
-                        ))}
-                        <AppText variant="caption"> · {review.date}</AppText>
+                        <Stars rating={review.rating} />
+                        <AppText variant="caption">· {review.date}</AppText>
                       </View>
                     </View>
                   </View>
@@ -191,7 +186,7 @@ const styles = StyleSheet.create({
   main: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   flex: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stars: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 },
+  stars: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   actions: { flexDirection: 'row', gap: 10 },
   reviews: { gap: 10 },
   review: { gap: 10 },

@@ -10,7 +10,7 @@ import { AppText, Button, IconButton, IconTile, PressableScale, SegmentedControl
 import { useAuth, useTheme, useToast } from '@/providers';
 import { authService } from '@/services';
 import { elevation, fonts, maxFontScale } from '@/theme';
-import { errorMessage } from '@/utils/format';
+import { errorMessage, firstName } from '@/utils/format';
 
 type Mode = 'login' | 'signup';
 
@@ -38,7 +38,7 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       const user = mode === 'signup' ? await signUp({ ...credentials, fullName }) : await signIn(credentials);
-      showToast(mode === 'signup' ? 'Welcome to Barterdito!' : `Welcome back, ${user.fullName.split(' ')[0]}!`);
+      showToast(mode === 'signup' ? 'Welcome to Barterdito!' : `Welcome back, ${firstName(user.fullName)}!`);
       close();
     } catch (caught) {
       setError(errorMessage(caught));

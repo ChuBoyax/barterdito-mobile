@@ -20,16 +20,18 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
+import { ItemStatusBadge, ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
 import { AppText, Avatar, Badge, Button, EmptyState, Glass, IconButton, InfoNote, LoadingView, PhotoScrim, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService, tradeService, userService } from '@/services';
 import { elevation, fonts, maxFontScale } from '@/theme';
+import { firstName } from '@/utils/format';
+import { shareItem } from '@/utils/share';
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -121,7 +123,7 @@ export default function ItemDetailScreen() {
         <View style={[styles.sheet, { backgroundColor: colors.background, maxWidth: contentWidth, paddingHorizontal: gutter }]}>
           <View style={styles.badges}>
             <Badge label={item.category} tone="orange" icon={Tag} />
-            <Badge label={item.status} tone={item.status === 'Active' ? 'green' : 'orange'} dot />
+            <ItemStatusBadge status={item.status} />
             {item.hot ? <Badge label="Trending" tone="red" icon={Sparkles} /> : null}
           </View>
           <AppText variant="hero">{item.title}</AppText>
@@ -195,7 +197,7 @@ export default function ItemDetailScreen() {
 
           {more.length ? (
             <View>
-              <SectionHeading eyebrow="Same trader" title={`More from ${item.owner.split(' ')[0]}`} />
+              <SectionHeading eyebrow="Same trader" title={`More from ${firstName(item.owner)}`} />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moreRow}>
                 {more.map((other) => (
                   <PressableScale
@@ -234,7 +236,7 @@ export default function ItemDetailScreen() {
             label="Share item"
             tone="glass"
             size={18}
-            onPress={() => void Share.share({ message: `${item.title} on Barterdito — https://barterdito.ph/items/${item.id}` })}
+            onPress={() => void shareItem(item)}
           />
           <IconButton icon={Heart} label="Heart item" tone="glass" size={18} active={hearted} filled={hearted} onPress={() => toggleHeart(item.id)} />
         </View>
@@ -267,7 +269,7 @@ export default function ItemDetailScreen() {
           try {
             await tradeService.proposeTrade(item.id, myItemId);
             setSwapOpen(false);
-            showToast(`Proposal sent to ${item.owner.split(' ')[0]}`);
+            showToast(`Proposal sent to ${firstName(item.owner)}`);
             router.navigate('/offers');
           } catch {
             showToast('Could not send your proposal. Please try again.');

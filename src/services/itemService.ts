@@ -1,7 +1,9 @@
 import { categories, conditions, mockItems } from '@/mocks/items';
-import type { Item, ItemDraft, ItemFilters } from '@/types/models';
+import type { Item, ItemDraft, ItemFilters, User } from '@/types/models';
 import { clone, delay, ServiceError } from './client';
 
+
+export type ListingOwner = Pick<User, 'id' | 'fullName' | 'initials' | 'avatarUrl'>;
 
 let items: Item[] = clone(mockItems);
 let savedIds: string[] = [];
@@ -81,10 +83,10 @@ export const itemService = {
   },
 
  
-  async createItem(draft: ItemDraft): Promise<Item> {
+  async createItem(draft: ItemDraft, owner: ListingOwner): Promise<Item> {
     const item: Item = {
       id: String(Date.now()),
-      userId: 'john-ramirez',
+      userId: owner.id,
       title: draft.title,
       category: draft.category,
       condition: draft.condition,
@@ -92,12 +94,11 @@ export const itemService = {
       hearts: 0,
       views: 0,
       age: 'Just now',
-      image:
-        draft.photos[0] ??
-        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=85',
+      image: draft.photos[0] ?? '',
       imageUrls: draft.photos,
-      owner: 'John Ramirez',
-      ownerAvatar: 'JR',
+      owner: owner.fullName,
+      ownerAvatar: owner.initials,
+      ownerAvatarUrl: owner.avatarUrl,
       rating: 4.9,
       trades: 27,
       wanted: draft.lookingFor,

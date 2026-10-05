@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Archive, Mail, MailOpen, MessageCircle, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { AppHeader, RequireAuth } from '@/components/layout';
 import { ThreadRow } from '@/components/marketplace';
@@ -10,6 +10,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useToast } from '@/providers';
 import { messageService } from '@/services';
 import type { Thread } from '@/types/models';
+import { confirmAction } from '@/utils/confirm';
 
 type Filter = 'all' | 'unread';
 
@@ -41,43 +42,37 @@ function InboxContent() {
   const setUnread = (id: string, unread: number) =>
     setData((current = []) => current.map((thread) => (thread.id === id ? { ...thread, unread } : thread)));
 
+  function markRead(thread: Thread) {
+    if (!thread.unread) return;
+    setUnread(thread.id, 0);
+    void messageService.markThreadRead(thread.id);
+  }
+
   function open(thread: Thread) {
-    if (thread.unread) {
-      setUnread(thread.id, 0);
-      void messageService.markThreadRead(thread.id);
-    }
+    markRead(thread);
     // Threads tied to an item are trade chats; the rest are direct messages.
     router.push(thread.item ? `/messages/${thread.id}` : `/direct-messages/${thread.id}`);
   }
 
-  function archive(thread: Thread) {
-    Alert.alert('Archive conversation?', `Your chat with ${thread.name} will be removed from your inbox.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Archive',
-        style: 'destructive',
-        onPress: async () => {
-          setData((current = []) => current.filter((entry) => entry.id !== thread.id));
-          await messageService.archiveThread(thread.id);
-          showToast('Conversation archived');
-        },
-      },
-    ]);
+  async function archive(thread: Thread) {
+    const ok = await confirmAction({
+      title: 'Archive conversation?',
+      message: `Your chat with ${thread.name} will be removed from your inbox.`,
+      confirmLabel: 'Archive',
+      destructive: true,
+    });
+    if (!ok) return;
+    setData((current = []) => current.filter((entry) => entry.id !== thread.id));
+    await messageService.archiveThread(thread.id);
+    showToast('Conversation archived');
   }
 
   const menuOptions = (thread: Thread): ActionSheetOption[] => [
     { label: 'Open conversation', icon: MessageCircle, onPress: () => open(thread) },
     thread.unread
-      ? {
-          label: 'Mark as read',
-          icon: MailOpen,
-          onPress: () => {
-            setUnread(thread.id, 0);
-            void messageService.markThreadRead(thread.id);
-          },
-        }
+      ? { label: 'Mark as read', icon: MailOpen, onPress: () => markRead(thread) }
       : { label: 'Mark as unread', icon: Mail, onPress: () => setUnread(thread.id, 1) },
-    { label: 'Archive conversation', icon: Archive, description: 'Remove it from your inbox', destructive: true, onPress: () => archive(thread) },
+    { label: 'Archive conversation', icon: Archive, description: 'Remove it from your inbox', destructive: true, onPress: () => void archive(thread) },
   ];
 
   const empty = !loading && !threads.length;

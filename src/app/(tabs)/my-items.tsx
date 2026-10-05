@@ -2,20 +2,21 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Archive, ArrowRightLeft, CheckCircle2, Edit3, Eye, Heart, Inbox, MoreHorizontal, Package, Plus, Share2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Share, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppHeader, RequireAuth } from '@/components/layout';
-import { StatGrid } from '@/components/marketplace';
-import { ActionSheet, AppText, Badge, Button, Card, ChipRow, EmptyState, IconButton, LoadingView, Screen, type ActionSheetOption } from '@/components/ui';
+import { ItemStatusBadge, StatGrid } from '@/components/marketplace';
+import { ActionSheet, AppText, Button, Card, ChipRow, EmptyState, IconButton, LoadingView, Screen, type ActionSheetOption } from '@/components/ui';
+import { itemStatuses } from '@/constants/status';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService } from '@/services';
 import type { Item, ItemStatus } from '@/types/models';
+import { confirmAction } from '@/utils/confirm';
 import { formatNumber } from '@/utils/format';
+import { shareItem } from '@/utils/share';
 
-const statuses: ItemStatus[] = ['Active', 'In Negotiation', 'Traded'];
-const statusTone = { Active: 'green', 'In Negotiation': 'orange', Traded: 'blue' } as const;
 const emptyCopy: Record<ItemStatus, string> = {
   Active: 'Listings that are open for offers will show up here.',
   'In Negotiation': 'Listings with an accepted offer will show up here.',
@@ -40,7 +41,7 @@ function MyItemsContent() {
 
   const count = (status: ItemStatus) => items.filter((item) => item.status === status).length;
   // Chip labels carry the count, e.g. "Active · 1"; strip it back off to get the status.
-  const options = ['All', ...statuses.map((status) => (count(status) ? `${status} · ${count(status)}` : status))];
+  const options = ['All', ...itemStatuses.map((status) => (count(status) ? `${status} · ${count(status)}` : status))];
   const selected = options.find((option) => option.startsWith(tab)) ?? 'All';
   const visible = items.filter((item) => tab === 'All' || item.status === tab);
 
@@ -49,51 +50,38 @@ function MyItemsContent() {
     upsertItem(updated);
   }
 
-  function archive(item: Item) {
-    Alert.alert('Archive listing?', `${item.title} will be removed from the marketplace. Pending offers on it will be closed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Archive',
-        style: 'destructive',
-        onPress: async () => {
-          await itemService.archiveItem(item.id);
-          setData((current = []) => current.filter((entry) => entry.id !== item.id));
-          removeItem(item.id);
-          showToast('Listing archived');
-        },
-      },
-    ]);
+  async function archive(item: Item) {
+    const ok = await confirmAction({
+      title: 'Archive listing?',
+      message: `${item.title} will be removed from the marketplace. Pending offers on it will be closed.`,
+      confirmLabel: 'Archive',
+      destructive: true,
+    });
+    if (!ok) return;
+    await itemService.archiveItem(item.id);
+    setData((current = []) => current.filter((entry) => entry.id !== item.id));
+    removeItem(item.id);
+    showToast('Listing archived');
   }
 
-  function markTraded(item: Item) {
-    Alert.alert('Mark as traded?', `${item.title} will no longer accept new offers.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Mark as traded',
-        onPress: async () => {
-          replace(await itemService.markTraded(item.id));
-          showToast('Marked as traded');
-        },
-      },
-    ]);
+  async function markTraded(item: Item) {
+    const ok = await confirmAction({ title: 'Mark as traded?', message: `${item.title} will no longer accept new offers.`, confirmLabel: 'Mark as traded' });
+    if (!ok) return;
+    replace(await itemService.markTraded(item.id));
+    showToast('Marked as traded');
   }
 
-  const menuOptions = (item: Item): ActionSheetOption[] => [
-    { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => router.push(`/items/${item.id}`) },
-    ...(item.status !== 'Traded'
-      ? [{ label: 'Edit listing', icon: Edit3, description: 'Update photos, details, or what you want', onPress: () => router.push(`/post-item?edit=${item.id}`) }]
-      : []),
-    {
-      label: 'Share',
-      icon: Share2,
-      description: 'Send the link to friends',
-      onPress: () => void Share.share({ message: `${item.title} on Barterdito — https://barterdito.ph/items/${item.id}` }),
-    },
-    ...(item.status !== 'Traded'
-      ? [{ label: 'Mark as traded', icon: CheckCircle2, description: 'Stop receiving new offers', onPress: () => markTraded(item) }]
-      : []),
-    { label: 'Archive listing', icon: Archive, description: 'Remove it from the marketplace', destructive: true, onPress: () => archive(item) },
-  ];
+  const menuOptions = (item: Item): ActionSheetOption[] => {
+    const open = item.status !== 'Traded';
+    const options: (ActionSheetOption | false)[] = [
+      { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => router.push(`/items/${item.id}`) },
+      open && { label: 'Edit listing', icon: Edit3, description: 'Update photos, details, or what you want', onPress: () => router.push(`/post-item?edit=${item.id}`) },
+      { label: 'Share', icon: Share2, description: 'Send the link to friends', onPress: () => void shareItem(item) },
+      open && { label: 'Mark as traded', icon: CheckCircle2, description: 'Stop receiving new offers', onPress: () => void markTraded(item) },
+      { label: 'Archive listing', icon: Archive, description: 'Remove it from the marketplace', destructive: true, onPress: () => void archive(item) },
+    ];
+    return options.filter((option): option is ActionSheetOption => Boolean(option));
+  };
 
   return (
     <Screen
@@ -154,7 +142,7 @@ function ManagedItem({ item, onOptions }: { item: Item; onOptions: () => void })
       <Image source={item.image} style={[styles.thumb, traded && styles.faded]} contentFit="cover" />
       <View style={styles.flex}>
         <View style={styles.topRow}>
-          <Badge label={item.status} tone={statusTone[item.status]} dot />
+          <ItemStatusBadge status={item.status} />
           <IconButton icon={MoreHorizontal} label={`More options for ${item.title}`} size={17} dimension={32} onPress={onOptions} />
         </View>
         <AppText variant="h3" numberOfLines={1}>

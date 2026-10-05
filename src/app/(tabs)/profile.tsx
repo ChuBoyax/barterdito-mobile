@@ -16,18 +16,21 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Share, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeaderActions, RequireAuth } from '@/components/layout';
 import { StatGrid } from '@/components/marketplace';
-import { AppText, Avatar, Button, Card, EmptyState, IconTile, ListRow, PressableScale, ProgressBar, Screen, SegmentedControl } from '@/components/ui';
+import { AppText, Avatar, Button, Card, EmptyState, IconTile, ListRow, PressableScale, ProgressBar, Screen, SegmentedControl, Stars } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
-import { useAuth, useTheme, useToast } from '@/providers';
+import { useSignOut } from '@/hooks/useSignOut';
+import { useAuth, useTheme } from '@/providers';
 import { userService } from '@/services';
 import { elevation, fonts, type Tone, maxFontScale } from '@/theme';
 import type { User } from '@/types/models';
+import { pluralize } from '@/utils/format';
+import { shareTrader } from '@/utils/share';
 
 type Tab = 'history' | 'reviews';
 
@@ -55,8 +58,8 @@ function ProfileContent() {
   const insets = useSafeAreaInsets();
   const { gutter } = useResponsive();
   const pad = { paddingHorizontal: gutter };
-  const { user, signOut } = useAuth();
-  const showToast = useToast();
+  const { user } = useAuth();
+  const signOut = useSignOut();
   const [tab, setTab] = useState<Tab>('history');
   const { data: stats } = useAsync(() => userService.getProfileStats(), []);
   const { data: history = [] } = useAsync(() => userService.getTradeHistory(), []);
@@ -64,22 +67,7 @@ function ProfileContent() {
 
   if (!user) return null;
 
-  function confirmLogout() {
-    Alert.alert('Sign out?', 'You can sign back in anytime with your account.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          showToast('You’re signed out');
-          router.navigate('/');
-        },
-      },
-    ]);
-  }
-
-  const share = () => void Share.share({ message: `${user.fullName} on Barterdito: https://barterdito.ph/traders/${user.id}` });
+  const share = () => void shareTrader({ id: user.id, name: user.fullName });
   const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
   const strengthDone = (stats?.profileStrength ?? 100) >= 100;
 
@@ -203,7 +191,7 @@ function ProfileContent() {
               <View style={styles.flex}>
                 <Stars rating={averageRating} size={15} />
                 <AppText variant="caption">
-                  Based on {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
+                  Based on {pluralize(reviews.length, 'review')}
                 </AppText>
               </View>
             </View>
@@ -231,21 +219,10 @@ function ProfileContent() {
 
         <Card style={styles.listCard}>
           <ListRow icon={Settings} title="Settings" subtitle="Account, notifications, privacy and help" onPress={() => router.push('/settings')} />
-          <ListRow icon={LogOut} iconTone="red" title="Sign out" showChevron={false} onPress={confirmLogout} />
+          <ListRow icon={LogOut} iconTone="red" title="Sign out" showChevron={false} onPress={() => void signOut()} />
         </Card>
       </View>
     </Screen>
-  );
-}
-
-function Stars({ rating, size }: { rating: number; size: number }) {
-  const { colors } = useTheme();
-  return (
-    <View style={styles.stars} accessibilityLabel={`${rating.toFixed(1)} out of 5 stars`}>
-      {Array.from({ length: 5 }, (_, index) => (
-        <Star key={index} size={size} color={colors.yellow} fill={index < Math.round(rating) ? colors.yellow : 'transparent'} />
-      ))}
-    </View>
   );
 }
 
@@ -298,7 +275,6 @@ const styles = StyleSheet.create({
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   ratingPill: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   summary: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10 },
-  stars: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   review: { gap: 8, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
   seeAll: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
 });

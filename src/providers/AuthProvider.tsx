@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { authService } from '@/services';
 import type { SignInInput, SignUpInput } from '@/services/authService';
 import type { User } from '@/types/models';
+import { initialsOf } from '@/utils/format';
 import { readJson, removeKey, storageKeys, writeJson } from '@/utils/storage';
 
 type AuthContextValue = {
@@ -20,14 +21,6 @@ type AuthContextValue = {
 };
 
 export type ProfilePatch = Partial<Pick<User, 'fullName' | 'bio' | 'location'>>;
-
-const initialsOf = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join('');
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 

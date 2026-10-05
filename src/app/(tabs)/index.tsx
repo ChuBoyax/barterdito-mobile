@@ -25,6 +25,7 @@ import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
 import { avatarPalette, elevation, fonts, type Tone, maxFontScale } from '@/theme';
 import type { ItemFilters, Trader } from '@/types/models';
+import { firstName } from '@/utils/format';
 
 const defaultFilters: ItemFilters = {
   category: 'All',
@@ -100,7 +101,7 @@ export default function BrowseScreen() {
         <View style={pad}>
           <AppHeader
             eyebrow={greeting()}
-            title={user ? `Hi, ${user.fullName.split(' ')[0]}` : 'Barterdito'}
+            title={user ? `Hi, ${firstName(user.fullName)}` : 'Barterdito'}
             leading={
               <PressableScale onPress={() => router.push(user ? '/profile' : '/login')} scaleTo={0.92}>
                 <Avatar initials={user?.initials ?? 'BD'} size="medium" ring online={Boolean(user)} />

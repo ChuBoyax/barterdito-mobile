@@ -1,5 +1,5 @@
 import { CheckCircle2 } from 'lucide-react-native';
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +17,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
 
   const showToast = useCallback((next: string) => setMessage(next), []);
+  // Stable value so screens using useToast() don't re-render every time a toast appears or hides.
+  const value = useMemo(() => ({ showToast }), [showToast]);
 
   useEffect(() => {
     if (!message) return;
@@ -30,7 +32,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] });
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={value}>
       {children}
       {message ? (
         <Animated.View

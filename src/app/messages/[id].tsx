@@ -5,14 +5,14 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ChatView } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
-import { AppText, Badge, Button, LoadingView } from '@/components/ui';
+import { OfferStatusBadge } from '@/components/marketplace';
+import { AppText, Button, LoadingView } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useTheme } from '@/providers';
 import { messageService, tradeService } from '@/services';
 import { elevation } from '@/theme';
 import type { Offer } from '@/types/models';
-
-const statusTone = { Pending: 'orange', Accepted: 'green', Declined: 'red', Completed: 'blue' } as const;
+import { firstName } from '@/utils/format';
 
 export default function TradeChatScreen() {
   return (
@@ -48,7 +48,7 @@ function TradeChat() {
 // Compact, always-visible summary of the swap so the chat itself keeps most of the screen.
 function TradeContext({ offer, tradeId }: { offer: Offer; tradeId: string }) {
   const { colors } = useTheme();
-  const first = offer.person.split(' ')[0];
+  const first = firstName(offer.person);
 
   const action =
     offer.status === 'Accepted'
@@ -92,7 +92,7 @@ function TradeContext({ offer, tradeId }: { offer: Offer; tradeId: string }) {
             You give {offer.yours.title}
           </AppText>
         </View>
-        <Badge label={offer.status} tone={statusTone[offer.status]} dot />
+        <OfferStatusBadge status={offer.status} />
       </Pressable>
 
       {action ? <Button label={action.label} icon={action.icon} compact onPress={action.onPress} /> : null}

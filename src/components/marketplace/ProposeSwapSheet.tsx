@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppText, BottomSheet, Button, PressableScale } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
 import type { Item } from '@/types/models';
+import { firstName } from '@/utils/format';
 
 type ProposeSwapSheetProps = {
   visible: boolean;
@@ -40,7 +41,7 @@ export function ProposeSwapSheet({ visible, onClose, target, myItems, onPostItem
   return (
     <BottomSheet visible={visible} onClose={onClose} eyebrow="Propose a swap" title="What will you offer?">
       <AppText variant="small">
-        {target.owner.split(' ')[0]} is looking for <AppText variant="small" color="ink" weight="bold">{target.wanted}</AppText>. Pick the item you
+        {firstName(target.owner)} is looking for <AppText variant="small" color="ink" weight="bold">{target.wanted}</AppText>. Pick the item you
         want to trade for <AppText variant="small" color="ink" weight="bold">{target.title}</AppText>.
       </AppText>
 

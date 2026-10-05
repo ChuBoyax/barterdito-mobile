@@ -1,9 +1,11 @@
 import { CalendarDays, Check, CheckCircle2, Clock, Info, MessageCircle, Star, X, type LucideIcon } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { AppText, Avatar, Badge, Button, Card, IconButton } from '@/components/ui';
+import { AppText, Avatar, Button, Card, IconButton } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
 import type { Offer, OfferStatus } from '@/types/models';
+import { firstName } from '@/utils/format';
+import { OfferStatusBadge } from './StatusBadge';
 import { SwapPreview } from './SwapPreview';
 
 type OfferCardProps = {
@@ -16,11 +18,9 @@ type OfferCardProps = {
   onOpenItem: (itemId: string) => void;
 };
 
-const statusTone = { Pending: 'orange', Accepted: 'green', Declined: 'red', Completed: 'blue' } as const;
-
 // One short line telling the user where this offer stands and what happens next.
 function nextStep(offer: Offer): { icon: LucideIcon; text: string } {
-  const first = offer.person.split(' ')[0];
+  const first = firstName(offer.person);
   switch (offer.status) {
     case 'Pending':
       return offer.received
@@ -52,7 +52,7 @@ export function OfferCard({ offer, busy, onChat, onUpdate, onMeetup, onReview, o
             {offer.received ? 'Sent you an offer' : 'You sent an offer'} · {offer.time}
           </AppText>
         </View>
-        <Badge label={offer.status} tone={statusTone[offer.status]} dot />
+        <OfferStatusBadge status={offer.status} />
       </View>
 
       <SwapPreview
