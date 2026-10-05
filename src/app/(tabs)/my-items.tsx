@@ -8,6 +8,7 @@ import { AppHeader, RequireAuth } from '@/components/layout';
 import { StatGrid } from '@/components/marketplace';
 import { AppText, Badge, Button, Card, ChipRow, EmptyState, IconButton, LoadingView, Screen } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService } from '@/services';
 import type { Item } from '@/types/models';
@@ -28,6 +29,7 @@ function MyItemsContent() {
   const { removeItem, items: marketItems } = useMarketplace();
   const [tab, setTab] = useState('All');
   const { data: items = [], loading, setData, reload } = useAsync(() => itemService.getMyItems(), [marketItems.length]);
+  const { gutter } = useResponsive();
   const visible = items.filter((item) => tab === 'All' || item.status === tab);
 
   function confirmArchive(item: Item) {
@@ -64,8 +66,8 @@ function MyItemsContent() {
           { label: 'Hearts', value: items.reduce((sum, item) => sum + item.hearts, 0), icon: Heart, tone: 'red' },
         ]}
       />
-      <View style={styles.bleed}>
-        <ChipRow options={tabs} value={tab} onChange={setTab} />
+      <View style={{ marginHorizontal: -gutter }}>
+        <ChipRow inset={gutter} options={tabs} value={tab} onChange={setTab} />
       </View>
       {loading && !items.length ? (
         <LoadingView />
@@ -110,7 +112,6 @@ function ManagedItem({ item, onArchive }: { item: Item; onArchive: () => void })
 }
 
 const styles = StyleSheet.create({
-  bleed: { marginHorizontal: -20 },
   managed: { flexDirection: 'row', gap: 14, padding: 12 },
   thumb: { width: 112, height: 140, borderRadius: 18 },
   flex: { flex: 1, gap: 5 },
@@ -118,3 +119,5 @@ const styles = StyleSheet.create({
   gapLeft: { marginLeft: 8 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
 });
+
+

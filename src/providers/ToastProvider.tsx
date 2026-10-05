@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Animated, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { elevation, fonts } from '@/theme';
+import { elevation, fonts, maxFontScale } from '@/theme';
 import { useTheme } from './ThemeProvider';
 
 type ToastContextValue = { showToast: (message: string) => void };
@@ -38,7 +38,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           style={[styles.toast, { top: insets.top + 10, backgroundColor: colors.toast, opacity: progress, transform: [{ translateY }] }, elevation(3, colors)]}
           accessibilityLiveRegion="polite">
           <CheckCircle2 size={18} color={colors.green} strokeWidth={2.4} />
-          <Text style={[styles.text, { color: colors.onToast }]}>{message}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.text, { color: colors.onToast }]}>{message}</Text>
         </Animated.View>
       ) : null}
     </ToastContext.Provider>

@@ -21,7 +21,7 @@ import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AppHeader, MenuButton } from '@/components/layout';
-import { FeaturedCard, FilterSheet, ItemGrid, TraderRow } from '@/components/marketplace';
+import { FeaturedCard, featuredCardWidth, FilterSheet, ItemGrid, TraderRow } from '@/components/marketplace';
 import {
   AppText,
   Avatar,
@@ -35,9 +35,10 @@ import {
   Screen,
   SectionHeading,
 } from '@/components/ui';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
-import { avatarPalette, elevation, fonts, type Tone } from '@/theme';
+import { avatarPalette, elevation, fonts, type Tone, maxFontScale } from '@/theme';
 import type { ItemFilters, Trader } from '@/types/models';
 
 const defaultFilters: ItemFilters = {
@@ -57,6 +58,11 @@ function greeting() {
 
 export default function BrowseScreen() {
   const { colors } = useTheme();
+  const { gutter, width, isTablet, innerWidth } = useResponsive();
+  const pad = { paddingHorizontal: gutter };
+  const hRow = [styles.hRow, pad];
+  const spotlightHeight = Math.round(Math.min(Math.max(innerWidth * 0.95, 280), 440));
+  const featuredSnap = featuredCardWidth(width, isTablet) + 12;
   const { user, requireAuth } = useAuth();
   const { items, loading, refresh } = useMarketplace();
   const [filters, setFilters] = useState(defaultFilters);
@@ -103,7 +109,7 @@ export default function BrowseScreen() {
       onRefresh={() => void onRefresh()}
       contentStyle={styles.content}
       header={
-        <View style={styles.pad}>
+        <View style={pad}>
           <AppHeader
             eyebrow={greeting()}
             title={user ? `Hi, ${user.fullName.split(' ')[0]}` : 'Barterdito'}
@@ -121,7 +127,7 @@ export default function BrowseScreen() {
           />
         </View>
       }>
-      <Animated.View entering={FadeInDown.duration(450)} style={[styles.pad, styles.headline]}>
+      <Animated.View entering={FadeInDown.duration(450)} style={[pad, styles.headline]}>
         <AppText variant="display">
           Good finds deserve a{' '}
           <AppText variant="display" color="orange">
@@ -133,10 +139,10 @@ export default function BrowseScreen() {
         </AppText>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(60).duration(450)} style={styles.pad}>
+      <Animated.View entering={FadeInDown.delay(60).duration(450)} style={pad}>
         <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
           <Search size={20} color={colors.muted} strokeWidth={2} />
-          <TextInput
+          <TextInput maxFontSizeMultiplier={maxFontScale}
             value={filters.search}
             onChangeText={(search) => update({ search })}
             placeholder="Search cameras, bikes, services…"
@@ -164,22 +170,22 @@ export default function BrowseScreen() {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(120).duration(450)}>
-        <ChipRow options={itemService.getCategories()} value={filters.category} onChange={(category) => update({ category })} />
+        <ChipRow inset={gutter} options={itemService.getCategories()} value={filters.category} onChange={(category) => update({ category })} />
       </Animated.View>
 
       {spotlight ? (
-        <Animated.View entering={FadeInDown.delay(180).duration(500)} style={styles.pad}>
-          <PressableScale onPress={() => router.push(`/items/${spotlight.id}`)} scaleTo={0.98} style={[styles.spotlight, elevation(2, colors)]}>
+        <Animated.View entering={FadeInDown.delay(180).duration(500)} style={pad}>
+          <PressableScale onPress={() => router.push(`/items/${spotlight.id}`)} scaleTo={0.98} style={[styles.spotlight, { height: spotlightHeight }, elevation(2, colors)]}>
             <Image source={spotlight.image} style={StyleSheet.absoluteFill} contentFit="cover" />
             <PhotoScrim position="both" />
             <View style={styles.spotTop}>
               <Glass style={styles.pill} intensity={35}>
                 <Heart size={13} color={colors.red} fill={colors.red} />
-                <Text style={[styles.pillText, { color: colors.ink }]}>28 traders like this</Text>
+                <Text maxFontSizeMultiplier={maxFontScale} style={[styles.pillText, { color: colors.ink }]}>28 traders like this</Text>
               </Glass>
               <Glass style={styles.pill} intensity={35}>
                 <Zap size={13} color={colors.orange} fill={colors.orange} />
-                <Text style={[styles.pillText, { color: colors.ink }]}>12 new today</Text>
+                <Text maxFontSizeMultiplier={maxFontScale} style={[styles.pillText, { color: colors.ink }]}>12 new today</Text>
               </Glass>
             </View>
             <View style={[styles.spotInfo, { backgroundColor: colors.surface }]}>
@@ -197,7 +203,7 @@ export default function BrowseScreen() {
         </Animated.View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.delay(240).duration(500)} style={[styles.pad, styles.shortcuts]}>
+      <Animated.View entering={FadeInDown.delay(240).duration(500)} style={[pad, styles.shortcuts]}>
         <PrimaryShortcut onPress={() => requireAuth(() => router.push('/post-item'))} />
         <View style={styles.shortcutRow}>
           <Shortcut icon={Trophy} tone="yellow" title="Leaderboard" text="Top traders" onPress={() => router.push('/leaderboard')} />
@@ -218,10 +224,10 @@ export default function BrowseScreen() {
 
       {hotItems.length ? (
         <View>
-          <View style={styles.pad}>
+          <View style={pad}>
             <SectionHeading eyebrow="Discover" title="Hot swaps near you" action="Map" onAction={() => router.push('/map')} />
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow} decelerationRate="fast" snapToInterval={240}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hRow} decelerationRate="fast" snapToInterval={featuredSnap}>
             {hotItems.map((item) => (
               <FeaturedCard key={item.id} item={item} onPress={() => router.push(`/items/${item.id}`)} />
             ))}
@@ -230,17 +236,17 @@ export default function BrowseScreen() {
       ) : null}
 
       <View>
-        <View style={styles.pad}>
+        <View style={pad}>
           <SectionHeading eyebrow="Community" title="Featured traders" action="Ranks" onAction={() => router.push('/leaderboard')} />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hRow}>
           {traders.map((trader) => (
             <TraderRow key={trader.id} trader={trader} variant="card" onPress={() => router.push(`/traders/${trader.id}`)} />
           ))}
         </ScrollView>
       </View>
 
-      <View style={styles.pad}>
+      <View style={pad}>
         <SectionHeading eyebrow="Fresh finds" title={`${visibleItems.length} items to swap`} />
         {loading || visibleItems.length ? (
           <ItemGrid items={visibleItems} loading={loading} />
@@ -281,8 +287,8 @@ function PrimaryShortcut({ onPress }: { onPress: () => void }) {
         <Plus size={22} color={colors.onPrimary} strokeWidth={2.4} />
       </View>
       <View style={styles.flex}>
-        <Text style={[styles.primaryTitle, { color: colors.onPrimary }]}>Post a trade</Text>
-        <Text style={[styles.primaryText, { color: colors.onPrimary }]}>List an item in minutes</Text>
+        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.primaryTitle, { color: colors.onPrimary }]}>Post a trade</Text>
+        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.primaryText, { color: colors.onPrimary }]}>List an item in minutes</Text>
       </View>
       <ArrowUpRight size={20} color={colors.onPrimary} strokeWidth={2.2} />
     </PressableScale>
@@ -307,7 +313,6 @@ function Shortcut({ icon, tone, title, text, onPress }: { icon: LucideIcon; tone
 
 const styles = StyleSheet.create({
   content: { gap: 24, paddingTop: 0 },
-  pad: { paddingHorizontal: 20 },
   flex: { flex: 1 },
   actions: { flexDirection: 'row', gap: 8 },
   headline: { gap: 8, marginTop: 4 },
@@ -317,7 +322,7 @@ const styles = StyleSheet.create({
   filterDot: { position: 'absolute', top: 8, right: 8, width: 9, height: 9, borderRadius: 5, borderWidth: 2 },
   trust: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 12 },
   trustPill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  spotlight: { height: 340, borderRadius: 24, overflow: 'hidden', justifyContent: 'space-between' },
+  spotlight: { borderRadius: 24, overflow: 'hidden', justifyContent: 'space-between' },
   spotTop: { flexDirection: 'row', justifyContent: 'space-between', padding: 12 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 7 },
   pillText: { fontFamily: fonts.bold, fontSize: 11.5 },
@@ -331,5 +336,5 @@ const styles = StyleSheet.create({
   primaryText: { fontFamily: fonts.medium, fontSize: 12.5, opacity: 0.88 },
   shortcut: { flex: 1, gap: 12, borderWidth: 1, borderRadius: 20, padding: 14 },
   impact: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 14 },
-  hRow: { gap: 12, paddingHorizontal: 20, paddingBottom: 6 },
+  hRow: { gap: 12, paddingBottom: 6 },
 });

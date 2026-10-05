@@ -139,6 +139,6 @@ const styles = StyleSheet.create({
   chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, paddingHorizontal: 20, paddingVertical: 12 },
   online: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  list: { padding: 16, gap: 12 },
+  list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
   typing: { fontStyle: 'italic' },
 });

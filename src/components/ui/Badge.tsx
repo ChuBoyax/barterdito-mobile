@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, tone as getTone, type Tone } from '@/theme';
+import { fonts, tone as getTone, type Tone, maxFontScale } from '@/theme';
 
 export type BadgeTone = Tone | 'glass';
 
@@ -21,7 +21,7 @@ export function Badge({ label, tone = 'neutral', icon: Icon, dot, style }: Badge
     <View style={[styles.badge, { backgroundColor: palette.bg }, style]}>
       {dot ? <View style={[styles.dot, { backgroundColor: palette.fg }]} /> : null}
       {Icon ? <Icon size={12} color={palette.fg} strokeWidth={2.4} /> : null}
-      <Text style={[styles.text, { color: palette.fg }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.text, { color: palette.fg }]}>{label}</Text>
     </View>
   );
 }

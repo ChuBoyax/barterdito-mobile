@@ -1,6 +1,6 @@
 export { BarChart } from './BarChart';
 export { EventCard } from './EventCard';
-export { FeaturedCard } from './FeaturedCard';
+export { FeaturedCard, featuredCardWidth } from './FeaturedCard';
 export { FilterSheet } from './FilterSheet';
 export { HeroBanner } from './HeroBanner';
 export { ItemCard, ItemCardSkeleton } from './ItemCard';

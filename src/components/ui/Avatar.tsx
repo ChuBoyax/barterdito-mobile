@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts } from '@/theme';
+import { fonts, maxFontScale } from '@/theme';
 
 const sizes = {
   small: { box: 38, font: 12 },
@@ -36,7 +36,7 @@ export function Avatar({ initials, color, imageUrl, size = 'medium', ring, onlin
         {imageUrl ? (
           <Image source={imageUrl} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
-          <Text style={[styles.text, { fontSize: font, color: colors.onPrimary }]}>{initials}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.text, { fontSize: font, color: colors.onPrimary }]}>{initials}</Text>
         )}
       </View>
       {online ? (

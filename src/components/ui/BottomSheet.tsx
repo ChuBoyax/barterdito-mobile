@@ -46,7 +46,7 @@ export function BottomSheet({ visible, onClose, title, eyebrow, children }: Bott
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  sheet: { marginTop: 'auto', maxHeight: '88%', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 22, paddingTop: 10 },
+  sheet: { width: '100%', maxWidth: 640, alignSelf: 'center', marginTop: 'auto', maxHeight: '88%', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 22, paddingTop: 10 },
   handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, marginBottom: 14, opacity: 0.5 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   content: { gap: 14, paddingBottom: 8 },

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppText, Avatar, PressableScale } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts } from '@/theme';
+import { fonts, maxFontScale } from '@/theme';
 import type { Thread } from '@/types/models';
 
 type ThreadRowProps = {
@@ -41,7 +41,7 @@ export function ThreadRow({ thread, onPress, onArchive }: ThreadRowProps) {
           </AppText>
           {unread ? (
             <View style={[styles.count, { backgroundColor: colors.orange }]}>
-              <Text style={[styles.countText, { color: colors.onPrimary }]}>{thread.unread}</Text>
+              <Text maxFontSizeMultiplier={maxFontScale} style={[styles.countText, { color: colors.onPrimary }]}>{thread.unread}</Text>
             </View>
           ) : onArchive ? (
             <Pressable accessibilityLabel="Archive thread" hitSlop={10} onPress={onArchive}>

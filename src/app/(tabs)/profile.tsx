@@ -8,9 +8,10 @@ import { HeaderActions, RequireAuth } from '@/components/layout';
 import { StatGrid } from '@/components/marketplace';
 import { AppText, Avatar, Button, Card, IconTile, ListRow, PressableScale, ProgressBar, Screen, SegmentedControl } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useTheme, useToast } from '@/providers';
 import { userService } from '@/services';
-import { elevation, fonts, type Tone } from '@/theme';
+import { elevation, fonts, type Tone, maxFontScale } from '@/theme';
 import { stars } from '@/utils/format';
 
 type Tab = 'history' | 'reviews';
@@ -26,6 +27,8 @@ export default function ProfileScreen() {
 function ProfileContent() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { gutter } = useResponsive();
+  const pad = { paddingHorizontal: gutter };
   const { user, signOut } = useAuth();
   const showToast = useToast();
   const [tab, setTab] = useState<Tab>('history');
@@ -43,14 +46,14 @@ function ProfileContent() {
 
   return (
     <Screen padded={false} contentStyle={styles.content}>
-      <View style={[styles.cover, { backgroundColor: colors.orangeSoft, paddingTop: insets.top + 8 }]}>
+      <View style={[styles.cover, pad, { backgroundColor: colors.orangeSoft, paddingTop: insets.top + 8 }]}>
         <View style={styles.coverTop}>
-          <Text style={[styles.coverLabel, { color: colors.orange }]}>MY PROFILE</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.coverLabel, { color: colors.orange }]}>MY PROFILE</Text>
           <HeaderActions />
         </View>
       </View>
 
-      <View style={styles.pad}>
+      <View style={pad}>
         <Card style={[styles.identity, elevation(3, colors)]}>
           <View style={styles.avatarWrap}>
             <Avatar initials={user.initials} imageUrl={user.avatarUrl} size="hero" ring online />
@@ -102,7 +105,7 @@ function ProfileContent() {
       </View>
 
       {stats ? (
-        <View style={styles.pad}>
+        <View style={pad}>
           <Card style={styles.strength}>
             <View style={styles.row}>
               <View style={styles.flex}>
@@ -118,14 +121,14 @@ function ProfileContent() {
         </View>
       ) : null}
 
-      <View style={[styles.pad, styles.quick]}>
+      <View style={[pad, styles.quick]}>
         <QuickAction icon={QrCode} label="QR Profile" tone="blue" onPress={() => router.push('/qr')} />
         <QuickAction icon={Gift} label="Invite" tone="yellow" onPress={() => router.push('/referral')} />
         <QuickAction icon={Bookmark} label="Wishlist" tone="red" onPress={() => router.push('/wishlist')} />
         <QuickAction icon={Activity} label="Activity" tone="violet" onPress={() => router.push('/activity')} />
       </View>
 
-      <View style={[styles.pad, styles.section]}>
+      <View style={[pad, styles.section]}>
         <SegmentedControl<Tab>
           value={tab}
           onChange={setTab}
@@ -181,7 +184,7 @@ function QuickAction({ icon, label, tone, onPress }: { icon: LucideIcon; label: 
   return (
     <PressableScale onPress={onPress} scaleTo={0.94} style={[styles.action, { backgroundColor: colors.surface, borderColor: colors.hairline }, elevation(1, colors)]}>
       <IconTile icon={icon} tone={tone} size={42} />
-      <AppText variant="caption" color="ink" weight="bold">
+      <AppText variant="caption" color="ink" weight="bold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
         {label}
       </AppText>
     </PressableScale>
@@ -190,9 +193,8 @@ function QuickAction({ icon, label, tone, onPress }: { icon: LucideIcon; label: 
 
 const styles = StyleSheet.create({
   content: { gap: 16, paddingTop: 0 },
-  pad: { paddingHorizontal: 20 },
   flex: { flex: 1 },
-  cover: { height: 210, paddingHorizontal: 20, overflow: 'hidden' },
+  cover: { height: 210, overflow: 'hidden' },
   coverTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   coverLabel: { fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 2 },
   identity: { marginTop: -120, alignItems: 'center', gap: 8, paddingTop: 0 },

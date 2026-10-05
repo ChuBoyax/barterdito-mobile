@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react
 import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { elevation, fonts } from '@/theme';
+import { elevation, fonts, maxFontScale } from '@/theme';
 
 export type Segment<T extends string> = { value: T; label: string; count?: number };
 
@@ -40,10 +40,10 @@ export function SegmentedControl<T extends string>({ segments, value, onChange }
             accessibilityState={{ selected: active }}
             onPress={() => onChange(segment.value)}
             style={styles.segment}>
-            <Text style={[styles.label, { color: active ? colors.ink : colors.muted }]}>{segment.label}</Text>
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: active ? colors.ink : colors.muted }]}>{segment.label}</Text>
             {segment.count !== undefined ? (
               <View style={[styles.count, { backgroundColor: active ? colors.orange : colors.line }]}>
-                <Text style={[styles.countText, { color: active ? colors.white : colors.muted }]}>{segment.count}</Text>
+                <Text maxFontSizeMultiplier={maxFontScale} style={[styles.countText, { color: active ? colors.white : colors.muted }]}>{segment.count}</Text>
               </View>
             ) : null}
           </Pressable>

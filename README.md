@@ -72,6 +72,23 @@ Rules that keep the UI consistent:
 To add a tab: create `src/app/(tabs)/<name>.tsx` and add one entry to
 `src/navigation/tabs.ts`.
 
+## Responsive layout
+
+Breakpoints live in `src/theme/layout.ts`; read them through `useResponsive()`
+(`src/hooks/useResponsive.ts`), never with ad-hoc width checks.
+
+| Width       | Device          | Behavior                                                        |
+| ----------- | --------------- | --------------------------------------------------------------- |
+| < 360       | Small phones    | `isCompact`: 16px gutters, slightly smaller headlines           |
+| 360 – 599   | Phones          | Default layout, 2-column item grid                               |
+| 600 – 899   | Large / tablets | Content centered at 720px, 3-column grid, larger headlines       |
+| ≥ 900       | Wide tablets    | Content centered at 960px, 4-column grid                         |
+
+- `<Screen>` already applies the gutter and max width; use `gutter` from the hook for custom full-bleed sections.
+- Avoid fixed widths/heights for content; derive them from `width`, `innerWidth`, or `contentWidth`.
+- Text scales with the user's font setting up to `maxFontScale` (1.3×).
+- Check new screens at 320px, 390px, and 768px widths.
+
 ## Connecting the real backend
 
 1. Keep each function signature in `src/services/*.ts`, and keep its return type

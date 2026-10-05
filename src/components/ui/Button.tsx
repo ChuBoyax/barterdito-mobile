@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { ActivityIndicator, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { brand, fonts, type ThemeColors } from '@/theme';
+import { brand, fonts, type ThemeColors, maxFontScale } from '@/theme';
 import { PressableScale } from './PressableScale';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
@@ -70,7 +70,7 @@ export function Button({
         style,
       ]}>
       {loading ? <ActivityIndicator size="small" color={palette.fg} /> : Icon ? <Icon size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
-      <Text style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={1}>
+      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={1}>
         {label}
       </Text>
       {IconRight ? <IconRight size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}

@@ -20,7 +20,11 @@ export function AppHeader({ title, eyebrow, subtitle, leading, actions }: AppHea
       <View style={styles.row}>
         {leading}
         <View style={styles.flex}>
-          {eyebrow ? <AppText variant="eyebrow">{eyebrow}</AppText> : null}
+          {eyebrow ? (
+            <AppText variant="eyebrow" numberOfLines={1}>
+              {eyebrow}
+            </AppText>
+          ) : null}
           <AppText variant="hero" numberOfLines={1}>
             {title}
           </AppText>

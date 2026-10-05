@@ -26,6 +26,7 @@ export function Onboarding({ visible, onFinish }: { visible: boolean; onFinish: 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onFinish} statusBarTranslucent>
       <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+        <View style={styles.inner}>
         <View style={styles.top}>
           <Logo />
           <Pressable accessibilityRole="button" onPress={onFinish} hitSlop={10} style={[styles.skip, { backgroundColor: colors.surface2 }]}>
@@ -72,13 +73,15 @@ export function Onboarding({ visible, onFinish }: { visible: boolean; onFinish: 
           </View>
           <Button label={last ? 'Start swapping' : 'Next'} iconRight={ArrowRight} onPress={() => (last ? onFinish() : setPage(page + 1))} />
         </Animated.View>
+        </View>
       </SafeAreaView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 24 },
+  screen: { flex: 1 },
+  inner: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center', paddingHorizontal: 24 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8 },
   skip: { borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
   art: { flex: 1, alignItems: 'center', justifyContent: 'center' },

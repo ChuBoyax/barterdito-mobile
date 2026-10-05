@@ -3,7 +3,7 @@ import { forwardRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts } from '@/theme';
+import { fonts, maxFontScale } from '@/theme';
 
 type TextFieldProps = TextInputProps & {
   label?: string;
@@ -26,7 +26,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     <View style={styles.wrap}>
       {label ? (
         <View style={styles.labelRow}>
-          <Text style={[styles.label, { color: colors.ink }]}>{label}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: colors.ink }]}>{label}</Text>
           {labelAction}
         </View>
       ) : null}
@@ -38,7 +38,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           focused && { shadowColor: colors.orange, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
         ]}>
         {Icon ? <Icon size={18} color={focused ? colors.orange : colors.muted} strokeWidth={2.1} /> : null}
-        <TextInput
+        <TextInput maxFontSizeMultiplier={maxFontScale}
           ref={ref}
           value={value}
           maxLength={maxLength}
@@ -61,9 +61,9 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
       </View>
       {error || hint || (showCount && maxLength) ? (
         <View style={styles.footer}>
-          <Text style={[styles.hint, { color: error ? colors.red : colors.muted }]}>{error ?? hint ?? ''}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.hint, { color: error ? colors.red : colors.muted }]}>{error ?? hint ?? ''}</Text>
           {showCount && maxLength ? (
-            <Text style={[styles.hint, { color: colors.muted }]}>
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.hint, { color: colors.muted }]}>
               {value?.length ?? 0}/{maxLength}
             </Text>
           ) : null}

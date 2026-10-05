@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { useResponsive } from '@/hooks/useResponsive';
 import { useMarketplace } from '@/providers';
 import type { Item } from '@/types/models';
 import { ItemCard, ItemCardSkeleton } from './ItemCard';
@@ -11,9 +12,11 @@ type ItemGridProps = {
   columns?: number;
 };
 
-export function ItemGrid({ items, loading, columns = 2 }: ItemGridProps) {
+export function ItemGrid({ items, loading, columns: columnsOverride }: ItemGridProps) {
   const { savedIds, heartedIds, toggleSaved, toggleHeart } = useMarketplace();
-  const cells = loading ? Array.from({ length: 4 }, () => null) : items;
+  const { columns: responsiveColumns } = useResponsive();
+  const columns = columnsOverride ?? responsiveColumns;
+  const cells = loading ? Array.from({ length: columns * 2 }, () => null) : items;
   const rows: (Item | null)[][] = [];
   for (let index = 0; index < cells.length; index += columns) rows.push(cells.slice(index, index + columns));
 

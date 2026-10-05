@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts } from '@/theme';
+import { fonts, maxFontScale } from '@/theme';
 import { Glass } from './Glass';
 import { PressableScale } from './PressableScale';
 
@@ -53,7 +53,7 @@ export function IconButton({
       )}
       {badge ? (
         <View style={[styles.badge, { backgroundColor: colors.orange, borderColor: colors.background }]}>
-          <Text style={[styles.badgeText, { color: colors.onPrimary }]}>{badge}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.badgeText, { color: colors.onPrimary }]}>{badge}</Text>
         </View>
       ) : null}
     </PressableScale>

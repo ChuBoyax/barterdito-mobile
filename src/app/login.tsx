@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, Button, IconButton, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth, useTheme, useToast } from '@/providers';
-import { elevation, fonts } from '@/theme';
+import { elevation, fonts, maxFontScale } from '@/theme';
 import { errorMessage } from '@/utils/format';
 
 type Mode = 'login' | 'signup';
@@ -136,7 +136,7 @@ export default function LoginScreen() {
                 disabled={submitting}
                 onPress={() => void google()}
                 style={({ pressed }) => [styles.google, { backgroundColor: colors.surface, borderColor: colors.hairline }, pressed && { opacity: 0.8 }]}>
-                <Text style={[styles.g, { color: colors.blue }]}>G</Text>
+                <Text maxFontSizeMultiplier={maxFontScale} style={[styles.g, { color: colors.blue }]}>G</Text>
                 <AppText variant="h3">Continue with Google</AppText>
               </Pressable>
             </View>
@@ -155,7 +155,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 22 },
+  content: { width: '100%', maxWidth: 480, alignSelf: 'center', paddingHorizontal: 20, gap: 22 },
   top: { flexDirection: 'row', justifyContent: 'flex-end' },
   brand: { alignItems: 'center', gap: 12 },
   logoGlow: { width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },

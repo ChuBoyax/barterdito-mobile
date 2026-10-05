@@ -3,7 +3,7 @@ import { CheckCheck } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts } from '@/theme';
+import { fonts, maxFontScale } from '@/theme';
 import type { ChatMessage } from '@/types/models';
 
 type MessageBubbleProps = {
@@ -17,7 +17,7 @@ export function MessageBubble({ message, onLongPress }: MessageBubbleProps) {
   const content = (
     <>
       {message.image ? <Image source={message.image} style={styles.image} contentFit="cover" /> : null}
-      <Text style={[styles.text, { color: mine ? colors.onPrimary : colors.ink }]}>{message.text}</Text>
+      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.text, { color: mine ? colors.onPrimary : colors.ink }]}>{message.text}</Text>
     </>
   );
   return (
@@ -28,7 +28,7 @@ export function MessageBubble({ message, onLongPress }: MessageBubbleProps) {
         <View style={[styles.bubble, styles.bubbleTheirs, { backgroundColor: colors.surface, borderColor: colors.line }]}>{content}</View>
       )}
       <View style={styles.meta}>
-        <Text style={[styles.time, { color: colors.muted }]}>{message.time}</Text>
+        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.time, { color: colors.muted }]}>{message.time}</Text>
         {mine ? <CheckCheck size={12} color={colors.blue} strokeWidth={2.6} /> : null}
       </View>
     </Pressable>

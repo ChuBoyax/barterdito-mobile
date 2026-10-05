@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { useResponsive } from '@/hooks/useResponsive';
 import { useTheme } from '@/providers/ThemeProvider';
 
 type ScreenProps = {
@@ -34,6 +35,9 @@ export function Screen({
   header,
 }: ScreenProps) {
   const { colors } = useTheme();
+  const { contentWidth, gutter } = useResponsive();
+  const frame = { width: '100%' as const, maxWidth: contentWidth, alignSelf: 'center' as const };
+  const padding = padded ? { paddingHorizontal: gutter, paddingTop: 12 } : null;
   return (
     <KeyboardAvoidingView
       style={[styles.flex, { backgroundColor: colors.background }]}
@@ -43,7 +47,7 @@ export function Screen({
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[padded && styles.padded, styles.gap, styles.bottom, contentStyle]}
+          contentContainerStyle={[frame, padding, styles.gap, styles.bottom, contentStyle]}
           refreshControl={
             onRefresh ? <RefreshControl refreshing={Boolean(refreshing)} onRefresh={onRefresh} tintColor={colors.orange} colors={[colors.orange]} /> : undefined
           }>
@@ -51,7 +55,7 @@ export function Screen({
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.flex, padded && styles.padded, contentStyle]}>
+        <View style={[styles.flex, frame, padding, contentStyle]}>
           {header}
           {children}
         </View>
@@ -63,7 +67,6 @@ export function Screen({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  padded: { paddingHorizontal: 20, paddingTop: 12 },
   gap: { gap: 18 },
   bottom: { paddingBottom: 40 },
 });

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, Glass, PressableScale } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { elevation, fonts } from '@/theme';
+import { elevation, fonts, maxFontScale } from '@/theme';
 
 type MessageComposerProps = {
   value: string;
@@ -37,7 +37,7 @@ export function MessageComposer({ value, onChange, onSend, onAttach, editing, on
             <ImagePlus size={19} color={colors.ink} strokeWidth={2.1} />
           </Pressable>
         ) : null}
-        <TextInput
+        <TextInput maxFontSizeMultiplier={maxFontScale}
           value={value}
           onChangeText={onChange}
           placeholder={editing ? 'Edit your message…' : 'Write a message…'}
@@ -57,7 +57,7 @@ export function MessageComposer({ value, onChange, onSend, onAttach, editing, on
 }
 
 const styles = StyleSheet.create({
-  outer: { paddingHorizontal: 12, paddingTop: 8, gap: 6 },
+  outer: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 12, paddingTop: 8, gap: 6 },
   editing: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   bar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, borderRadius: 28, padding: 6 },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

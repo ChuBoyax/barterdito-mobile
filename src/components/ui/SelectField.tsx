@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts } from '@/theme';
+import { fonts, maxFontScale } from '@/theme';
 import { BottomSheet } from './BottomSheet';
 
 type SelectFieldProps = {
@@ -20,13 +20,13 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
   const [open, setOpen] = useState(false);
   return (
     <View style={styles.wrap}>
-      {label ? <Text style={[styles.label, { color: colors.ink }]}>{label}</Text> : null}
+      {label ? <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: colors.ink }]}>{label}</Text> : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label ?? placeholder}
         onPress={() => setOpen(true)}
         style={[styles.field, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-        <Text style={[styles.value, { color: value ? colors.ink : colors.muted2 }]} numberOfLines={1}>
+        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.value, { color: value ? colors.ink : colors.muted2 }]} numberOfLines={1}>
           {value || placeholder}
         </Text>
         <ChevronDown size={18} color={colors.muted} />
@@ -42,7 +42,7 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
                 setOpen(false);
               }}
               style={[styles.option, { backgroundColor: active ? colors.orangeSoft : colors.surface2 }]}>
-              <Text style={[styles.optionText, { color: active ? colors.orange : colors.ink }]}>{option}</Text>
+              <Text maxFontSizeMultiplier={maxFontScale} style={[styles.optionText, { color: active ? colors.orange : colors.ink }]}>{option}</Text>
               {active ? <Check size={18} color={colors.orange} /> : null}
             </Pressable>
           );

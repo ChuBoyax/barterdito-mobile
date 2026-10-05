@@ -19,21 +19,22 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ReportSheet } from '@/components/marketplace';
 import { AppText, Avatar, Badge, Button, EmptyState, Glass, IconButton, InfoNote, LoadingView, PhotoScrim, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService, tradeService, userService } from '@/services';
-import { elevation, fonts } from '@/theme';
+import { elevation, fonts, maxFontScale } from '@/theme';
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height, contentWidth, gutter } = useResponsive();
   const { requireAuth } = useAuth();
   const showToast = useToast();
   const { items, savedIds, heartedIds, toggleSaved, toggleHeart } = useMarketplace();
@@ -55,7 +56,8 @@ export default function ItemDetailScreen() {
   const saved = savedIds.includes(item.id);
   const hearted = heartedIds.includes(item.id);
   const more = items.filter((other) => other.userId === item.userId && other.id !== item.id);
-  const heroHeight = width * 1.12;
+  const heroHeight = Math.round(Math.min(width * 1.1, height * 0.62));
+  const sideInset = Math.max(14, (width - contentWidth) / 2 + 14);
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
@@ -81,7 +83,7 @@ export default function ItemDetailScreen() {
           ) : null}
         </View>
 
-        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+        <View style={[styles.sheet, { backgroundColor: colors.background, maxWidth: contentWidth, paddingHorizontal: gutter }]}>
           <View style={styles.badges}>
             <Badge label={item.category} tone="orange" icon={Tag} />
             <Badge label={item.status} tone={item.status === 'Active' ? 'green' : 'orange'} dot />
@@ -99,8 +101,8 @@ export default function ItemDetailScreen() {
               <ArrowRightLeft size={20} color={colors.onPrimary} strokeWidth={2.2} />
             </View>
             <View style={styles.flex}>
-              <Text style={[styles.wantsLabel, { color: colors.orange }]}>LOOKING TO SWAP FOR</Text>
-              <Text style={[styles.wantsText, { color: colors.ink }]}>{item.wanted}</Text>
+              <Text maxFontSizeMultiplier={maxFontScale} style={[styles.wantsLabel, { color: colors.orange }]}>LOOKING TO SWAP FOR</Text>
+              <Text maxFontSizeMultiplier={maxFontScale} style={[styles.wantsText, { color: colors.ink }]}>{item.wanted}</Text>
             </View>
           </View>
 
@@ -183,7 +185,7 @@ export default function ItemDetailScreen() {
         </View>
       </ScrollView>
 
-      <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
+      <View style={[styles.topBar, { top: insets.top + 8, left: gutter, right: gutter }]} pointerEvents="box-none">
         <IconButton icon={ArrowLeft} label="Back" tone="glass" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
         <View style={styles.topRight}>
           <IconButton
@@ -197,7 +199,7 @@ export default function ItemDetailScreen() {
         </View>
       </View>
 
-      <Glass strong intensity={70} style={[styles.actionbar, { bottom: Math.max(insets.bottom, 12) }, elevation(3, colors)]}>
+      <Glass strong intensity={70} style={[styles.actionbar, { bottom: Math.max(insets.bottom, 12), left: sideInset, right: sideInset }, elevation(3, colors)]}>
         <IconButton icon={Bookmark} label={saved ? 'Saved' : 'Save'} active={saved} filled={saved} onPress={() => toggleSaved(item.id)} />
         <Button
           label={item.mine ? 'This is your listing' : 'Propose a swap'}
@@ -252,7 +254,7 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 4 },
   dotIdle: { opacity: 0.55 },
   dotActive: { width: 22 },
-  sheet: { marginTop: -30, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20, paddingTop: 24, gap: 16 },
+  sheet: { width: '100%', alignSelf: 'center', marginTop: -30, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 24, gap: 16 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
@@ -269,7 +271,7 @@ const styles = StyleSheet.create({
   mini: { width: 230, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 20, padding: 8 },
   miniImage: { width: 58, height: 58, borderRadius: 14 },
   report: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 },
-  topBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
+  topBar: { position: 'absolute', flexDirection: 'row', justifyContent: 'space-between' },
   topRight: { flexDirection: 'row', gap: 8 },
-  actionbar: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 30, padding: 8 },
+  actionbar: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 30, padding: 8 },
 });

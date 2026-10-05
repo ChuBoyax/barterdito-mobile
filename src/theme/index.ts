@@ -3,6 +3,7 @@ import type { ViewStyle } from 'react-native';
 import type { ThemeColors } from './colors';
 
 export * from './colors';
+export * from './layout';
 export * from './tones';
 export * from './typography';
 

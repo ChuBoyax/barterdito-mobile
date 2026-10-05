@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppText, Glass, PhotoScrim, PressableScale, Skeleton } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts } from '@/theme';
+import { fonts, maxFontScale } from '@/theme';
 import type { Item } from '@/types/models';
 
 type ItemCardProps = {
@@ -27,7 +27,7 @@ export function ItemCard({ item, saved, hearted, onOpen, onSave, onHeart }: Item
           {item.hot ? (
             <View style={[styles.hot, { backgroundColor: colors.orange }]}>
               <Flame size={11} color={colors.onPrimary} fill={colors.onPrimary} />
-              <Text style={[styles.hotText, { color: colors.onPrimary }]}>Hot</Text>
+              <Text maxFontSizeMultiplier={maxFontScale} style={[styles.hotText, { color: colors.onPrimary }]}>Hot</Text>
             </View>
           ) : (
             <View />
@@ -41,13 +41,13 @@ export function ItemCard({ item, saved, hearted, onOpen, onSave, onHeart }: Item
         <View style={styles.bottomRow}>
           <View style={styles.inline}>
             <MapPin size={11} color={colors.onPhoto} strokeWidth={2.4} />
-            <Text style={[styles.photoText, { color: colors.onPhoto }]} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoText, { color: colors.onPhoto }]} numberOfLines={1}>
               {item.location}
             </Text>
           </View>
           <View style={styles.inlineEnd}>
             <Heart size={11} color={colors.onPhoto} fill={colors.onPhoto} />
-            <Text style={[styles.photoText, { color: colors.onPhoto }]}>{item.hearts}</Text>
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoText, { color: colors.onPhoto }]}>{item.hearts}</Text>
           </View>
         </View>
       </PressableScale>

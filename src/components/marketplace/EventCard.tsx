@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppText, Avatar, Button, Card } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { avatarPalette, fonts } from '@/theme';
+import { avatarPalette, fonts, maxFontScale } from '@/theme';
 import type { TradeEvent } from '@/types/models';
 
 type EventCardProps = { event: TradeEvent; going: boolean; onRsvp: () => void };
@@ -16,8 +16,8 @@ export function EventCard({ event, going, onRsvp }: EventCardProps) {
     <Card padded={false} style={styles.card}>
       <View style={[styles.banner, { backgroundColor: event.color }]}>
         <View style={[styles.date, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.day, { color: colors.ink }]}>{event.day}</Text>
-          <Text style={[styles.month, { color: colors.orange }]}>{event.month}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.day, { color: colors.ink }]}>{event.day}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.month, { color: colors.orange }]}>{event.month}</Text>
         </View>
         <Users size={44} color={colors.onPrimary} strokeWidth={1.6} style={styles.bannerIcon} />
       </View>
