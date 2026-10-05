@@ -43,10 +43,10 @@ function greeting() {
 
 export default function BrowseScreen() {
   const { colors } = useTheme();
-  const { gutter, width, isTablet } = useResponsive();
+  const { gutter, innerWidth, columns } = useResponsive();
   const pad = { paddingHorizontal: gutter };
   const hRow = [styles.hRow, pad];
-  const featuredSnap = featuredCardWidth(width, isTablet) + 12;
+  const featuredSnap = featuredCardWidth(innerWidth, columns) + 14;
   const { user, requireAuth } = useAuth();
   const { items, loading, refresh } = useMarketplace();
   const [filters, setFilters] = useState(defaultFilters);
@@ -310,5 +310,5 @@ const styles = StyleSheet.create({
   primaryTitle: { fontFamily: fonts.extrabold, fontSize: 17 },
   primaryText: { fontFamily: fonts.medium, fontSize: 12.5, opacity: 0.88 },
   shortcut: { flex: 1, alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 4 },
-  hRow: { gap: 12, paddingBottom: 6 },
+  hRow: { gap: 14, paddingBottom: 6 },
 });

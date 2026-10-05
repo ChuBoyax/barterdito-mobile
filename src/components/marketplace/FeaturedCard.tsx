@@ -8,16 +8,19 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, maxFontScale } from '@/theme';
 import type { Item } from '@/types/models';
 
-export function featuredCardWidth(screenWidth: number, isTablet: boolean) {
-  return isTablet ? 220 : Math.round(Math.min(184, screenWidth * 0.5));
+const gridGap = 14;
+
+// Same width as one ItemGrid cell, so the carousel lines up with the "Latest items" grid.
+export function featuredCardWidth(innerWidth: number, columns: number) {
+  return Math.floor((innerWidth - gridGap * (columns - 1)) / columns);
 }
 
 export function FeaturedCard({ item, onPress }: { item: Item; onPress: () => void }) {
   const { colors } = useTheme();
-  const { width, isTablet } = useResponsive();
-  const cardWidth = featuredCardWidth(width, isTablet);
+  const { innerWidth, columns } = useResponsive();
+  const cardWidth = featuredCardWidth(innerWidth, columns);
   return (
-    <PressableScale accessibilityRole="button" accessibilityLabel={item.title} onPress={onPress} scaleTo={0.97} style={[styles.card, { width: cardWidth, height: Math.round(cardWidth * 1.22) }]}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={item.title} onPress={onPress} scaleTo={0.97} style={[styles.card, { width: cardWidth, height: Math.round(cardWidth / 0.85) }]}>
       <Image source={item.image} style={StyleSheet.absoluteFill} contentFit="cover" />
       <PhotoScrim />
       <View style={styles.top}>
@@ -43,7 +46,7 @@ export function FeaturedCard({ item, onPress }: { item: Item; onPress: () => voi
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 18, overflow: 'hidden', justifyContent: 'space-between' },
+  card: { borderRadius: 20, overflow: 'hidden', justifyContent: 'space-between' },
   top: { padding: 10 },
   body: { padding: 12, gap: 5 },
   title: { fontFamily: fonts.extrabold, fontSize: 16, lineHeight: 20, letterSpacing: -0.3 },
