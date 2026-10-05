@@ -15,7 +15,7 @@ import { firstName } from '@/utils/format';
 
 type Tab = 'received' | 'sent';
 
-// Status changes that can't be undone ask first.
+
 const confirmations: Partial<Record<OfferStatus, (offer: Offer) => ConfirmOptions>> = {
   Declined: (offer) => ({
     title: 'Decline this offer?',
@@ -49,7 +49,7 @@ function OffersContent() {
     () => offers.filter((offer) => offer.received === (tab === 'received')).sort((a, b) => offerStatusOrder[a.status] - offerStatusOrder[b.status]),
     [offers, tab],
   );
-  // Badge counts only show what needs attention, not every offer ever made.
+
   const receivedPending = offers.filter((offer) => offer.received && offer.status === 'Pending').length;
   const sentActive = offers.filter((offer) => !offer.received && (offer.status === 'Pending' || offer.status === 'Accepted')).length;
 
@@ -58,7 +58,7 @@ function OffersContent() {
     try {
       const updated = await tradeService.updateOfferStatus(offer.id, status);
       setData((current = []) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-      // Keep the trade chat / trade-complete screens in sync with the new status.
+     
       queryClient.setQueryData(['tradeService.getOffer', updated.id], updated);
       const first = firstName(offer.person);
       if (status === 'Accepted') showToast(`Offer accepted. Plan a meetup with ${first}.`);

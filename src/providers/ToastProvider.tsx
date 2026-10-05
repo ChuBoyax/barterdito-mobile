@@ -17,7 +17,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
 
   const showToast = useCallback((next: string) => setMessage(next), []);
-  // Stable value so screens using useToast() don't re-render every time a toast appears or hides.
+
   const value = useMemo(() => ({ showToast }), [showToast]);
 
   useEffect(() => {

@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await removeKey(storageKeys.demoAuth);
   }, []);
 
-  // Demo-only: updates the locally stored user until a profile endpoint exists.
+
   const updateProfile = useCallback(
     async (patch: ProfilePatch) => {
       if (!user) throw new Error('Not signed in');

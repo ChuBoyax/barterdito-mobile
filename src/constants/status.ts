@@ -14,7 +14,7 @@ export const itemStatusTone: Record<ItemStatus, Tone> = {
   Traded: 'blue',
 };
 
-/** Sort order for offer lists: things that still need action come first. */
+
 export const offerStatusOrder: Record<OfferStatus, number> = { Pending: 0, Accepted: 1, Completed: 2, Declined: 3 };
 
 export const itemStatuses: ItemStatus[] = ['Active', 'In Negotiation', 'Traded'];

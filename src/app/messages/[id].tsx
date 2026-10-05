@@ -45,7 +45,7 @@ function TradeChat() {
   );
 }
 
-// Compact, always-visible summary of the swap so the chat itself keeps most of the screen.
+
 function TradeContext({ offer, tradeId }: { offer: Offer; tradeId: string }) {
   const { colors } = useTheme();
   const first = firstName(offer.person);

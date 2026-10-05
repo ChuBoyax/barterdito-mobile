@@ -18,7 +18,7 @@ type PhotoGridProps = {
   onMakeCover: (index: number) => void;
 };
 
-/** Square photo tiles in a 3-column grid. The first photo is the cover; tap another to promote it. */
+
 export function PhotoGrid({ photos, max, error, onAdd, onRemove, onMakeCover }: PhotoGridProps) {
   const { colors } = useTheme();
   const [width, setWidth] = useState(0);

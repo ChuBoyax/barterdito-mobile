@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useAuth, useToast } from '@/providers';
 import { confirmAction } from '@/utils/confirm';
 
-/** Confirm → sign out → toast → back to Browse. Shared by Profile and Settings. */
+
 export function useSignOut() {
   const { signOut } = useAuth();
   const showToast = useToast();

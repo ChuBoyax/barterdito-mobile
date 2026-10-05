@@ -6,12 +6,12 @@ export function formatPeso(value: number): string {
   return `₱${value.toLocaleString('en-PH')}`;
 }
 
-/** "Mika Santos" → "Mika" */
+
 export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
 }
 
-/** "Mika Santos" → "MS" */
+
 export function initialsOf(fullName: string): string {
   return fullName
     .trim()

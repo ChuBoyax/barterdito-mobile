@@ -6,7 +6,7 @@ import { AppText, Badge } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
 import type { ItemDraft } from '@/types/models';
 
-/** How the listing will look to other traders — shown on the review step. */
+
 export function ListingPreview({ draft }: { draft: ItemDraft }) {
   const { colors } = useTheme();
   return (

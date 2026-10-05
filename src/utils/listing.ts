@@ -17,7 +17,7 @@ export const emptyDraft: ItemDraft = {
 export type DraftField = 'photos' | 'title' | 'category' | 'description' | 'lookingFor' | 'location';
 export type DraftErrors = Partial<Record<DraftField, string>>;
 
-/** Fields validated on each step of the listing form, in order. The last step (review) has none. */
+
 export const stepFields: DraftField[][] = [['photos', 'title', 'category', 'description'], ['lookingFor', 'location'], []];
 
 export function validateDraft(draft: ItemDraft): DraftErrors {
@@ -31,7 +31,7 @@ export function validateDraft(draft: ItemDraft): DraftErrors {
   return errors;
 }
 
-/** Index of the first step before `target` that has an invalid field, or -1 if all are valid. */
+
 export function firstInvalidStep(errors: DraftErrors, target: number): number {
   return stepFields.findIndex((fields, index) => index < target && fields.some((field) => errors[field]));
 }
@@ -49,7 +49,7 @@ export function itemToDraft(item: Item): ItemDraft {
   };
 }
 
-/** Moves the photo at `index` to the front so it becomes the cover. */
+
 export function withCover(photos: string[], index: number): string[] {
   if (index <= 0 || index >= photos.length) return photos;
   const next = [...photos];

@@ -8,11 +8,7 @@ export type ConfirmOptions = {
   destructive?: boolean;
 };
 
-/**
- * Promise-based confirmation dialog.
- *
- *   if (await confirmAction({ title: 'Archive listing?', confirmLabel: 'Archive', destructive: true })) { ... }
- */
+
 export function confirmAction({ title, message, confirmLabel, cancelLabel = 'Cancel', destructive }: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(

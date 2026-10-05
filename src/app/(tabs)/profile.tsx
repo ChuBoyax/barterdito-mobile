@@ -37,7 +37,7 @@ type Tab = 'history' | 'reviews';
 const PREVIEW_COUNT = 3;
 const HEADER_ROW = 44;
 
-// The single most useful thing the user can add next to strengthen their profile.
+
 function nextProfileStep(user: User): string {
   if (!user.avatarUrl) return 'Add a profile photo so traders recognise you.';
   if (!user.bio?.trim()) return 'Write a short bio about what you like to trade.';
