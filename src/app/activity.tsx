@@ -15,10 +15,10 @@ export default function ActivityScreen() {
 }
 
 function ActivityContent() {
-  const { data: activity = [], loading, reload } = useAsync(() => communityService.getActivity(), []);
-  if (loading && !activity.length) return <LoadingView />;
+  const { data: activity = [], loading, refreshing, reload } = useAsync(['communityService.getActivity'], () => communityService.getActivity());
+  if (loading && !activity.length) return <LoadingView variant="list" />;
   return (
-    <Screen refreshing={loading} onRefresh={() => void reload()}>
+    <Screen refreshing={refreshing} onRefresh={() => void reload()}>
       <Card style={styles.list}>
         {activity.map((entry) => (
           <NotificationRow key={entry.id} notification={entry} />

@@ -10,7 +10,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { authenticated, ready } = useAuth();
   const { colors } = useTheme();
-  if (!ready) return <LoadingView />;
+  if (!ready) return <LoadingView variant="list" />;
   if (authenticated) return <>{children}</>;
   return (
     <View style={[styles.wrap, { backgroundColor: colors.background }]}>

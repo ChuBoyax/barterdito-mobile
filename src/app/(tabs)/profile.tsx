@@ -61,9 +61,9 @@ function ProfileContent() {
   const { user } = useAuth();
   const signOut = useSignOut();
   const [tab, setTab] = useState<Tab>('history');
-  const { data: stats } = useAsync(() => userService.getProfileStats(), []);
-  const { data: history = [] } = useAsync(() => userService.getTradeHistory(), []);
-  const { data: reviews = [] } = useAsync(() => userService.getReviews(), []);
+  const { data: stats } = useAsync(['userService.getProfileStats'], () => userService.getProfileStats());
+  const { data: history = [] } = useAsync(['userService.getTradeHistory'], () => userService.getTradeHistory());
+  const { data: reviews = [] } = useAsync(['userService.getReviews'], () => userService.getReviews());
 
   if (!user) return null;
 

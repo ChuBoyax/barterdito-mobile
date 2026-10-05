@@ -22,8 +22,8 @@ function FollowersContent() {
   const showToast = useToast();
   const params = useLocalSearchParams<{ tab?: Tab }>();
   const [tab, setTab] = useState<Tab>(params.tab === 'following' ? 'following' : 'followers');
-  const { data: followers = [], loading } = useAsync(() => userService.getFollowers(), []);
-  const { data: following = [] } = useAsync(() => userService.getFollowing(), []);
+  const { data: followers = [], loading } = useAsync(['userService.getFollowers'], () => userService.getFollowers());
+  const { data: following = [] } = useAsync(['userService.getFollowing'], () => userService.getFollowing());
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const isFollowing = (id: string) => overrides[id] ?? following.some((trader) => trader.id === id);
   const list = tab === 'followers' ? followers : followers.filter((trader) => isFollowing(trader.id));
@@ -46,7 +46,7 @@ function FollowersContent() {
         ]}
       />
       {loading ? (
-        <LoadingView />
+        <LoadingView variant="list" inline />
       ) : (
         <Card>
           {list.map((trader) => {

@@ -17,10 +17,7 @@ export default function RecommendationsScreen() {
 
 function RecommendationsContent() {
   const { items, savedIds } = useMarketplace();
-  const { data: recommended = [], loading } = useAsync(
-    () => aiService.getRecommendations(items, savedIds),
-    [items.length, savedIds.join(',')],
-  );
+  const { data: recommended = [], loading } = useAsync(['aiService.getRecommendations', items.length, savedIds.join(',')], () => aiService.getRecommendations(items, savedIds));
 
   return (
     <Screen>

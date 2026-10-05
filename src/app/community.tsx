@@ -12,8 +12,8 @@ export default function CommunityScreen() {
   const { colors } = useTheme();
   const { requireAuth } = useAuth();
   const showToast = useToast();
-  const { data: threads = [], loading } = useAsync(() => communityService.getForumThreads(), []);
-  const { data: campaign } = useAsync(() => communityService.getActiveCampaign(), []);
+  const { data: threads = [], loading } = useAsync(['communityService.getForumThreads'], () => communityService.getForumThreads());
+  const { data: campaign } = useAsync(['communityService.getActiveCampaign'], () => communityService.getActiveCampaign());
 
   return (
     <Screen>
@@ -21,7 +21,7 @@ export default function CommunityScreen() {
         <SectionHeading eyebrow="Discussions" title="Community forum" />
         <Button label="New thread" icon={Plus} compact onPress={() => requireAuth(() => showToast('New discussion composer opened'))} />
         {loading ? (
-          <LoadingView />
+          <LoadingView variant="list" inline />
         ) : (
           threads.map((thread) => (
             <Pressable

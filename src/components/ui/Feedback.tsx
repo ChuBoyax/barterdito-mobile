@@ -1,11 +1,11 @@
 import type { LucideIcon } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Animated, StyleSheet, View, type DimensionValue, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type DimensionValue } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
 import { tone as getTone, type Tone } from '@/theme';
 import { AppText } from './AppText';
 import { IconTile } from './IconTile';
+import { SkeletonScreen, type SkeletonVariant } from './Skeleton';
 
 export function ProgressBar({ value, max = 100 }: { value: number; max?: number }) {
   const { colors } = useTheme();
@@ -17,32 +17,9 @@ export function ProgressBar({ value, max = 100 }: { value: number; max?: number 
   );
 }
 
-export function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
-  const { colors } = useTheme();
-  const [opacity] = useState(() => new Animated.Value(0.45));
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.45, duration: 700, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
-  return <Animated.View style={[{ backgroundColor: colors.surface2, borderRadius: 10, opacity }, style]} />;
-}
-
-export function LoadingView({ label = 'Loading…' }: { label?: string }) {
-  const { colors } = useTheme();
-  return (
-    <View style={[styles.loading, { backgroundColor: colors.background }]}>
-      <View style={[styles.spinner, { backgroundColor: colors.orangeSoft }]}>
-        <ActivityIndicator color={colors.orange} />
-      </View>
-      <AppText variant="small">{label}</AppText>
-    </View>
-  );
+/** Loading state for a screen or section: a skeleton shaped like the content that is coming. */
+export function LoadingView({ variant, inline, label }: { variant?: SkeletonVariant; inline?: boolean; label?: string }) {
+  return <SkeletonScreen variant={variant} inline={inline} label={label} />;
 }
 
 export function InfoNote({
@@ -72,8 +49,6 @@ export function InfoNote({
 const styles = StyleSheet.create({
   track: { height: 10, borderRadius: 5, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 5 },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 48 },
-  spinner: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   note: { flexDirection: 'row', alignItems: 'center', gap: 13, borderRadius: 20, padding: 14 },
   flex: { flex: 1, gap: 2 },
 });

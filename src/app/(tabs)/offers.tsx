@@ -7,7 +7,7 @@ import { OfferCard } from '@/components/marketplace';
 import { EmptyState, LoadingView, Screen, SegmentedControl } from '@/components/ui';
 import { offerStatusOrder } from '@/constants/status';
 import { useAsync } from '@/hooks/useAsync';
-import { useToast } from '@/providers';
+import { queryClient, useToast } from '@/providers';
 import { tradeService } from '@/services';
 import type { Offer, OfferStatus } from '@/types/models';
 import { confirmAction, type ConfirmOptions } from '@/utils/confirm';
@@ -43,7 +43,7 @@ function OffersContent() {
   const showToast = useToast();
   const [tab, setTab] = useState<Tab>('received');
   const [busyId, setBusyId] = useState<string | null>(null);
-  const { data: offers = [], loading, setData, reload } = useAsync(() => tradeService.getOffers(), []);
+  const { data: offers = [], loading, refreshing, setData, reload } = useAsync(['tradeService.getOffers'], () => tradeService.getOffers());
 
   const list = useMemo(
     () => offers.filter((offer) => offer.received === (tab === 'received')).sort((a, b) => offerStatusOrder[a.status] - offerStatusOrder[b.status]),
@@ -58,6 +58,8 @@ function OffersContent() {
     try {
       const updated = await tradeService.updateOfferStatus(offer.id, status);
       setData((current = []) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
+      // Keep the trade chat / trade-complete screens in sync with the new status.
+      queryClient.setQueryData(['tradeService.getOffer', updated.id], updated);
       const first = firstName(offer.person);
       if (status === 'Accepted') showToast(`Offer accepted. Plan a meetup with ${first}.`);
       if (status === 'Declined') showToast(`Offer declined. ${first} has been notified.`);
@@ -77,7 +79,7 @@ function OffersContent() {
 
   return (
     <Screen
-      refreshing={loading}
+      refreshing={refreshing}
       onRefresh={() => void reload()}
       header={<AppHeader eyebrow="Your swaps" title="Trade Offers" subtitle="Review proposals, accept fair swaps, and plan safe meetups." />}>
       <SegmentedControl<Tab>
@@ -89,7 +91,7 @@ function OffersContent() {
         ]}
       />
       {loading && !offers.length ? (
-        <LoadingView label="Loading offers…" />
+        <LoadingView variant="cards" inline label="Loading offers" />
       ) : list.length ? (
         list.map((offer) => (
           <OfferCard

@@ -22,9 +22,9 @@ export default function TradeCompleteScreen() {
 function TradeComplete() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
-  const { data: offer, loading } = useAsync(() => tradeService.getOffer(id), [id]);
+  const { data: offer, loading } = useAsync(['tradeService.getOffer', id], () => tradeService.getOffer(id));
   const confetti = [colors.orange, colors.blue, colors.green, colors.yellow, colors.red, colors.violet];
-  if (loading) return <LoadingView />;
+  if (loading) return <LoadingView variant="profile" />;
 
   return (
     <Screen>

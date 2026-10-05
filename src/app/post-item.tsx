@@ -9,7 +9,7 @@ import { ListingPreview, PhotoGrid, StepIndicator } from '@/components/listing';
 import { AppText, Badge, Button, Card, InfoNote, Screen, SelectField, TextField } from '@/components/ui';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
-import { useAuth, useMarketplace, useTheme, useToast } from '@/providers';
+import { queryClient, useAuth, useMarketplace, useTheme, useToast } from '@/providers';
 import { aiService, itemService } from '@/services';
 import type { ItemDraft } from '@/types/models';
 import { errorMessage } from '@/utils/format';
@@ -154,7 +154,10 @@ function PostItemForm() {
     setPublishing(true);
     try {
       if (edit) {
-        upsertItem(await itemService.updateItem(edit, draft));
+        const updated = await itemService.updateItem(edit, draft);
+        upsertItem(updated);
+        queryClient.setQueryData(['itemService.getItem', edit], updated);
+        void queryClient.invalidateQueries({ queryKey: ['itemService.getMyItems'] });
         allowLeave();
         showToast('Changes saved');
         if (router.canGoBack()) router.back();

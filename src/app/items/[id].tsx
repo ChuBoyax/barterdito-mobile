@@ -41,7 +41,7 @@ export default function ItemDetailScreen() {
   const { requireAuth, authenticated } = useAuth();
   const showToast = useToast();
   const { items, savedIds, heartedIds, toggleSaved, toggleHeart } = useMarketplace();
-  const { data: fetched, loading, error } = useAsync(() => itemService.getItem(id), [id]);
+  const { data: fetched, loading, error } = useAsync(['itemService.getItem', id], () => itemService.getItem(id));
   const [activeImage, setActiveImage] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
@@ -56,7 +56,7 @@ export default function ItemDetailScreen() {
     if (authenticated && ownerId) void userService.isFollowing(ownerId).then(setFollowing);
   }, [authenticated, ownerId]);
 
-  if (loading && !item) return <LoadingView />;
+  if (loading && !item) return <LoadingView variant="detail" />;
   if (!item || error) {
     return (
       <Screen>

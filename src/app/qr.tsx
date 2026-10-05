@@ -20,7 +20,7 @@ export default function QRScreen() {
 function QRContent() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { data: stats } = useAsync(() => userService.getProfileStats(), []);
+  const { data: stats } = useAsync(['userService.getProfileStats'], () => userService.getProfileStats());
   if (!user) return null;
   const url = links.trader(user.id);
 

@@ -27,7 +27,7 @@ export function ChatView({ kind, threadId, name, initials, header, typingName, s
   const { colors } = useTheme();
   const pickImages = useImagePicker();
   const scrollRef = useRef<ScrollView>(null);
-  const { data: messages = [], loading, setData } = useAsync(() => messageService.getMessages(kind, threadId), [kind, threadId]);
+  const { data: messages = [], loading, setData } = useAsync(['messageService.getMessages', kind, threadId], () => messageService.getMessages(kind, threadId));
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -105,7 +105,7 @@ export function ChatView({ kind, threadId, name, initials, header, typingName, s
       </Pressable>
       {header}
       {loading ? (
-        <LoadingView label="Loading messages…" />
+        <LoadingView variant="messages" label="Loading messages" />
       ) : (
         <ScrollView ref={scrollRef} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
           <AppText variant="caption" align="center">

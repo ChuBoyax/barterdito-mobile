@@ -13,8 +13,8 @@ import { formatNumber } from '@/utils/format';
 const podiumHeights: Record<number, number> = { 1: 110, 2: 80, 3: 62 };
 
 export default function LeaderboardScreen() {
-  const { data: ranks = [], loading } = useAsync(() => userService.getLeaderboard(), []);
-  if (loading) return <LoadingView />;
+  const { data: ranks = [], loading } = useAsync(['userService.getLeaderboard'], () => userService.getLeaderboard());
+  if (loading) return <LoadingView variant="list" />;
   const podium = [ranks[1], ranks[0], ranks[2]].filter(Boolean);
 
   return (

@@ -19,13 +19,13 @@ export default function DirectMessagesScreen() {
 
 function DirectMessagesContent() {
   const showToast = useToast();
-  const { data: threads = [], loading } = useAsync(() => messageService.getThreads(), []);
+  const { data: threads = [], loading } = useAsync(['messageService.getThreads'], () => messageService.getThreads());
   return (
     <Screen>
       <SectionHeading eyebrow="Private conversations" title="Direct Messages" />
       <Button label="New message" icon={Plus} compact onPress={() => showToast('New message composer coming soon')} />
       {loading ? (
-        <LoadingView />
+        <LoadingView variant="list" inline />
       ) : (
         <Card style={styles.list}>
           {threads.map((thread) => (

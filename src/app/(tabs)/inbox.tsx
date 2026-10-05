@@ -27,7 +27,7 @@ function InboxContent() {
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [menuThread, setMenuThread] = useState<Thread | null>(null);
-  const { data: threads = [], loading, setData, reload } = useAsync(() => messageService.getThreads(), []);
+  const { data: threads = [], loading, refreshing, setData, reload } = useAsync(['messageService.getThreads'], () => messageService.getThreads());
   const unreadThreads = threads.filter((thread) => thread.unread > 0).length;
 
   const visible = useMemo(() => {
@@ -78,7 +78,7 @@ function InboxContent() {
   const empty = !loading && !threads.length;
 
   return (
-    <Screen refreshing={loading} onRefresh={() => void reload()} header={<AppHeader eyebrow="Conversations" title="Inbox" />}>
+    <Screen refreshing={refreshing} onRefresh={() => void reload()} header={<AppHeader eyebrow="Conversations" title="Inbox" />}>
       {empty ? (
         <EmptyState
           icon={MessageCircle}
@@ -99,7 +99,7 @@ function InboxContent() {
             ]}
           />
           {loading && !threads.length ? (
-            <LoadingView />
+            <LoadingView variant="list" inline />
           ) : visible.length ? (
             <>
               <Card padded={false} style={styles.list}>

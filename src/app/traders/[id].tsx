@@ -16,9 +16,9 @@ export default function TraderProfileScreen() {
   const { colors } = useTheme();
   const { user, requireAuth, authenticated } = useAuth();
   const showToast = useToast();
-  const { data: trader, loading, error } = useAsync(() => userService.getTrader(id), [id]);
-  const { data: listings = [], loading: listingsLoading } = useAsync(() => itemService.getItemsByTrader(id), [id]);
-  const { data: reviews = [] } = useAsync(() => userService.getReviews(), []);
+  const { data: trader, loading, error } = useAsync(['userService.getTrader', id], () => userService.getTrader(id));
+  const { data: listings = [], loading: listingsLoading } = useAsync(['itemService.getItemsByTrader', id], () => itemService.getItemsByTrader(id));
+  const { data: reviews = [] } = useAsync(['userService.getReviews'], () => userService.getReviews());
   const [following, setFollowing] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [opening, setOpening] = useState(false);
@@ -29,7 +29,7 @@ export default function TraderProfileScreen() {
     if (authenticated) void userService.isFollowing(id).then(setFollowing);
   }, [authenticated, id]);
 
-  if (loading) return <LoadingView />;
+  if (loading) return <LoadingView variant="profile" />;
   if (!trader || error) {
     return (
       <Screen>

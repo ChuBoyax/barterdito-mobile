@@ -25,9 +25,9 @@ export default function AnalyticsScreen() {
 }
 
 function AnalyticsContent() {
-  const { data: summary, loading } = useAsync(() => communityService.getAnalytics(), []);
-  const { data: myItems = [] } = useAsync(() => itemService.getMyItems(), []);
-  if (loading || !summary) return <LoadingView />;
+  const { data: summary, loading } = useAsync(['communityService.getAnalytics'], () => communityService.getAnalytics());
+  const { data: myItems = [] } = useAsync(['itemService.getMyItems'], () => itemService.getMyItems());
+  if (loading || !summary) return <LoadingView variant="stats" />;
 
   return (
     <Screen>

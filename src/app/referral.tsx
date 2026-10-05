@@ -20,8 +20,8 @@ export default function ReferralScreen() {
 function ReferralContent() {
   const { colors } = useTheme();
   const showToast = useToast();
-  const { data: referral, loading } = useAsync(() => communityService.getReferral(), []);
-  if (loading || !referral) return <LoadingView />;
+  const { data: referral, loading } = useAsync(['communityService.getReferral'], () => communityService.getReferral());
+  if (loading || !referral) return <LoadingView variant="stats" />;
 
   async function copy() {
     await Clipboard.setStringAsync(`https://${referral!.link}`);

@@ -36,7 +36,7 @@ function MyItemsContent() {
   const { removeItem, upsertItem, items: marketItems } = useMarketplace();
   const [tab, setTab] = useState('All');
   const [menuItem, setMenuItem] = useState<Item | null>(null);
-  const { data: items = [], loading, setData, reload } = useAsync(() => itemService.getMyItems(), [marketItems.length]);
+  const { data: items = [], loading, refreshing, setData, reload } = useAsync(['itemService.getMyItems', marketItems.length], () => itemService.getMyItems());
   const { gutter } = useResponsive();
 
   const count = (status: ItemStatus) => items.filter((item) => item.status === status).length;
@@ -85,7 +85,7 @@ function MyItemsContent() {
 
   return (
     <Screen
-      refreshing={loading}
+      refreshing={refreshing}
       onRefresh={() => void reload()}
       header={
         <AppHeader
@@ -115,7 +115,7 @@ function MyItemsContent() {
             <ChipRow inset={gutter} options={options} value={selected} onChange={(option) => setTab(option.split(' · ')[0])} />
           </View>
           {loading && !items.length ? (
-            <LoadingView />
+            <LoadingView variant="cards" inline />
           ) : visible.length ? (
             visible.map((item) => <ManagedItem key={item.id} item={item} onOptions={() => setMenuItem(item)} />)
           ) : (

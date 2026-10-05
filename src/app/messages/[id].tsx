@@ -24,10 +24,10 @@ export default function TradeChatScreen() {
 
 function TradeChat() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: thread, loading } = useAsync(() => messageService.getThread(id), [id]);
-  const { data: offer } = useAsync(() => tradeService.getOffer(id).catch(() => undefined), [id]);
+  const { data: thread, loading } = useAsync(['messageService.getThread', id], () => messageService.getThread(id));
+  const { data: offer } = useAsync(['tradeService.getOffer', id], () => tradeService.getOffer(id).catch(() => undefined));
 
-  if (loading) return <LoadingView />;
+  if (loading) return <LoadingView variant="chat" />;
   const name = thread?.name ?? offer?.person ?? 'Trader';
   const initials = thread?.initials ?? offer?.initials ?? 'BD';
   const traderId = offer?.theirs.userId;

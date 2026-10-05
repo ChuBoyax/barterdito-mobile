@@ -16,7 +16,7 @@ export default function DirectChatScreen() {
 
 function DirectChat() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: thread, loading } = useAsync(() => messageService.getThread(id), [id]);
-  if (loading) return <LoadingView />;
+  const { data: thread, loading } = useAsync(['messageService.getThread', id], () => messageService.getThread(id));
+  if (loading) return <LoadingView variant="chat" />;
   return <ChatView kind="direct" threadId={id} name={thread?.name ?? 'Trader'} initials={thread?.initials ?? 'BD'} />;
 }

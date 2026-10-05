@@ -10,7 +10,7 @@ import { communityService } from '@/services';
 export default function EventsScreen() {
   const { requireAuth } = useAuth();
   const showToast = useToast();
-  const { data: events = [], loading } = useAsync(() => communityService.getEvents(), []);
+  const { data: events = [], loading } = useAsync(['communityService.getEvents'], () => communityService.getEvents());
   const [going, setGoing] = useState<string[]>([]);
 
   function rsvp(id: string) {
@@ -31,7 +31,7 @@ export default function EventsScreen() {
         text="Browse, barter, and build trust at verified local events."
       />
       {loading ? (
-        <LoadingView />
+        <LoadingView variant="cards" inline />
       ) : (
         events.map((event) => <EventCard key={event.id} event={event} going={going.includes(event.id)} onRsvp={() => rsvp(event.id)} />)
       )}

@@ -19,7 +19,7 @@ export default function NotificationsScreen() {
 
 function NotificationsContent() {
   const showToast = useToast();
-  const { data: notifications = [], loading, setData, reload } = useAsync(() => communityService.getNotifications(), []);
+  const { data: notifications = [], loading, refreshing, setData, reload } = useAsync(['communityService.getNotifications'], () => communityService.getNotifications());
 
   async function markAllRead() {
     await communityService.markAllNotificationsRead();
@@ -27,10 +27,10 @@ function NotificationsContent() {
     showToast('All caught up!');
   }
 
-  if (loading && !notifications.length) return <LoadingView />;
+  if (loading && !notifications.length) return <LoadingView variant="list" />;
 
   return (
-    <Screen refreshing={loading} onRefresh={() => void reload()}>
+    <Screen refreshing={refreshing} onRefresh={() => void reload()}>
       <Button label="Mark all read" variant="ghost" compact style={styles.right} onPress={() => void markAllRead()} />
       {notifications.length ? (
         <Card style={styles.list}>

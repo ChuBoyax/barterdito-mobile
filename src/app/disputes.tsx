@@ -25,7 +25,7 @@ function DisputeContent() {
   const { colors } = useTheme();
   const showToast = useToast();
   const pickImages = useImagePicker();
-  const { data: trades = [] } = useAsync(() => tradeService.getCompletedTrades(), []);
+  const { data: trades = [] } = useAsync(['tradeService.getCompletedTrades'], () => tradeService.getCompletedTrades());
   const [trade, setTrade] = useState('');
   const [reason, setReason] = useState(reasons[0]);
   const [details, setDetails] = useState('');

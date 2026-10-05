@@ -21,7 +21,7 @@ function AdminContent() {
   const { user } = useAuth();
   const showToast = useToast();
   const allowed = user?.role === 'sentinel' || __DEV__;
-  const { data: summary, loading } = useAsync(() => communityService.getAdminSummary(), []);
+  const { data: summary, loading } = useAsync(['communityService.getAdminSummary'], () => communityService.getAdminSummary());
 
   if (!allowed) {
     return (
@@ -34,7 +34,7 @@ function AdminContent() {
       </Screen>
     );
   }
-  if (loading || !summary) return <LoadingView />;
+  if (loading || !summary) return <LoadingView variant="stats" />;
 
   return (
     <Screen>
