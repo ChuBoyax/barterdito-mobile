@@ -3,11 +3,7 @@ import { delay, ServiceError } from './client';
 export type DonationInput = { amount: number; name: string; email: string };
 export type DonationReceipt = { reference: string; amount: number; method: string; date: string };
 
-/**
- * Backend: POST {API_URL}/api/payments/donation → { checkoutUrl }.
- * The real flow opens the PayMongo checkout URL with expo-web-browser and
- * returns via a deep link to /payment-receipt.
- */
+
 export const paymentService = {
   async startDonation({ amount }: DonationInput): Promise<DonationReceipt> {
     if (amount < 20) throw new ServiceError('Minimum donation is ₱20');

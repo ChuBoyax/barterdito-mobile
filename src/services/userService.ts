@@ -83,7 +83,7 @@ export const userService = {
     return delay(clone(mockLeaderboard));
   },
 
-  /** Backend: `notification_preferences` table. */
+
   async getNotificationPrefs(): Promise<NotificationPrefs> {
     return delay({ ...prefs }, 100);
   },

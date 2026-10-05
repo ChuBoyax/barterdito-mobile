@@ -21,7 +21,7 @@ export async function writeJson(key: string, value: unknown): Promise<void> {
   try {
     await AsyncStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // Storage is a convenience; failures are non-fatal.
+    
   }
 }
 
@@ -29,6 +29,6 @@ export async function removeKey(key: string): Promise<void> {
   try {
     await AsyncStorage.removeItem(key);
   } catch {
-    // ignore
+  
   }
 }

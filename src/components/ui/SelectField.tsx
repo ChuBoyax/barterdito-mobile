@@ -14,7 +14,7 @@ type SelectFieldProps = {
   placeholder?: string;
 };
 
-/** Native-friendly replacement for the web `<select>`: opens a bottom sheet of options. */
+
 export function SelectField({ label, value, options, onChange, placeholder = 'Select…' }: SelectFieldProps) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);

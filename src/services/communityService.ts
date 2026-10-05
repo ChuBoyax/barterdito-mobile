@@ -28,7 +28,7 @@ let notifications = clone(mockNotifications);
 const rsvps = new Set<string>();
 
 export const communityService = {
-  /** Backend: `trade_events`. */
+  
   async getEvents(): Promise<TradeEvent[]> {
     return delay(clone(mockEvents));
   },
@@ -38,7 +38,7 @@ export const communityService = {
     await delay(undefined, 200);
   },
 
-  /** Backend: `forum_threads`. */
+ 
   async getForumThreads(): Promise<ForumThread[]> {
     return delay(clone(mockForumThreads));
   },
@@ -47,7 +47,7 @@ export const communityService = {
     return delay(clone(mockCampaign));
   },
 
-  /** Backend: `notifications` for the current user (latest 30). */
+  
   async getNotifications(): Promise<AppNotification[]> {
     return delay(clone(notifications), 200);
   },
@@ -61,7 +61,7 @@ export const communityService = {
     return delay(clone(mockActivity));
   },
 
-  /** Backend: aggregate views/hearts/offers for the current user's posts. */
+  
   async getAnalytics(): Promise<AnalyticsSummary> {
     return delay(clone(mockAnalytics));
   },
@@ -70,7 +70,7 @@ export const communityService = {
     return delay(clone(mockReferral));
   },
 
-  /** Backend: sentinel-only aggregates (must be enforced by RLS). */
+ 
   async getAdminSummary(): Promise<AdminSummary> {
     return delay(clone(mockAdminSummary));
   },
