@@ -6,6 +6,8 @@ import { useMarketplace } from '@/providers';
 import type { Item } from '@/types/models';
 import { ItemCard, ItemCardSkeleton } from './ItemCard';
 
+const openItem = (id: string) => router.push(`/items/${id}`);
+
 type ItemGridProps = {
   items: Item[];
   loading?: boolean;
@@ -31,9 +33,9 @@ export function ItemGrid({ items, loading, columns: columnsOverride }: ItemGridP
                   item={item}
                   saved={savedIds.includes(item.id)}
                   hearted={heartedIds.includes(item.id)}
-                  onOpen={() => router.push(`/items/${item.id}`)}
-                  onSave={() => toggleSaved(item.id)}
-                  onHeart={() => toggleHeart(item.id)}
+                  onOpen={openItem}
+                  onSave={toggleSaved}
+                  onHeart={toggleHeart}
                 />
               </View>
             ) : (

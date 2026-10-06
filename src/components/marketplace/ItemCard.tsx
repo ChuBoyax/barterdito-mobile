@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { ArrowRightLeft, Bookmark, Flame, Heart, MapPin } from 'lucide-react-native';
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppText, Glass, PhotoScrim, PressableScale, Skeleton } from '@/components/ui';
@@ -11,17 +12,21 @@ type ItemCardProps = {
   item: Item;
   saved: boolean;
   hearted?: boolean;
-  onOpen: () => void;
-  onSave: () => void;
-  onHeart: () => void;
+  onOpen: (id: string) => void;
+  onSave: (id: string) => void;
+  onHeart: (id: string) => void;
 };
 
-export function ItemCard({ item, saved, hearted, onOpen, onSave, onHeart }: ItemCardProps) {
+// Memoized so toggling one card (or any parent re-render) doesn't re-render the whole grid.
+export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: openItem, onSave: saveItem, onHeart: heartItem }: ItemCardProps) {
   const { colors } = useTheme();
+  const onOpen = () => openItem(item.id);
+  const onSave = () => saveItem(item.id);
+  const onHeart = () => heartItem(item.id);
   return (
     <View style={styles.card}>
       <PressableScale accessibilityRole="button" accessibilityLabel={`View ${item.title}`} onPress={onOpen} scaleTo={0.97} style={styles.media}>
-        <Image source={item.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
+        <Image source={item.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={item.id} />
         <PhotoScrim />
         <View style={styles.topRow}>
           {item.hot ? (
@@ -74,7 +79,7 @@ export function ItemCard({ item, saved, hearted, onOpen, onSave, onHeart }: Item
       </View>
     </View>
   );
-}
+});
 
 export function ItemCardSkeleton() {
   return (

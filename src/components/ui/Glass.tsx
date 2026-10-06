@@ -10,21 +10,27 @@ type GlassProps = {
   intensity?: number;
   strong?: boolean;
   bordered?: boolean;
+  // Live blur re-renders everything behind it on every frame, so only use it on large, static overlays.
+  blur?: boolean;
 };
 
-export function Glass({ children, style, intensity = 40, strong, bordered = true }: GlassProps) {
+// Android blur (dimezisBlurView) is far too expensive for scrolling UI, so Android always gets the flat fill.
+const canBlur = Platform.OS === 'ios';
+
+export function Glass({ children, style, intensity = 40, strong, bordered = true, blur = false }: GlassProps) {
   const { colors, dark } = useTheme();
+  const blurred = blur && canBlur;
+  const fill = strong || !blurred ? colors.surface : colors.glass;
   const flat = StyleSheet.flatten(style) ?? {};
   const layerRadius = { borderRadius: flat.borderRadius };
   return (
-    <View style={[styles.wrap, bordered && { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: colors.glassBorder }, style]}>
-      <BlurView
-        intensity={intensity}
-        tint={dark ? 'dark' : 'light'}
-        experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-        style={[styles.layer, layerRadius]}
-      />
-      <View style={[styles.layer, layerRadius, { backgroundColor: strong ? colors.surface : colors.glass }]} />
+    <View style={[styles.wrap, { backgroundColor: blurred ? undefined : fill }, bordered && { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: colors.glassBorder }, style]}>
+      {blurred ? (
+        <>
+          <BlurView intensity={intensity} tint={dark ? 'dark' : 'light'} style={[styles.layer, layerRadius]} />
+          <View style={[styles.layer, layerRadius, { backgroundColor: fill }]} />
+        </>
+      ) : null}
       {children}
     </View>
   );

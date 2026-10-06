@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { itemService } from '@/services';
 import type { Item } from '@/types/models';
@@ -64,9 +64,18 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
     };
   }, [authenticated]);
 
+  // Read the latest ids through refs so the toggles keep a stable identity and memoized cards don't all re-render.
+  const savedRef = useRef(savedIds);
+  const heartedRef = useRef(heartedIds);
+  useEffect(() => {
+    savedRef.current = savedIds;
+    heartedRef.current = heartedIds;
+  }, [savedIds, heartedIds]);
+
   const toggleSaved = useCallback(
     (id: string) =>
       requireAuth(() => {
+        const savedIds = savedRef.current;
         const wasSaved = savedIds.includes(id);
         setSavedIds((current) => (wasSaved ? current.filter((entry) => entry !== id) : [...current, id]));
         itemService
@@ -77,12 +86,13 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
             showToast('Could not update your wishlist');
           });
       }),
-    [requireAuth, savedIds, showToast],
+    [requireAuth, showToast],
   );
 
   const toggleHeart = useCallback(
     (id: string) =>
       requireAuth(() => {
+        const heartedIds = heartedRef.current;
         const wasHearted = heartedIds.includes(id);
         const delta = wasHearted ? -1 : 1;
         setHeartedIds((current) => (wasHearted ? current.filter((entry) => entry !== id) : [...current, id]));
@@ -100,7 +110,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
             showToast('Could not update this reaction');
           });
       }),
-    [heartedIds, requireAuth, showToast],
+    [requireAuth, showToast],
   );
 
   const upsertItem = useCallback((item: Item) => {

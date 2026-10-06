@@ -77,6 +77,7 @@ function RootStack() {
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: colors.background },
           animation: 'slide_from_right',
+          freezeOnBlur: true,
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ presentation: 'modal', headerShown: false, animation: 'slide_from_bottom' }} />
