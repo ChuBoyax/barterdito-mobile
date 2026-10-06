@@ -10,7 +10,7 @@ import type { Item } from '@/types/models';
 
 const gridGap = 14;
 
-// Same width as one ItemGrid cell, so the carousel lines up with the "Latest items" grid.
+
 export function featuredCardWidth(innerWidth: number, columns: number) {
   return Math.floor((innerWidth - gridGap * (columns - 1)) / columns);
 }

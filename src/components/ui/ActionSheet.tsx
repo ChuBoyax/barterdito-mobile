@@ -22,14 +22,14 @@ type ActionSheetProps = {
   options: ActionSheetOption[];
 };
 
-// Cross-platform replacement for Alert-based menus (Android's Alert only shows three buttons).
+
 export function ActionSheet({ visible, onClose, title, subtitle, options }: ActionSheetProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   function select(option: ActionSheetOption) {
     onClose();
-    // Let the sheet close before the next screen or dialog opens.
+   
     setTimeout(option.onPress, 180);
   }
 

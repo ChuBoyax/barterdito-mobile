@@ -40,7 +40,7 @@ function MyItemsContent() {
   const { gutter } = useResponsive();
 
   const count = (status: ItemStatus) => items.filter((item) => item.status === status).length;
-  // Chip labels carry the count, e.g. "Active · 1"; strip it back off to get the status.
+ 
   const options = ['All', ...itemStatuses.map((status) => (count(status) ? `${status} · ${count(status)}` : status))];
   const selected = options.find((option) => option.startsWith(tab)) ?? 'All';
   const visible = items.filter((item) => tab === 'All' || item.status === tab);

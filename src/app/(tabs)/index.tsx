@@ -59,7 +59,6 @@ export default function BrowseScreen() {
   const hotItems = items.filter((item) => item.hot);
   const filtersActive =
     filters.condition !== defaultFilters.condition || filters.location !== defaultFilters.location || filters.sort !== defaultFilters.sort;
-  // While the user is searching or filtering, show only the results — no promos in the way.
   const browsing = filters.search.trim() !== '' || filters.category !== defaultFilters.category || filtersActive;
 
   const traders = useMemo<Trader[]>(() => {

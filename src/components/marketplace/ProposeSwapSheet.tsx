@@ -14,7 +14,6 @@ type ProposeSwapSheetProps = {
   target: Item;
   myItems: Item[];
   onPostItem: () => void;
-  // `myItemId` is undefined when the user wants to discuss the offer instead of picking a listing.
   onSubmit: (myItemId: string | undefined) => Promise<void>;
 };
 

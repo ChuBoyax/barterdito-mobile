@@ -17,7 +17,7 @@ type ItemCardProps = {
   onHeart: (id: string) => void;
 };
 
-// Memoized so toggling one card (or any parent re-render) doesn't re-render the whole grid.
+
 export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: openItem, onSave: saveItem, onHeart: heartItem }: ItemCardProps) {
   const { colors } = useTheme();
   const onOpen = () => openItem(item.id);

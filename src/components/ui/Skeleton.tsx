@@ -19,7 +19,7 @@ function usePulse() {
   return opacity;
 }
 
-// One shared animation for every block on screen instead of one loop per block.
+
 const PulseContext = createContext<Animated.Value | null>(null);
 
 function SkeletonGroup({ children }: { children: ReactNode }) {
@@ -207,12 +207,11 @@ const layouts: Record<SkeletonVariant, () => ReactNode> = {
 
 type SkeletonScreenProps = {
   variant?: SkeletonVariant;
-  /** Inside an already-padded screen: no own padding, background, or full height. */
   inline?: boolean;
   label?: string;
 };
 
-/** A placeholder shaped like the content that is loading. */
+
 export function SkeletonScreen({ variant = 'list', inline, label = 'Loading' }: SkeletonScreenProps) {
   const { colors } = useTheme();
   const { gutter } = useResponsive();

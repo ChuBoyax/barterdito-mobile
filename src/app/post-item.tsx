@@ -42,7 +42,6 @@ function PostItemForm() {
   const pickImages = useImagePicker();
   const { user } = useAuth();
   const { upsertItem } = useMarketplace();
-  // `?edit=<itemId>` reuses this form to edit an existing listing.
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const mode = edit ? 'edit' : 'create';
 
@@ -59,7 +58,7 @@ function PostItemForm() {
   const dirty = edit !== undefined && original.current !== null && original.current !== JSON.stringify(draft);
   const allowLeave = useUnsavedChangesGuard(dirty, 'Your edits to this listing have not been saved.');
 
-  // Load the listing being edited, or restore the autosaved draft for a new one.
+ 
   useEffect(() => {
     if (edit) {
       void itemService
@@ -78,7 +77,7 @@ function PostItemForm() {
     });
   }, [edit, showToast]);
 
-  // Only new listings are autosaved as a draft; edits are saved explicitly.
+
   useEffect(() => {
     if (hydrated && !edit) void writeJson(storageKeys.postDraft, draft);
   }, [draft, hydrated, edit]);
@@ -133,7 +132,7 @@ function PostItemForm() {
     }
   }
 
-  /** Validates every step before `target`; on failure jumps to the first bad step and highlights it. */
+
   function validateUpTo(target: number) {
     const failing = firstInvalidStep(validateDraft(draft), target);
     if (failing === -1) return true;
@@ -144,7 +143,7 @@ function PostItemForm() {
   }
 
   function goTo(target: number) {
-    // Editing: every step is already filled in, so allow jumping freely.
+   
     if (!edit && target > step && !validateUpTo(target)) return;
     setStep(target);
   }
@@ -283,7 +282,7 @@ function PostItemForm() {
 
         <View style={styles.actions}>
           {edit ? (
-            // Editing: saving is always one tap away; steps are just sections.
+           
             <>
               {step < LAST_STEP ? <Button label="Next" iconRight={ArrowRight} variant="secondary" style={styles.flex} onPress={() => goTo(step + 1)} /> : back}
               <Button label="Save changes" icon={Check} loading={publishing} style={styles.flex} onPress={() => void submit()} />

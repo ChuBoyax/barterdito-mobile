@@ -64,7 +64,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
     };
   }, [authenticated]);
 
-  // Read the latest ids through refs so the toggles keep a stable identity and memoized cards don't all re-render.
+
   const savedRef = useRef(savedIds);
   const heartedRef = useRef(heartedIds);
   useEffect(() => {

@@ -10,11 +10,10 @@ type GlassProps = {
   intensity?: number;
   strong?: boolean;
   bordered?: boolean;
-  // Live blur re-renders everything behind it on every frame, so only use it on large, static overlays.
   blur?: boolean;
 };
 
-// Android blur (dimezisBlurView) is far too expensive for scrolling UI, so Android always gets the flat fill.
+
 const canBlur = Platform.OS === 'ios';
 
 export function Glass({ children, style, intensity = 40, strong, bordered = true, blur = false }: GlassProps) {

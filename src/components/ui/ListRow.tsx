@@ -16,7 +16,6 @@ type ListRowProps = {
   toggle?: { value: boolean; onChange: (value: boolean) => void };
   right?: ReactNode;
   showChevron?: boolean;
-  /** Current value shown on the right, e.g. "English". */
   value?: string;
   destructive?: boolean;
 };

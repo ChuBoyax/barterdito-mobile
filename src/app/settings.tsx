@@ -150,7 +150,7 @@ export default function SettingsScreen() {
   );
 }
 
-// Grouped list with a small label above and hairline dividers between rows.
+
 function Section({ title, footer, children }: { title: string; footer?: string; children: ReactNode }) {
   const { colors } = useTheme();
   const rows = Children.toArray(children).filter(Boolean);

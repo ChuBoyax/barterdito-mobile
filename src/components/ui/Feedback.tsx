@@ -17,7 +17,7 @@ export function ProgressBar({ value, max = 100 }: { value: number; max?: number 
   );
 }
 
-/** Loading state for a screen or section: a skeleton shaped like the content that is coming. */
+
 export function LoadingView({ variant, inline, label }: { variant?: SkeletonVariant; inline?: boolean; label?: string }) {
   return <SkeletonScreen variant={variant} inline={inline} label={label} />;
 }

@@ -50,7 +50,6 @@ function InboxContent() {
 
   function open(thread: Thread) {
     markRead(thread);
-    // Threads tied to an item are trade chats; the rest are direct messages.
     router.push(thread.item ? `/messages/${thread.id}` : `/direct-messages/${thread.id}`);
   }
 
