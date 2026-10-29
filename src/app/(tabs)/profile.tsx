@@ -1,50 +1,31 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import {
-  Activity,
-  ArrowRightLeft,
-  BadgeCheck,
-  Bookmark,
-  ChevronRight,
-  Edit3,
-  Gift,
-  LogOut,
-  MapPin,
-  QrCode,
-  Settings,
-  Package,
-  Share2,
-  type LucideIcon,
-} from 'lucide-react-native';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Activity, BadgeCheck, Bookmark, ChevronRight, Gift, LogOut, Package, Plus, QrCode, Settings, Share2, Star, type LucideIcon } from 'lucide-react-native';
+import { memo } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { HeaderActions, RequireAuth } from '@/components/layout';
-import { ItemGrid, StatGrid } from '@/components/marketplace';
+import { AppHeader, RequireAuth } from '@/components/layout';
 import { ProfileReviews } from '@/components/trades';
-import { AppText, Avatar, Button, Card, EmptyState, IconTile, ListRow, PressableScale, ProgressBar, Screen, SegmentedControl } from '@/components/ui';
+import { AppText, Avatar, Button, Card, IconButton, IconTile, ListRow, PressableScale, ProgressBar, Screen, SectionHeading, StatRow } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useSignOut } from '@/hooks/useSignOut';
 import { useAuth, useTheme } from '@/providers';
 import { itemService, userService } from '@/services';
-import { profileCompletion } from '@/services/userService';
-import { elevation, fonts, type Tone, maxFontScale } from '@/theme';
-import type { Profile } from '@/types/models';
-import { pluralize } from '@/utils/format';
-import { shareTrader } from '@/utils/share';
 import { queryKeys } from '@/services/queryKeys';
+import { profileCompletion } from '@/services/userService';
+import { neu, type Tone } from '@/theme';
+import type { Item, Profile } from '@/types/models';
+import { openItem } from '@/utils/navigation';
+import { shareTrader } from '@/utils/share';
 
-type Tab = 'active' | 'traded';
-
-const PREVIEW_COUNT = 4;
-const HEADER_ROW = 44;
+const PREVIEW_COUNT = 8;
 
 function nextProfileStep(profile: Profile): string {
-  if (!profile.avatarUrl) return 'Add a profile photo so traders recognise you.';
-  if (!profile.bio.trim()) return 'Write a short bio about what you like to trade.';
-  if (!profile.location.trim()) return 'Add your city or barangay so nearby traders can find you.';
-  return 'Verify your email address to finish your profile.';
+  if (!profile.avatarUrl) return 'Add a photo';
+  if (!profile.bio.trim()) return 'Add a short bio';
+  if (!profile.location.trim()) return 'Add your city';
+  return 'Verify your email';
 }
 
 export default function ProfileScreen() {
@@ -57,159 +38,149 @@ export default function ProfileScreen() {
 
 function ProfileContent() {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const { gutter } = useResponsive();
-  const pad = { paddingHorizontal: gutter };
   const { user } = useAuth();
   const signOut = useSignOut();
-  const [tab, setTab] = useState<Tab>('active');
   const { data: profile, refreshing, reload } = useAsync(queryKeys.myProfile, () => userService.getMyProfile());
-  const { data: listings = [], loading: listingsLoading, reload: reloadListings } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
+  const { data: listings = [], reload: reloadListings } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
 
   if (!user) return null;
 
-  const share = () => void shareTrader({ id: user.id, name: user.fullName });
   const strength = profile ? profileCompletion(profile) : 100;
-  const traded = listings.filter((item) => item.status === 'Traded');
   const open = listings.filter((item) => item.status !== 'Traded');
-  const visible = tab === 'active' ? open : traded;
-  const place = profile?.location || user.location;
-  const joined = profile?.joined || user.joined;
+  const meta = [profile?.location || user.location, (profile?.joined || user.joined) && `Joined ${profile?.joined || user.joined}`].filter(Boolean).join(' · ');
+  const editProfile = () => router.push('/settings?edit=profile');
 
   return (
     <Screen
-      padded={false}
-      contentStyle={styles.content}
       refreshing={refreshing}
       onRefresh={() => {
         void reload();
         void reloadListings();
-      }}>
-      {/* Cover is tall enough that the avatar sits below the header row instead of colliding with it. */}
-      <View style={[styles.cover, pad, { backgroundColor: colors.orangeSoft, paddingTop: insets.top + 8, height: insets.top + 8 + HEADER_ROW + 100 }]}>
-        <View style={styles.coverTop}>
-          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.coverLabel, { color: colors.orange }]}>MY PROFILE</Text>
-          <HeaderActions />
-        </View>
-      </View>
-
-      <View style={pad}>
-        <Card style={[styles.identity, elevation(3, colors)]}>
-          <PressableScale accessibilityRole="button" accessibilityLabel="Edit profile" onPress={() => router.push('/settings?edit=profile')} scaleTo={0.96} style={styles.avatarWrap}>
-            <Avatar initials={user.initials} imageUrl={user.avatarUrl} size="hero" ring />
+      }}
+      header={<AppHeader title="Profile" />}>
+      <Card style={styles.identity}>
+        <View style={styles.person}>
+          <PressableScale accessibilityRole="button" accessibilityLabel="Edit profile" onPress={editProfile} scaleTo={0.96}>
+            <Avatar initials={user.initials} imageUrl={user.avatarUrl} size="large" ring />
           </PressableScale>
-          <View style={styles.nameRow}>
-            <AppText variant="h1" align="center">
-              {user.fullName}
-            </AppText>
-            {(profile?.emailVerified ?? user.emailVerified) ? (
-              <BadgeCheck size={20} color={colors.blue} fill={colors.blueSoft} accessibilityLabel="Verified email" />
+          <View style={styles.flex}>
+            <View style={styles.row}>
+              <AppText variant="h2" numberOfLines={1} style={styles.shrink}>
+                {user.fullName}
+              </AppText>
+              {(profile?.emailVerified ?? user.emailVerified) ? <BadgeCheck size={18} color={colors.blue} fill={colors.blueSoft} accessibilityLabel="Verified email" /> : null}
+            </View>
+            {meta ? (
+              <AppText variant="caption" numberOfLines={1}>
+                {meta}
+              </AppText>
+            ) : null}
+            {profile?.reviewCount && profile.averageRating !== null ? (
+              <View style={styles.row}>
+                <Star size={13} color={colors.yellow} fill={colors.yellow} />
+                <AppText variant="caption" color="ink" weight="bold">
+                  {profile.averageRating}
+                </AppText>
+                <AppText variant="caption">({profile.reviewCount})</AppText>
+              </View>
             ) : null}
           </View>
-          <View style={styles.row}>
-            {place ? <MapPin size={13} color={colors.muted} /> : null}
-            <AppText variant="caption">{[place, joined ? `Joined ${joined}` : ''].filter(Boolean).join(' · ')}</AppText>
-          </View>
-          {user.bio ? (
-            <AppText variant="small" align="center" style={styles.bio}>
-              {user.bio}
-            </AppText>
-          ) : null}
-          {profile ? (
-            <StatGrid
-              variant="inline"
-              stats={[
-                { label: 'Listings', value: profile.listingCount, onPress: () => setTab('active') },
-                { label: 'Traded', value: profile.tradedListingCount, onPress: () => setTab('traded') },
-                { label: 'Followers', value: profile.followersCount, onPress: () => router.push('/followers?tab=followers') },
-                { label: 'Following', value: profile.followingCount, onPress: () => router.push('/followers?tab=following') },
-              ]}
-            />
-          ) : null}
-          {profile ? (
-            <AppText variant="caption" align="center">
-              {pluralize(profile.completedTradeCount, 'verified completed trade')} ·{' '}
-              {profile.reviewCount && profile.averageRating !== null
-                ? `${profile.averageRating}/5 from ${pluralize(profile.reviewCount, 'review')}`
-                : 'No trade reviews yet'}
-            </AppText>
-          ) : null}
-          <View style={styles.buttons}>
-            <Button label="Edit profile" icon={Edit3} compact style={styles.flex} onPress={() => router.push('/settings?edit=profile')} />
-            <Button label="Share profile" icon={Share2} variant="secondary" compact style={styles.flex} onPress={share} />
-          </View>
-        </Card>
-      </View>
+        </View>
+
+        {user.bio ? <AppText variant="small">{user.bio}</AppText> : null}
+
+        {profile ? (
+          <StatRow
+            raised={false}
+            style={[styles.stats, { backgroundColor: colors.background }, neu(colors, 1, true)]}
+            stats={[
+              { label: 'Listings', value: profile.listingCount, onPress: () => router.navigate('/my-items') },
+              { label: 'Trades', value: profile.completedTradeCount },
+              { label: 'Followers', value: profile.followersCount, onPress: () => router.push('/followers?tab=followers') },
+              { label: 'Following', value: profile.followingCount, onPress: () => router.push('/followers?tab=following') },
+            ]}
+          />
+        ) : null}
+
+        <View style={styles.row}>
+          <Button label="Edit profile" variant="secondary" compact style={styles.flex} onPress={editProfile} />
+          <IconButton icon={Share2} label="Share profile" size={17} dimension={40} onPress={() => void shareTrader({ id: user.id, name: user.fullName })} />
+        </View>
+      </Card>
 
       {profile && strength < 100 ? (
-        <View style={pad}>
-          <Card onPress={() => router.push('/settings?edit=profile')} accessibilityLabel={`Profile ${strength}% complete`} style={styles.strength}>
-            <View style={styles.row}>
-              <View style={styles.flex}>
-                <AppText variant="h3">Profile {strength}% complete</AppText>
-                <AppText variant="caption">{nextProfileStep(profile)}</AppText>
-              </View>
-              <ChevronRight size={18} color={colors.muted} />
-            </View>
-            <ProgressBar value={strength} />
-          </Card>
-        </View>
+        <Card onPress={editProfile} accessibilityLabel={`Profile ${strength}% complete`} style={styles.strength}>
+          <View style={styles.row}>
+            <AppText variant="h3" style={styles.flex}>
+              Complete your profile
+            </AppText>
+            <AppText variant="small" color="ink" weight="bold">
+              {strength}%
+            </AppText>
+          </View>
+          <ProgressBar value={strength} />
+          <View style={styles.row}>
+            <AppText variant="caption" style={styles.flex}>
+              Next: {nextProfileStep(profile)}
+            </AppText>
+            <ChevronRight size={16} color={colors.muted} />
+          </View>
+        </Card>
       ) : null}
 
-      <View style={[pad, styles.quick]}>
+      <View style={styles.quick}>
         <QuickAction icon={QrCode} label="My QR" tone="blue" onPress={() => router.push('/qr')} />
         <QuickAction icon={Gift} label="Invite" tone="yellow" onPress={() => router.push('/referral')} />
         <QuickAction icon={Bookmark} label="Wishlist" tone="red" onPress={() => router.push('/wishlist')} />
         <QuickAction icon={Activity} label="Activity" tone="violet" onPress={() => router.push('/activity')} />
       </View>
 
-      <View style={[pad, styles.section]}>
-        <SegmentedControl<Tab>
-          value={tab}
-          onChange={setTab}
-          segments={[
-            { value: 'active', label: 'Listings', count: open.length || undefined },
-            { value: 'traded', label: 'Marked traded', count: traded.length || undefined },
-          ]}
-        />
-
-        {listingsLoading || visible.length ? (
-          <>
-            <ItemGrid items={visible.slice(0, PREVIEW_COUNT)} loading={listingsLoading} />
-            {visible.length > PREVIEW_COUNT ? (
-              <Card style={styles.listCard}>
-                <SeeAll label={`See all ${visible.length} in My Items`} onPress={() => router.navigate('/my-items')} />
-              </Card>
-            ) : null}
-          </>
-        ) : tab === 'active' ? (
-          <EmptyState icon={Package} title="No listings yet" text="Post something you no longer need and start receiving offers." action="Post an item" onAction={() => router.push('/post-item')} />
+      <View>
+        <SectionHeading title={open.length ? `Listings · ${open.length}` : 'Listings'} action={open.length ? 'See all' : undefined} onAction={() => router.navigate('/my-items')} />
+        {open.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -gutter }} contentContainerStyle={[styles.listings, { paddingHorizontal: gutter }]}>
+            {open.slice(0, PREVIEW_COUNT).map((item) => (
+              <MiniListing key={item.id} item={item} />
+            ))}
+          </ScrollView>
         ) : (
-          <EmptyState icon={ArrowRightLeft} title="Nothing marked traded" text="Listings you mark as traded will appear here." />
+          <Button label="Post an item" icon={Plus} variant="secondary" compact onPress={() => router.push('/post-item')} />
         )}
-
-        <ProfileReviews userId={user.id} />
-
-        <Card style={styles.listCard}>
-          <ListRow icon={Settings} title="Settings" subtitle="Account, password, privacy and help" onPress={() => router.push('/settings')} />
-          <ListRow icon={LogOut} iconTone="red" title="Sign out" showChevron={false} onPress={() => void signOut()} />
-        </Card>
       </View>
+
+      <ProfileReviews userId={user.id} />
+
+      <Card style={styles.menu}>
+        <ListRow icon={Settings} title="Settings" onPress={() => router.push('/settings')} />
+        <ListRow icon={LogOut} iconTone="red" title="Sign out" showChevron={false} onPress={() => void signOut()} />
+      </Card>
     </Screen>
   );
 }
 
-function SeeAll({ label, onPress }: { label: string; onPress: () => void }) {
+const MiniListing = memo(function MiniListing({ item }: { item: Item }) {
   const { colors } = useTheme();
   return (
-    <PressableScale accessibilityRole="button" onPress={onPress} style={[styles.seeAll, { borderTopColor: colors.hairline }]}>
-      <AppText variant="small" color="orange" weight="bold">
-        {label}
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={item.title}
+      onPress={() => openItem(item)}
+      scaleTo={0.97}
+      style={[styles.mini, { backgroundColor: colors.surface }, neu(colors, 1)]}>
+      <View style={[styles.miniPhoto, { backgroundColor: colors.surface2 }]}>
+        {item.image ? (
+          <Image source={item.image} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <Package size={20} color={colors.muted} />
+        )}
+      </View>
+      <AppText variant="small" color="ink" weight="semibold" numberOfLines={1}>
+        {item.title}
       </AppText>
-      <ChevronRight size={15} color={colors.orange} />
     </PressableScale>
   );
-}
+});
 
 function QuickAction({ icon, label, tone, onPress }: { icon: LucideIcon; label: string; tone: Tone; onPress: () => void }) {
   const { colors } = useTheme();
@@ -219,31 +190,29 @@ function QuickAction({ icon, label, tone, onPress }: { icon: LucideIcon; label: 
       accessibilityLabel={label}
       onPress={onPress}
       scaleTo={0.94}
-      style={[styles.action, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
-      <IconTile icon={icon} tone={tone} size={42} />
-      <AppText variant="caption" color="ink" weight="bold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+      style={[styles.action, { backgroundColor: colors.surface }, neu(colors, 1)]}>
+      <IconTile icon={icon} tone={tone} size={38} />
+      <AppText variant="caption" color="ink" weight="semibold" numberOfLines={1}>
         {label}
       </AppText>
     </PressableScale>
   );
 }
 
+const MINI = 116;
+
 const styles = StyleSheet.create({
-  content: { gap: 16, paddingTop: 0 },
   flex: { flex: 1 },
-  cover: { overflow: 'hidden' },
-  coverTop: { height: HEADER_ROW, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  coverLabel: { fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 2 },
-  identity: { marginTop: -40, alignItems: 'center', gap: 8, paddingTop: 0 },
-  avatarWrap: { marginTop: -52 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  bio: { maxWidth: 300, marginBottom: 6 },
-  buttons: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 6 },
-  strength: { gap: 12 },
+  shrink: { flexShrink: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  identity: { gap: 14 },
+  person: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  stats: { borderRadius: 16, paddingVertical: 10 },
+  strength: { gap: 10 },
   quick: { flexDirection: 'row', gap: 10 },
-  action: { flex: 1, alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 22, paddingVertical: 14 },
-  section: { gap: 14 },
-  listCard: { paddingVertical: 4 },
-  seeAll: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  action: { flex: 1, alignItems: 'center', gap: 6, borderRadius: 18, paddingVertical: 12 },
+  listings: { gap: 12, paddingVertical: 6 },
+  mini: { width: MINI + 12, gap: 8, borderRadius: 18, padding: 6, paddingBottom: 10 },
+  miniPhoto: { width: MINI, height: MINI, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  menu: { paddingVertical: 4 },
 });

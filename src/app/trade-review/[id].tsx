@@ -14,7 +14,7 @@ export default function TradeReviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return (
     <RequireAuth>
-      <WorkflowScreen id={id} title="Rate your trade">
+      <WorkflowScreen id={id}>
         {(state, userId) => <ReviewSection state={state} userId={userId} />}
       </WorkflowScreen>
     </RequireAuth>

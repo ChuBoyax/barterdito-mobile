@@ -1,8 +1,8 @@
-import { Camera, MapPin, Trash2 } from 'lucide-react-native';
+import { Camera, MapPin } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText, Avatar, BottomSheet, Button, TextField } from '@/components/ui';
+import { AppText, Avatar, BottomSheet, Button, PressableScale, TextField } from '@/components/ui';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useAuth, useToast } from '@/providers';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -66,28 +66,28 @@ export function EditProfileSheet({ visible, onClose }: EditProfileSheetProps) {
   }
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} eyebrow="Account" title="Edit profile">
-      <View style={styles.photoRow}>
-        <Avatar initials={initialsOf(fullName) || user?.initials || 'BD'} imageUrl={preview} size="large" />
-        <View style={styles.photoActions}>
-          <Pressable accessibilityRole="button" onPress={() => void choosePhoto()} hitSlop={6} style={styles.photoAction}>
-            <Camera size={15} color={colors.orange} />
-            <AppText variant="small" color="orange" weight="bold">
-              {preview ? 'Change photo' : 'Add photo'}
+    <BottomSheet visible={visible} onClose={onClose} title="Edit profile">
+      <View style={styles.photo}>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={preview ? 'Change photo' : 'Add photo'}
+          onPress={() => void choosePhoto()}
+          scaleTo={0.95}>
+          <Avatar initials={initialsOf(fullName) || user?.initials || 'BD'} imageUrl={preview} size="hero" />
+          <View style={[styles.camera, { backgroundColor: colors.orange, borderColor: colors.surface }]}>
+            <Camera size={15} color={colors.onPrimary} strokeWidth={2.4} />
+          </View>
+        </PressableScale>
+        {preview ? (
+          <Pressable accessibilityRole="button" onPress={() => setAvatar(null)} hitSlop={8}>
+            <AppText variant="caption" weight="semibold">
+              Remove photo
             </AppText>
           </Pressable>
-          {preview ? (
-            <Pressable accessibilityRole="button" onPress={() => setAvatar(null)} hitSlop={6} style={styles.photoAction}>
-              <Trash2 size={15} color={colors.red} />
-              <AppText variant="small" color="red" weight="bold">
-                Remove photo
-              </AppText>
-            </Pressable>
-          ) : null}
-        </View>
+        ) : null}
       </View>
       <TextField
-        label="Full name"
+        label="Name"
         value={fullName}
         onChangeText={(value) => {
           setFullName(value);
@@ -104,16 +104,15 @@ export function EditProfileSheet({ visible, onClose }: EditProfileSheetProps) {
         multiline
         maxLength={500}
         showCount
-        placeholder="What do you like to trade? What are you looking for?"
+        placeholder="What do you like to trade?"
       />
       <TextField
-        label="City / barangay"
+        label="City"
         icon={MapPin}
         value={location}
         onChangeText={setLocation}
         maxLength={160}
         placeholder="e.g. Quezon City"
-        hint="Shown on your public profile."
       />
       <Button label="Save changes" loading={saving} disabled={!changed} onPress={() => void save()} />
     </BottomSheet>
@@ -121,7 +120,6 @@ export function EditProfileSheet({ visible, onClose }: EditProfileSheetProps) {
 }
 
 const styles = StyleSheet.create({
-  photoRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  photoActions: { gap: 10 },
-  photoAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  photo: { alignItems: 'center', gap: 10, paddingVertical: 4 },
+  camera: { position: 'absolute', right: 0, bottom: 0, width: 32, height: 32, borderRadius: 16, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
 });

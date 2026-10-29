@@ -8,14 +8,14 @@ type Variant = 'display' | 'hero' | 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'cap
 
 const variants: Record<Variant, TextStyle & { weight: FontWeight }> = {
   display: { fontSize: 33, lineHeight: 38, weight: 'extrabold', letterSpacing: -1.2 },
-  hero: { fontSize: 31, lineHeight: 36, weight: 'extrabold', letterSpacing: -1.2 },
-  h1: { fontSize: 25, lineHeight: 30, weight: 'extrabold', letterSpacing: -0.8 },
-  h2: { fontSize: 19, lineHeight: 24, weight: 'extrabold', letterSpacing: -0.4 },
+  hero: { fontSize: 30, lineHeight: 36, weight: 'extrabold', letterSpacing: -0.9 },
+  h1: { fontSize: 24, lineHeight: 30, weight: 'extrabold', letterSpacing: -0.6 },
+  h2: { fontSize: 19, lineHeight: 25, weight: 'bold', letterSpacing: -0.3 },
   h3: { fontSize: 15, lineHeight: 20, weight: 'bold', letterSpacing: -0.15 },
   body: { fontSize: 14.5, lineHeight: 22, weight: 'regular' },
-  small: { fontSize: 13, lineHeight: 19, weight: 'medium' },
-  caption: { fontSize: 11.5, lineHeight: 15, weight: 'medium' },
-  eyebrow: { fontSize: 10.5, lineHeight: 14, weight: 'extrabold', letterSpacing: 1.6, textTransform: 'uppercase' },
+  small: { fontSize: 13.5, lineHeight: 20, weight: 'medium' },
+  caption: { fontSize: 12, lineHeight: 16, weight: 'medium' },
+  eyebrow: { fontSize: 11, lineHeight: 14, weight: 'bold', letterSpacing: 1.1, textTransform: 'uppercase' },
 };
 
 const compactScale: Partial<Record<Variant, number>> = { display: 0.84, hero: 0.84, h1: 0.92 };
@@ -35,7 +35,7 @@ export function AppText({ variant = 'body', weight, color, align, style, ...rest
   const scale = (isCompact ? compactScale[variant] : isTablet ? tabletScale[variant] : undefined) ?? 1;
   const sized = scale === 1 ? variantStyle : { ...variantStyle, fontSize: (variantStyle.fontSize ?? 14) * scale, lineHeight: (variantStyle.lineHeight ?? 20) * scale };
   const defaultColor: keyof ThemeColors =
-    variant === 'eyebrow' ? 'orange' : variant === 'caption' || variant === 'small' ? 'muted' : 'ink';
+    variant === 'caption' || variant === 'small' || variant === 'eyebrow' ? 'muted' : 'ink';
   return (
     <Text
       maxFontSizeMultiplier={maxFontScale}

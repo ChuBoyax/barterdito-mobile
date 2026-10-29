@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { itemService } from '@/services';
+import { timeAgo } from '@/services/itemService';
+import { readJson, storageKeys, writeJson } from '@/utils/storage';
 import type { Item } from '@/types/models';
 import { errorMessage } from '@/utils/format';
 import { useAuth } from './AuthProvider';
@@ -21,6 +23,8 @@ type MarketplaceContextValue = {
   upsertItem: (item: Item) => void;
   removeItem: (id: string) => void;
 };
+
+type FeedSnapshot = { items: Item[]; total: number };
 
 const MarketplaceContext = createContext<MarketplaceContextValue | null>(null);
 
@@ -44,16 +48,31 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   // Local heart adjustments; the backend has no heart endpoint yet (same as the website).
   const [heartDelta, setHeartDelta] = useState<Record<string, number>>({});
   const request = useRef(0);
+  // True once the network answered, so a late cache read never replaces fresh data.
+  const settled = useRef(false);
+
+  // Instant first paint: show the last saved first page while the network request runs.
+  useEffect(() => {
+    void readJson<FeedSnapshot>(storageKeys.feed).then((snapshot) => {
+      if (!snapshot?.items.length || settled.current) return;
+      setLoaded(snapshot.items.map((item) => (item.createdAt ? { ...item, age: timeAgo(item.createdAt) } : item)));
+      setFetched(snapshot.items.length);
+      setTotal(snapshot.total);
+      setLoading(false);
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
     const current = ++request.current;
     try {
       const page = await itemService.getItems(0);
       if (current !== request.current) return;
+      settled.current = true;
       setLoaded(page.items);
       setFetched(page.items.length);
       setTotal(page.total);
       setError(null);
+      void writeJson(storageKeys.feed, { items: page.items, total: page.total } satisfies FeedSnapshot);
     } catch (caught) {
       if (current !== request.current) return;
       const message = errorMessage(caught, 'Could not load listings');

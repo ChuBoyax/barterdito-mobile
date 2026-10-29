@@ -5,7 +5,8 @@ import { StyleSheet, View } from 'react-native';
 import { IconButton } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
 
-export function HeaderActions({ unread = 2 }: { unread?: number }) {
+/** `unread` shows a badge only when a real count is passed (notifications are not stored by the backend yet). */
+export function HeaderActions({ unread }: { unread?: number }) {
   const { dark, toggleDark } = useTheme();
   return (
     <View style={styles.row}>

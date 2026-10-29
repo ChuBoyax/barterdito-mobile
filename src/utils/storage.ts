@@ -7,6 +7,7 @@ export const storageKeys = {
   sessionUser: 'barterdito-session-user',
   postDraft: 'barterdito-post-draft',
   interactions: 'barterdito-interactions',
+  feed: 'barterdito-feed',
 } as const;
 
 export async function readJson<T>(key: string): Promise<T | null> {

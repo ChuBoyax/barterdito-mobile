@@ -46,7 +46,7 @@ export function setViewer(id: string | null) {
   viewerId = id;
 }
 
-function timeAgo(value: string) {
+export function timeAgo(value: string) {
   const minutes = Math.max(1, Math.floor((Date.now() - new Date(value).getTime()) / 60_000));
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);

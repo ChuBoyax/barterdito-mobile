@@ -34,12 +34,12 @@ import { authService, userService } from '@/services';
 import type { NotificationPrefs } from '@/types/models';
 import { errorMessage } from '@/utils/format';
 
-const notificationRows: { key: keyof NotificationPrefs; title: string; subtitle: string; icon: LucideIcon }[] = [
-  { key: 'offers', title: 'Trade offers', subtitle: 'New, accepted, and declined offers', icon: ArrowRightLeft },
-  { key: 'messages', title: 'Messages', subtitle: 'Replies from traders', icon: MessageCircle },
-  { key: 'followers', title: 'New followers', subtitle: 'When someone follows you', icon: UserPlus },
-  { key: 'hearts', title: 'Likes', subtitle: 'When someone likes your listing', icon: Heart },
-  { key: 'system', title: 'Updates & safety', subtitle: 'Important account and app notices', icon: Megaphone },
+const notificationRows: { key: keyof NotificationPrefs; title: string; icon: LucideIcon }[] = [
+  { key: 'offers', title: 'Trade offers', icon: ArrowRightLeft },
+  { key: 'messages', title: 'Messages', icon: MessageCircle },
+  { key: 'followers', title: 'New followers', icon: UserPlus },
+  { key: 'hearts', title: 'Likes', icon: Heart },
+  { key: 'system', title: 'Updates & safety', icon: Megaphone },
 ];
 
 export default function SettingsScreen() {
@@ -75,24 +75,18 @@ export default function SettingsScreen() {
             <AppText variant="caption" numberOfLines={1}>
               {user.email}
             </AppText>
-            <AppText variant="caption" color="orange" weight="bold" style={styles.editLink}>
-              Edit profile
-            </AppText>
           </View>
           <ChevronRight size={18} color={colors.muted} />
         </Card>
       ) : (
         <Card style={styles.signedOut}>
           <AppText variant="h2">You’re not signed in</AppText>
-          <AppText variant="small">Sign in to manage your profile, notifications, and trades.</AppText>
           <Button label="Sign in" onPress={() => router.push('/login')} />
         </Card>
       )}
 
-      <Section title="Appearance">
+      <Section title="Theme">
         <View style={styles.appearance}>
-          <AppText variant="h3">Theme</AppText>
-          <AppText variant="caption">“System” follows your phone’s light or dark setting.</AppText>
           <SegmentedControl<ThemeMode>
             value={mode}
             onChange={setMode}
@@ -108,7 +102,7 @@ export default function SettingsScreen() {
       {authenticated ? <ChangePassword /> : null}
 
       {authenticated ? (
-        <Section title="Push notifications" footer={allOff ? 'All notifications are off. You may miss new offers and messages.' : undefined}>
+        <Section title="Notifications" footer={allOff ? 'All notifications are off' : undefined}>
           {prefs
             ? notificationRows.map((row) => (
                 <ListRow
@@ -116,7 +110,6 @@ export default function SettingsScreen() {
                   icon={row.icon}
                   iconTone="neutral"
                   title={row.title}
-                  subtitle={row.subtitle}
                   toggle={{ value: prefs[row.key], onChange: (value) => togglePref(row.key, value) }}
                 />
               ))
@@ -126,19 +119,19 @@ export default function SettingsScreen() {
 
       {authenticated ? (
         <Section title="Trading">
-          <ListRow icon={MessageSquare} iconTone="neutral" title="Direct messages" subtitle="Chats outside of trade offers" onPress={() => router.push('/direct-messages')} />
-          <ListRow icon={Gift} iconTone="neutral" title="Invite friends" subtitle="Earn rewards for every referral" onPress={() => router.push('/referral')} />
-          <ListRow icon={AlertTriangle} iconTone="neutral" title="Report a trade problem" subtitle="File a dispute and attach evidence" onPress={() => router.push('/disputes')} />
+          <ListRow icon={MessageSquare} iconTone="neutral" title="Direct messages" onPress={() => router.push('/direct-messages')} />
+          <ListRow icon={Gift} iconTone="neutral" title="Invite friends" onPress={() => router.push('/referral')} />
+          <ListRow icon={AlertTriangle} iconTone="neutral" title="Disputes" onPress={() => router.push('/disputes')} />
         </Section>
       ) : null}
 
-      <Section title="Help & about">
-        <ListRow icon={CircleHelp} iconTone="neutral" title="Help & safety tips" subtitle="FAQs and how to trade safely" onPress={() => router.push('/help')} />
-        <ListRow icon={HandHeart} iconTone="neutral" title="Support Barterdito" subtitle="Help keep local trading free" onPress={() => router.push('/donate')} />
+      <Section title="About">
+        <ListRow icon={CircleHelp} iconTone="neutral" title="Help & safety" onPress={() => router.push('/help')} />
+        <ListRow icon={HandHeart} iconTone="neutral" title="Support Barterdito" onPress={() => router.push('/donate')} />
         <ListRow icon={FileText} iconTone="neutral" title="Terms of service" onPress={() => router.push('/terms')} />
         <ListRow icon={Lock} iconTone="neutral" title="Privacy policy" onPress={() => router.push('/privacy')} />
         {SENTINEL_PREVIEW ? (
-          <ListRow icon={ShieldCheck} iconTone="neutral" title="Sentinel admin" subtitle="Moderation tools (preview)" onPress={() => router.push('/admin')} />
+          <ListRow icon={ShieldCheck} iconTone="neutral" title="Sentinel admin" onPress={() => router.push('/admin')} />
         ) : null}
       </Section>
 
@@ -165,6 +158,7 @@ function ChangePassword() {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [visible, setVisible] = useState(false);
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -192,8 +186,16 @@ function ChangePassword() {
     </Pressable>
   );
 
+  if (!open) {
+    return (
+      <Section title="Security">
+        <ListRow icon={KeyRound} iconTone="neutral" title="Change password" onPress={() => setOpen(true)} />
+      </Section>
+    );
+  }
+
   return (
-    <Section title="Password">
+    <Section title="Security">
       <View style={styles.password}>
         <TextField
           label="Current password"
@@ -221,9 +223,23 @@ function ChangePassword() {
           autoCapitalize="none"
           autoComplete="new-password"
           error={error || undefined}
-          hint="You will be signed out on all devices."
+          hint="Signs you out on all devices"
         />
-        <Button label="Change password" icon={KeyRound} variant="secondary" loading={busy} disabled={!current || !next} onPress={() => void submit()} />
+        <View style={styles.actions}>
+          <Button
+            label="Cancel"
+            variant="ghost"
+            compact
+            style={styles.grow}
+            onPress={() => {
+              setOpen(false);
+              setCurrent('');
+              setNext('');
+              setError('');
+            }}
+          />
+          <Button label="Update" variant="secondary" compact loading={busy} disabled={!current || !next} style={styles.grow} onPress={() => void submit()} />
+        </View>
       </View>
     </Section>
   );
@@ -257,13 +273,14 @@ function Section({ title, footer, children }: { title: string; footer?: string; 
 const styles = StyleSheet.create({
   flex: { flex: 1, gap: 1 },
   account: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  editLink: { marginTop: 4 },
   signedOut: { gap: 10 },
   section: { gap: 8 },
   sectionTitle: { paddingHorizontal: 6 },
   group: { paddingVertical: 4 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 55 },
-  appearance: { gap: 6, paddingVertical: 8 },
+  appearance: { paddingVertical: 8 },
   password: { gap: 12, paddingVertical: 8 },
+  actions: { flexDirection: 'row', gap: 10 },
+  grow: { flex: 1 },
   version: { marginTop: -4 },
 });

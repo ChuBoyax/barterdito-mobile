@@ -1,23 +1,23 @@
-import { useLocalSearchParams } from 'expo-router';
-import { ShieldCheck } from 'lucide-react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { RequireAuth } from '@/components/layout';
-import { TradeControls } from '@/components/trades';
+import { MeetupScheduler } from '@/components/trades';
 import { WorkflowScreen } from '@/components/trades/WorkflowScreen';
-import { InfoNote } from '@/components/ui';
+import { useToast } from '@/providers';
 
 export default function MeetupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const showToast = useToast();
+
+  function sent() {
+    showToast('Meetup proposal sent');
+    if (router.canGoBack()) router.back();
+    else router.replace(`/trade-complete/${id}`);
+  }
+
   return (
     <RequireAuth>
-      <WorkflowScreen id={id} title="Arrange your meetup">
-        {(state, userId) => (
-          <>
-            <InfoNote icon={ShieldCheck} title="Meet in a busy public place" text="Inspect both items before either trader confirms the exchange." />
-            <TradeControls state={state} userId={userId} meetupForm />
-          </>
-        )}
-      </WorkflowScreen>
+      <WorkflowScreen id={id}>{(state, userId) => <MeetupScheduler state={state} userId={userId} onSent={sent} />}</WorkflowScreen>
     </RequireAuth>
   );
 }

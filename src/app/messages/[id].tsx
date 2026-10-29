@@ -1,16 +1,18 @@
+import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronRight, ClipboardList } from 'lucide-react-native';
+import { ChevronRight, Package } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActionSheetIOS, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MessageBubble, MessageComposer } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
-import { TradePair } from '@/components/trades';
-import { AppText, Avatar, Button, LoadingView } from '@/components/ui';
+import { shortDate } from '@/components/trades';
+import { AppText, Avatar, Badge, Button, LoadingView } from '@/components/ui';
 import { usePolling, useTradeConversation } from '@/hooks/useTradeConversation';
 import { useAuth, useTheme } from '@/providers';
 import { tradeService } from '@/services';
 import { clientId } from '@/services/tradeService';
+import { neu } from '@/theme';
 import type { Conversation, TradeMessage } from '@/types/trades';
 import { confirmAction } from '@/utils/confirm';
 import { errorMessage } from '@/utils/format';
@@ -25,7 +27,7 @@ export default function TradeChatScreen() {
 }
 
 function messageTime(message: TradeMessage) {
-  const time = new Date(message.createdAt).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const time = shortDate(message.createdAt);
   return message.editedAt && !message.deletedAt ? `${time} · edited` : time;
 }
 
@@ -33,17 +35,17 @@ function merge(current: TradeMessage[], incoming: TradeMessage[]) {
   return [...new Map([...current, ...incoming].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.id - b.id);
 }
 
-/** One-line summary of what happens next, shown above the chat. */
+/** A few words on what happens next, shown in the trade strip. */
 function nextStep(data: Conversation, userId: string) {
-  if (data.status === 'completed') return 'Trade completed. Rate your trade.';
-  if (data.status === 'cancelled') return 'This trade was cancelled.';
-  if (data.issues.some((entry) => entry.status === 'open')) return 'Completion paused: a problem was reported.';
+  if (data.status === 'completed') return 'Completed · Rate your trade';
+  if (data.status === 'cancelled') return 'Trade cancelled';
+  if (data.issues.some((entry) => entry.status === 'open')) return 'Paused · Problem reported';
   const { mine, theirs } = confirmations(data, userId);
-  if (mine) return 'You confirmed. Waiting for the other trader.';
-  if (theirs) return 'The other trader confirmed the exchange.';
-  if (data.meetups.some((entry) => entry.status === 'accepted')) return 'Meetup agreed. Confirm after the exchange.';
-  if (data.meetups.some((entry) => entry.status === 'pending')) return 'A meetup proposal is waiting.';
-  return 'Arrange a public meetup.';
+  if (mine) return 'Waiting for their confirmation';
+  if (theirs) return 'They confirmed · Your turn';
+  if (data.meetups.some((entry) => entry.status === 'accepted')) return 'Meetup agreed';
+  if (data.meetups.some((entry) => entry.status === 'pending')) return 'Meetup proposal waiting';
+  return 'Plan a meetup';
 }
 
 function TradeChat() {
@@ -114,7 +116,10 @@ function TradeChat() {
   const userId = user.id;
   const active = data.status === 'active';
   const other = otherTrader(data.offer, userId);
-  const proposerMine = data.offer.proposer.id === userId;
+  const mineFirst = data.offer.proposer.id === userId;
+  const theirItem = mineFirst ? data.offer.requested : data.offer.offered;
+  const yourItem = mineFirst ? data.offer.offered : data.offer.requested;
+  const step = nextStep(data, userId);
 
   async function send() {
     const text = draft.trim();
@@ -206,19 +211,40 @@ function TradeChat() {
       style={[styles.flex, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
-      <Stack.Screen options={{ title: 'Trade Chat' }} />
+      {/* The other trader replaces the generic "Trade Chat" title: one header row instead of two. */}
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`View ${other.fullName}'s profile`}
+              onPress={() => router.push(`/traders/${other.id}`)}
+              style={styles.person}>
+              <Avatar initials={other.initials} imageUrl={other.avatarUrl} size="small" />
+              <AppText variant="h3" numberOfLines={1} style={styles.name}>
+                {other.fullName}
+              </AppText>
+            </Pressable>
+          ),
+          headerRight: active
+            ? undefined
+            : () => <Badge label={data.status === 'completed' ? 'Completed' : 'Cancelled'} tone={data.status === 'completed' ? 'blue' : 'neutral'} />,
+        }}
+      />
+
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`View ${other.fullName}'s profile`}
-        onPress={() => router.push(`/traders/${other.id}`)}
-        style={[styles.chatHeader, { borderBottomColor: colors.line, backgroundColor: colors.surface }]}>
-        <Avatar initials={other.initials} imageUrl={other.avatarUrl} size="small" />
-        <View style={styles.flex}>
-          <AppText variant="h3">{other.fullName}</AppText>
-          <AppText variant="caption" numberOfLines={1}>
-            Private trade conversation · {data.status}
-          </AppText>
+        accessibilityLabel={`Trade status: ${step}`}
+        onPress={() => router.push(`/trade-complete/${id}`)}
+        style={[styles.strip, { backgroundColor: colors.background }, neu(colors, 1, true)]}>
+        <View style={styles.thumbs}>
+          <Thumb uri={theirItem.imageUrl} />
+          <Thumb uri={yourItem.imageUrl} overlap />
         </View>
+        <AppText variant="small" color="ink" weight="semibold" numberOfLines={1} style={styles.flex}>
+          {step}
+        </AppText>
+        <ChevronRight size={18} color={colors.muted} />
       </Pressable>
 
       <ScrollView
@@ -230,41 +256,17 @@ function TradeChat() {
           const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
           followLatest.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
         }}>
-        <TradePair
-          left={{ item: data.offer.offered, label: proposerMine ? 'You offer' : `${data.offer.proposer.fullName} offers` }}
-          right={{ item: data.offer.requested, label: proposerMine ? `${data.offer.recipient.fullName}'s item` : 'Your item' }}
-        />
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push(`/trade-complete/${id}`)}
-          style={[styles.status, { backgroundColor: colors.orangeSoft }]}>
-          <ClipboardList size={16} color={colors.orange} />
-          <View style={styles.flex}>
-            <AppText variant="small" color="ink" weight="bold">
-              {nextStep(data, userId)}
-            </AppText>
-            <AppText variant="caption">Meetup, confirmation, and problem reports</AppText>
-          </View>
-          <ChevronRight size={16} color={colors.orange} />
-        </Pressable>
-
-        {hasMore ? <Button label="Load older messages" variant="ghost" compact loading={olderBusy} onPress={() => void older()} /> : null}
-        {!loaded ? (
+        {hasMore ? <Button label="Earlier messages" variant="ghost" compact loading={olderBusy} onPress={() => void older()} /> : null}
+        {loaded && !messages.length ? (
           <AppText variant="caption" align="center">
-            Loading messages…
-          </AppText>
-        ) : !messages.length ? (
-          <AppText variant="caption" align="center">
-            Start the conversation and arrange your exchange.
+            No messages yet
           </AppText>
         ) : null}
         {messages.map((message) =>
           message.kind === 'system' ? (
-            <View key={message.id} style={[styles.system, { backgroundColor: colors.surface2 }]}>
-              <AppText variant="caption" align="center">
-                {message.body}
-              </AppText>
-            </View>
+            <AppText key={message.id} variant="caption" align="center" style={styles.system}>
+              {message.body}
+            </AppText>
           ) : (
             <MessageBubble
               key={message.id}
@@ -298,20 +300,33 @@ function TradeChat() {
         />
       ) : (
         <AppText variant="caption" align="center" style={styles.readonly}>
-          This conversation is read-only.
+          Read-only
         </AppText>
       )}
     </KeyboardAvoidingView>
   );
 }
 
+function Thumb({ uri, overlap }: { uri: string | null; overlap?: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.thumb, overlap && styles.overlap, { backgroundColor: colors.surface2, borderColor: colors.background }]}>
+      {uri ? <Image source={uri} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" /> : <Package size={14} color={colors.muted} />}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
-  chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, paddingHorizontal: 20, paddingVertical: 12 },
+  person: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  name: { maxWidth: 200 },
+  strip: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 6, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10 },
+  thumbs: { flexDirection: 'row' },
+  thumb: { width: 34, height: 34, borderRadius: 10, borderWidth: 2, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  overlap: { marginLeft: -10 },
   list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, padding: 12 },
-  system: { alignSelf: 'center', maxWidth: '90%', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
+  system: { alignSelf: 'center', maxWidth: '85%', paddingVertical: 2 },
   error: { paddingHorizontal: 16 },
   readonly: { padding: 16 },
 });

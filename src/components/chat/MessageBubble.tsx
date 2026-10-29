@@ -1,5 +1,4 @@
 import { Image } from 'expo-image';
-import { CheckCheck } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
@@ -29,7 +28,6 @@ export function MessageBubble({ message, onLongPress }: MessageBubbleProps) {
       )}
       <View style={styles.meta}>
         <Text maxFontSizeMultiplier={maxFontScale} style={[styles.time, { color: colors.muted }]}>{message.time}</Text>
-        {mine ? <CheckCheck size={12} color={colors.blue} strokeWidth={2.6} /> : null}
       </View>
     </Pressable>
   );

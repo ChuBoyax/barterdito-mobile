@@ -21,7 +21,7 @@ export function ProfileReviews({ userId }: { userId: string }) {
 
   return (
     <View style={styles.wrap}>
-      <SectionHeading eyebrow={`Verified trade reviews · ${total}`} title="What traders say" />
+      <SectionHeading title={total ? `Reviews · ${total}` : 'Reviews'} />
       {query.isPending ? (
         <AppText variant="caption">Loading reviews…</AppText>
       ) : query.isError ? (
@@ -30,10 +30,10 @@ export function ProfileReviews({ userId }: { userId: string }) {
           <Button label="Retry" variant="secondary" compact onPress={() => void query.refetch()} />
         </Card>
       ) : !reviews.length ? (
-        <Card style={styles.empty}>
-          <Star size={20} color={colors.muted} />
-          <AppText variant="small">No reviews from completed trades yet.</AppText>
-        </Card>
+        <View style={styles.empty}>
+          <Star size={16} color={colors.muted} />
+          <AppText variant="small">No reviews yet</AppText>
+        </View>
       ) : (
         reviews.map((review) => (
           <Card key={review.id} style={styles.card}>
@@ -54,7 +54,7 @@ export function ProfileReviews({ userId }: { userId: string }) {
         ))
       )}
       {query.hasNextPage ? (
-        <Button label="Load more reviews" variant="secondary" loading={query.isFetchingNextPage} onPress={() => void query.fetchNextPage()} />
+        <Button label="More reviews" variant="secondary" loading={query.isFetchingNextPage} onPress={() => void query.fetchNextPage()} />
       ) : null}
     </View>
   );
@@ -63,7 +63,7 @@ export function ProfileReviews({ userId }: { userId: string }) {
 const styles = StyleSheet.create({
   wrap: { gap: 10 },
   card: { gap: 8 },
-  empty: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  empty: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   flex: { flex: 1, gap: 2 },
 });
