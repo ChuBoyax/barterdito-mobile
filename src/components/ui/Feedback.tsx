@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { StyleSheet, View, type DimensionValue } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { tone as getTone, type Tone } from '@/theme';
+import { neu, type Tone } from '@/theme';
 import { AppText } from './AppText';
 import { IconTile } from './IconTile';
 import { SkeletonScreen, type SkeletonVariant } from './Skeleton';
@@ -11,7 +11,7 @@ export function ProgressBar({ value, max = 100 }: { value: number; max?: number 
   const { colors } = useTheme();
   const pct = `${Math.min(100, Math.max(0, (value / max) * 100))}%` as DimensionValue;
   return (
-    <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max, now: value }} style={[styles.track, { backgroundColor: colors.surface2 }]}>
+    <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max, now: value }} style={[styles.track, { backgroundColor: colors.background }, neu(colors, 1, true)]}>
       <View style={[styles.fill, { width: pct, backgroundColor: colors.orange }]} />
     </View>
   );
@@ -34,9 +34,8 @@ export function InfoNote({
   tone?: Tone;
 }) {
   const { colors } = useTheme();
-  const palette = getTone(colors, tone);
   return (
-    <View style={[styles.note, { backgroundColor: palette.bg }]}>
+    <View style={[styles.note, { backgroundColor: colors.background }, neu(colors, 2, true)]}>
       <IconTile icon={icon} size={40} tone={tone} variant="solid" />
       <View style={styles.flex}>
         <AppText variant="h3">{title}</AppText>

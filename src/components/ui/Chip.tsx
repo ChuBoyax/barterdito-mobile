@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, maxFontScale } from '@/theme';
+import { fonts, maxFontScale, neu } from '@/theme';
 import { PressableScale } from './PressableScale';
 
 type ChipProps = { label: string; active?: boolean; onPress?: () => void };
@@ -16,7 +16,8 @@ export function Chip({ label, active, onPress }: ChipProps) {
       scaleTo={0.94}
       style={[
         styles.chip,
-        { backgroundColor: active ? colors.orange : colors.surface, borderColor: active ? colors.orange : colors.line },
+        { backgroundColor: active ? colors.orange : colors.surface },
+        neu(colors, 1),
       ]}>
       <Text maxFontSizeMultiplier={maxFontScale} style={[styles.text, { color: active ? colors.onPrimary : colors.muted }]}>{label}</Text>
     </PressableScale>
@@ -41,7 +42,7 @@ export function ChipRow({ options, value, onChange, inset = 20 }: ChipRowProps) 
 }
 
 const styles = StyleSheet.create({
-  chip: { height: 36, justifyContent: 'center', borderRadius: 999, borderWidth: 1, paddingHorizontal: 15 },
+  chip: { height: 38, justifyContent: 'center', borderRadius: 999, paddingHorizontal: 16 },
   text: { fontFamily: fonts.bold, fontSize: 12.5 },
-  row: { gap: 8 },
+  row: { gap: 10, paddingVertical: 10 },
 });

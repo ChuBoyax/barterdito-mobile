@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { tone as getTone, type Tone } from '@/theme';
+import { neu, tone as getTone, type Tone } from '@/theme';
 
 type IconTileProps = {
   icon: LucideIcon;
@@ -20,7 +20,8 @@ export function IconTile({ icon: Icon, tone = 'orange', variant = 'soft', size =
     <View
       style={[
         styles.tile,
-        { width: size, height: size, borderRadius: rounded ? size / 2 : size * 0.3, backgroundColor: solid ? palette.solid : palette.bg },
+        { width: size, height: size, borderRadius: rounded ? size / 2 : size * 0.32, backgroundColor: solid ? palette.solid : colors.surface },
+        neu(colors, 1),
       ]}>
       <Icon size={Math.round(size * 0.46)} color={solid ? colors.onPrimary : palette.fg} strokeWidth={2.1} />
     </View>

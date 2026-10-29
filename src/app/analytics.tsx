@@ -8,6 +8,7 @@ import { AppText, Badge, Card, LoadingView, Screen, SectionHeading } from '@/com
 import { useAsync } from '@/hooks/useAsync';
 import { communityService, itemService } from '@/services';
 import type { AnalyticsMetric } from '@/types/models';
+import { queryKeys } from '@/services/queryKeys';
 
 const metricIcons: Record<AnalyticsMetric['key'], LucideIcon> = {
   views: Eye,
@@ -26,7 +27,7 @@ export default function AnalyticsScreen() {
 
 function AnalyticsContent() {
   const { data: summary, loading } = useAsync(['communityService.getAnalytics'], () => communityService.getAnalytics());
-  const { data: myItems = [] } = useAsync(['itemService.getMyItems'], () => itemService.getMyItems());
+  const { data: myItems = [] } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
   if (loading || !summary) return <LoadingView variant="stats" />;
 
   return (
@@ -52,7 +53,7 @@ function AnalyticsContent() {
         <SectionHeading eyebrow="Performance" title="Top items" />
         {myItems.map((item) => (
           <View key={item.id} style={styles.row}>
-            <Image source={item.image} style={styles.thumb} contentFit="cover" />
+            <Image source={item.image} cachePolicy="memory-disk" style={styles.thumb} contentFit="cover" />
             <View style={styles.flex}>
               <AppText variant="h3" numberOfLines={1}>
                 {item.title}

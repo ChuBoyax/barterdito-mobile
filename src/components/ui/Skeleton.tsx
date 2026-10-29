@@ -3,6 +3,7 @@ import { Animated, StyleSheet, View, type DimensionValue, type StyleProp, type V
 
 import { useResponsive } from '@/hooks/useResponsive';
 import { useTheme } from '@/providers/ThemeProvider';
+import { neu } from '@/theme';
 
 function usePulse() {
   const [opacity] = useState(() => new Animated.Value(0.45));
@@ -46,7 +47,7 @@ const line = (width: DimensionValue, height = 12) => <Skeleton style={{ width, h
 
 function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const { colors } = useTheme();
-  return <View style={[styles.surface, { backgroundColor: colors.surface, borderColor: colors.hairline }, style]}>{children}</View>;
+  return <View style={[styles.surface, { backgroundColor: colors.surface, borderColor: 'transparent' }, neu(colors, 2), style]}>{children}</View>;
 }
 
 function ListRows({ count = 6 }: { count?: number }) {

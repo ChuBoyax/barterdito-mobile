@@ -1,31 +1,18 @@
 import { router } from 'expo-router';
-import {
-  ArrowUpRight,
-  Bell,
-  CalendarDays,
-  Map,
-  Plus,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-  Sparkles,
-  Trophy,
-  X,
-  type LucideIcon,
-} from 'lucide-react-native';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ArrowUpRight, Bell, CalendarDays, Map, Plus, RotateCcw, Search, SlidersHorizontal, Sparkles, Trophy, X, type LucideIcon } from 'lucide-react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { AppHeader, MenuButton } from '@/components/layout';
-import { FeaturedCard, featuredCardWidth, FilterSheet, ItemGrid, TraderRow } from '@/components/marketplace';
-import { AppText, Avatar, ChipRow, EmptyState, IconButton, IconTile, PressableScale, Screen, SectionHeading } from '@/components/ui';
+import { FeaturedCard, featuredCardWidth, FilterSheet, ItemGridRow, TraderRow, useGridRows, useInteractionSets, type GridRow } from '@/components/marketplace';
+import { AppText, Avatar, Button, ChipRow, EmptyState, IconButton, IconTile, PressableScale, SectionHeading } from '@/components/ui';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
-import { avatarPalette, elevation, fonts, type Tone, maxFontScale } from '@/theme';
+import { avatarPalette, elevation, fonts, neu, type Tone, maxFontScale } from '@/theme';
 import type { ItemFilters, Trader } from '@/types/models';
-import { firstName } from '@/utils/format';
+import { firstName, pluralize } from '@/utils/format';
 
 const defaultFilters: ItemFilters = {
   category: 'All',
@@ -44,39 +31,44 @@ function greeting() {
 
 export default function BrowseScreen() {
   const { colors } = useTheme();
-  const { gutter, innerWidth, columns } = useResponsive();
+  const { gutter, innerWidth, columns, contentWidth } = useResponsive();
   const pad = { paddingHorizontal: gutter };
   const hRow = [styles.hRow, pad];
   const featuredSnap = featuredCardWidth(innerWidth, columns) + 14;
   const { user, requireAuth } = useAuth();
-  const { items, loading, refresh } = useMarketplace();
+  const { items, loading, loadingMore, error, hasMore, refresh, loadMore } = useMarketplace();
   const [filters, setFilters] = useState(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const visibleItems = useMemo(() => itemService.filterItems(items, filters), [items, filters]);
   const locations = useMemo(() => [...new Set(items.map((item) => item.location))].sort(), [items]);
-  const hotItems = items.filter((item) => item.hot);
-  const filtersActive =
-    filters.condition !== defaultFilters.condition || filters.location !== defaultFilters.location || filters.sort !== defaultFilters.sort;
+  const hotItems = useMemo(() => items.filter((item) => item.hot), [items]);
+  const filtersActive = filters.condition !== defaultFilters.condition || filters.location !== defaultFilters.location || filters.sort !== defaultFilters.sort;
   const browsing = filters.search.trim() !== '' || filters.category !== defaultFilters.category || filtersActive;
 
-  const traders = useMemo<Trader[]>(() => {
-    const byOwner = new globalThis.Map<string, Trader>();
+  // Owners of the loaded listings; ratings are not tracked yet, so show their listing count.
+  const traders = useMemo<(Trader & { listings: number })[]>(() => {
+    const byOwner = new globalThis.Map<string, Trader & { listings: number }>();
     items.forEach((item, index) => {
-      const id = item.userId ?? item.owner;
-      if (byOwner.has(id) || item.mine) return;
-      byOwner.set(id, {
-        id,
+      if (!item.userId || item.mine || item.status === 'Traded') return;
+      const known = byOwner.get(item.userId);
+      if (known) {
+        known.listings += 1;
+        return;
+      }
+      byOwner.set(item.userId, {
+        id: item.userId,
         name: item.owner,
         initials: item.ownerAvatar,
         avatarUrl: item.ownerAvatarUrl,
         rating: item.rating,
         trades: item.trades,
         color: avatarPalette[index % avatarPalette.length],
+        listings: 1,
       });
     });
-    return [...byOwner.values()].slice(0, 6);
+    return [...byOwner.values()].sort((a, b) => b.listings - a.listings).slice(0, 6);
   }, [items]);
 
   async function onRefresh() {
@@ -90,33 +82,48 @@ export default function BrowseScreen() {
 
   const resultsLabel = loading ? 'Searching…' : `${visibleItems.length} ${visibleItems.length === 1 ? 'result' : 'results'}`;
 
-  return (
-    <Screen
-      padded={false}
-      refreshing={refreshing}
-      onRefresh={() => void onRefresh()}
-      contentStyle={styles.content}
-      header={
-        <View style={pad}>
-          <AppHeader
-            eyebrow={greeting()}
-            title={user ? `Hi, ${firstName(user.fullName)}` : 'Barterdito'}
-            leading={
-              <PressableScale onPress={() => router.push(user ? '/profile' : '/login')} scaleTo={0.92}>
-                <Avatar initials={user?.initials ?? 'BD'} size="medium" ring online={Boolean(user)} />
-              </PressableScale>
-            }
-            actions={
-              <View style={styles.actions}>
-                <IconButton icon={Bell} label="Notifications" size={19} badge={2} onPress={() => router.push('/notifications')} />
-                <MenuButton />
-              </View>
-            }
-          />
-        </View>
-      }>
+  const rows = useGridRows(visibleItems, loading, columns);
+  const { saved, hearted, toggleSaved, toggleHeart } = useInteractionSets();
+  const showGrid = loading || visibleItems.length > 0;
+
+  const renderRow = useCallback(
+    ({ item: row }: { item: GridRow }) => (
+      <View style={pad}>
+        <ItemGridRow row={row} columns={columns} saved={saved} hearted={hearted} onSave={toggleSaved} onHeart={toggleHeart} />
+      </View>
+    ),
+    // `pad` only changes with the gutter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gutter, columns, saved, hearted, toggleSaved, toggleHeart],
+  );
+
+  // Infinite scroll on the feed (the website's Load more). Filtered results keep the
+  // explicit button so a narrow search does not page through the whole catalog.
+  const onEndReached = useCallback(() => {
+    if (!browsing && hasMore && !loading && !loadingMore) void loadMore();
+  }, [browsing, hasMore, loading, loadingMore, loadMore]);
+
+  const header = (
+    <View style={styles.headerStack}>
+      <View style={pad}>
+        <AppHeader
+          eyebrow={greeting()}
+          title={user ? `Hi, ${firstName(user.fullName)}` : 'Barterdito'}
+          leading={
+            <PressableScale onPress={() => router.push(user ? '/profile' : '/login')} scaleTo={0.92}>
+              <Avatar initials={user?.initials ?? 'BD'} imageUrl={user?.avatarUrl} size="medium" ring online={Boolean(user)} />
+            </PressableScale>
+          }
+          actions={
+            <View style={styles.actions}>
+              <IconButton icon={Bell} label="Notifications" size={19} badge={2} onPress={() => router.push('/notifications')} />
+              <MenuButton />
+            </View>
+          }
+        />
+      </View>
       <Animated.View entering={FadeInDown.duration(400)} style={[pad, styles.searchBlock]}>
-        <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+        <View style={[styles.search, { backgroundColor: colors.background, borderColor: 'transparent' }, neu(colors, 2, true)]}>
           <Search size={20} color={colors.muted} strokeWidth={2} />
           <TextInput
             maxFontSizeMultiplier={maxFontScale}
@@ -150,11 +157,9 @@ export default function BrowseScreen() {
           </PressableScale>
         </View>
       </Animated.View>
-
       <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.chips}>
         <ChipRow inset={gutter} options={itemService.getCategories()} value={filters.category} onChange={(category) => update({ category })} />
       </Animated.View>
-
       {browsing ? (
         <Animated.View entering={FadeIn.duration(250)} style={pad}>
           <View style={styles.resultsHeader}>
@@ -173,18 +178,6 @@ export default function BrowseScreen() {
               </AppText>
             </Pressable>
           </View>
-          {loading || visibleItems.length ? (
-            <ItemGrid items={visibleItems} loading={loading} />
-          ) : (
-            <EmptyState
-              icon={Search}
-              title="No matches found"
-              text="Try different keywords, pick another category, or clear your filters."
-              action="Clear all"
-              actionIcon={RotateCcw}
-              onAction={clearAll}
-            />
-          )}
         </Animated.View>
       ) : (
         <>
@@ -197,7 +190,6 @@ export default function BrowseScreen() {
               <Shortcut icon={Trophy} tone="yellow" title="Top traders" onPress={() => router.push('/leaderboard')} />
             </View>
           </Animated.View>
-
           {hotItems.length ? (
             <View>
               <View style={pad}>
@@ -210,37 +202,92 @@ export default function BrowseScreen() {
               </ScrollView>
             </View>
           ) : null}
-
           <View style={pad}>
             <SectionHeading eyebrow="Fresh finds" title="Latest items" />
-            {loading || visibleItems.length ? (
-              <ItemGrid items={visibleItems} loading={loading} />
-            ) : (
-              <EmptyState
-                icon={Plus}
-                title="Nothing listed yet"
-                text="Be the first to post something to swap in your area."
-                action="Post a trade"
-                onAction={() => requireAuth(() => router.push('/post-item'))}
-              />
-            )}
           </View>
+        </>
+      )}
+    </View>
+  );
 
+  const empty = (
+    <View style={pad}>
+      {browsing ? (
+        <EmptyState
+          icon={Search}
+          title="No matches found"
+          text="Try different keywords, pick another category, or clear your filters."
+          action="Clear all"
+          actionIcon={RotateCcw}
+          onAction={clearAll}
+        />
+      ) : error ? (
+        <EmptyState icon={RotateCcw} title="Could not load listings" text={error} action="Try again" actionIcon={RotateCcw} onAction={() => void onRefresh()} />
+      ) : (
+        <EmptyState
+          icon={Plus}
+          title="Nothing listed yet"
+          text="Be the first to post something to swap in your area."
+          action="Post a trade"
+          onAction={() => requireAuth(() => router.push('/post-item'))}
+        />
+      )}
+    </View>
+  );
+
+  const footer = (
+    <View style={styles.footer}>
+      {hasMore && showGrid && !loading ? (
+        <View style={pad}>
+          <Button label={browsing ? 'Search more listings' : 'Load more'} variant="secondary" loading={loadingMore} onPress={() => void loadMore()} />
+        </View>
+      ) : null}
+      {!browsing ? (
+        <>
           {traders.length ? (
             <View>
               <View style={pad}>
-                <SectionHeading eyebrow="Community" title="Featured traders" action="See all" onAction={() => router.push('/leaderboard')} />
+                <SectionHeading eyebrow="Community" title="Active traders" />
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hRow}>
                 {traders.map((trader) => (
-                  <TraderRow key={trader.id} trader={trader} variant="card" onPress={() => router.push(`/traders/${trader.id}`)} />
+                  <TraderRow
+                    key={trader.id}
+                    trader={trader}
+                    variant="card"
+                    subtitle={pluralize(trader.listings, 'listing')}
+                    onPress={() => router.push(`/traders/${trader.id}`)}
+                  />
                 ))}
               </ScrollView>
             </View>
           ) : null}
         </>
-      )}
+      ) : null}
+    </View>
+  );
 
+  return (
+    <View style={[styles.flex, { backgroundColor: colors.background }]}>
+      <FlatList
+        data={showGrid ? rows : []}
+        keyExtractor={rowKey}
+        renderItem={renderRow}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        ListFooterComponent={footer}
+        ItemSeparatorComponent={RowGap}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.6}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={7}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.list, { maxWidth: contentWidth }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.orange} colors={[colors.orange]} />}
+      />
       <FilterSheet
         visible={filtersOpen}
         onClose={() => setFiltersOpen(false)}
@@ -249,9 +296,12 @@ export default function BrowseScreen() {
         conditions={itemService.getConditions()}
         onChange={update}
       />
-    </Screen>
+    </View>
   );
 }
+
+const rowKey = (row: GridRow) => row.key;
+const RowGap = () => <View style={styles.rowGap} />;
 
 function PrimaryShortcut({ onPress }: { onPress: () => void }) {
   const { colors } = useTheme();
@@ -261,13 +311,17 @@ function PrimaryShortcut({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Post a trade"
       onPress={onPress}
       scaleTo={0.98}
-      style={[styles.primary, { backgroundColor: colors.orange }]}>
+      style={[styles.primary, { backgroundColor: colors.orange }, neu(colors, 2)]}>
       <View style={[styles.primaryIcon, { borderColor: colors.onPrimary }]}>
         <Plus size={22} color={colors.onPrimary} strokeWidth={2.4} />
       </View>
       <View style={styles.flex}>
-        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.primaryTitle, { color: colors.onPrimary }]}>Post a trade</Text>
-        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.primaryText, { color: colors.onPrimary }]}>List an item in minutes — no cash needed</Text>
+        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.primaryTitle, { color: colors.onPrimary }]}>
+          Post a trade
+        </Text>
+        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.primaryText, { color: colors.onPrimary }]}>
+          List an item in minutes — no cash needed
+        </Text>
       </View>
       <ArrowUpRight size={20} color={colors.onPrimary} strokeWidth={2.2} />
     </PressableScale>
@@ -282,7 +336,7 @@ function Shortcut({ icon, tone, title, onPress }: { icon: LucideIcon; tone: Tone
       accessibilityLabel={title}
       onPress={onPress}
       scaleTo={0.95}
-      style={[styles.shortcut, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+      style={[styles.shortcut, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
       <IconTile icon={icon} tone={tone} size={40} />
       <AppText variant="caption" weight="semibold" color="ink" numberOfLines={1} align="center">
         {title}
@@ -292,7 +346,10 @@ function Shortcut({ icon, tone, title, onPress }: { icon: LucideIcon; tone: Tone
 }
 
 const styles = StyleSheet.create({
-  content: { gap: 24, paddingTop: 0 },
+  list: { width: '100%', alignSelf: 'center', paddingBottom: 40 },
+  headerStack: { gap: 24, paddingBottom: 14 },
+  footer: { gap: 24, paddingTop: 22 },
+  rowGap: { height: 22 },
   flex: { flex: 1 },
   actions: { flexDirection: 'row', gap: 8 },
   searchBlock: { marginTop: 4 },

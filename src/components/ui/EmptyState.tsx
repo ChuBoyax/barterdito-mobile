@@ -2,6 +2,7 @@ import { Plus, type LucideIcon } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
+import { neu } from '@/theme';
 import { AppText } from './AppText';
 import { Button } from './Button';
 import { IconTile } from './IconTile';
@@ -19,8 +20,8 @@ export function EmptyState({ icon, title, text, action, onAction, actionIcon = P
   const { colors } = useTheme();
   return (
     <View style={styles.wrap}>
-      <View style={[styles.halo, { backgroundColor: colors.orangeSoft }]}>
-        <View style={[styles.haloInner, { backgroundColor: colors.orangePale }]}>
+      <View style={[styles.halo, { backgroundColor: colors.surface }, neu(colors, 3)]}>
+        <View style={[styles.haloInner, { backgroundColor: colors.background }, neu(colors, 2, true)]}>
           <IconTile icon={icon} size={64} rounded />
         </View>
       </View>

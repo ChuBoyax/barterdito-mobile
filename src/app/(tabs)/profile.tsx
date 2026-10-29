@@ -11,8 +11,8 @@ import {
   MapPin,
   QrCode,
   Settings,
+  Package,
   Share2,
-  Star,
   type LucideIcon,
 } from 'lucide-react-native';
 import { useState } from 'react';
@@ -20,29 +20,31 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeaderActions, RequireAuth } from '@/components/layout';
-import { StatGrid } from '@/components/marketplace';
-import { AppText, Avatar, Button, Card, EmptyState, IconTile, ListRow, PressableScale, ProgressBar, Screen, SegmentedControl, Stars } from '@/components/ui';
+import { ItemGrid, StatGrid } from '@/components/marketplace';
+import { ProfileReviews } from '@/components/trades';
+import { AppText, Avatar, Button, Card, EmptyState, IconTile, ListRow, PressableScale, ProgressBar, Screen, SegmentedControl } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useSignOut } from '@/hooks/useSignOut';
 import { useAuth, useTheme } from '@/providers';
-import { userService } from '@/services';
+import { itemService, userService } from '@/services';
+import { profileCompletion } from '@/services/userService';
 import { elevation, fonts, type Tone, maxFontScale } from '@/theme';
-import type { User } from '@/types/models';
+import type { Profile } from '@/types/models';
 import { pluralize } from '@/utils/format';
 import { shareTrader } from '@/utils/share';
+import { queryKeys } from '@/services/queryKeys';
 
-type Tab = 'history' | 'reviews';
+type Tab = 'active' | 'traded';
 
-const PREVIEW_COUNT = 3;
+const PREVIEW_COUNT = 4;
 const HEADER_ROW = 44;
 
-
-function nextProfileStep(user: User): string {
-  if (!user.avatarUrl) return 'Add a profile photo so traders recognise you.';
-  if (!user.bio?.trim()) return 'Write a short bio about what you like to trade.';
-  if (!user.location?.trim()) return 'Add your city to appear in nearby searches.';
-  return 'Verify your phone number to earn a trust badge.';
+function nextProfileStep(profile: Profile): string {
+  if (!profile.avatarUrl) return 'Add a profile photo so traders recognise you.';
+  if (!profile.bio.trim()) return 'Write a short bio about what you like to trade.';
+  if (!profile.location.trim()) return 'Add your city or barangay so nearby traders can find you.';
+  return 'Verify your email address to finish your profile.';
 }
 
 export default function ProfileScreen() {
@@ -60,19 +62,29 @@ function ProfileContent() {
   const pad = { paddingHorizontal: gutter };
   const { user } = useAuth();
   const signOut = useSignOut();
-  const [tab, setTab] = useState<Tab>('history');
-  const { data: stats } = useAsync(['userService.getProfileStats'], () => userService.getProfileStats());
-  const { data: history = [] } = useAsync(['userService.getTradeHistory'], () => userService.getTradeHistory());
-  const { data: reviews = [] } = useAsync(['userService.getReviews'], () => userService.getReviews());
+  const [tab, setTab] = useState<Tab>('active');
+  const { data: profile, refreshing, reload } = useAsync(queryKeys.myProfile, () => userService.getMyProfile());
+  const { data: listings = [], loading: listingsLoading, reload: reloadListings } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
 
   if (!user) return null;
 
   const share = () => void shareTrader({ id: user.id, name: user.fullName });
-  const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
-  const strengthDone = (stats?.profileStrength ?? 100) >= 100;
+  const strength = profile ? profileCompletion(profile) : 100;
+  const traded = listings.filter((item) => item.status === 'Traded');
+  const open = listings.filter((item) => item.status !== 'Traded');
+  const visible = tab === 'active' ? open : traded;
+  const place = profile?.location || user.location;
+  const joined = profile?.joined || user.joined;
 
   return (
-    <Screen padded={false} contentStyle={styles.content}>
+    <Screen
+      padded={false}
+      contentStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={() => {
+        void reload();
+        void reloadListings();
+      }}>
       {/* Cover is tall enough that the avatar sits below the header row instead of colliding with it. */}
       <View style={[styles.cover, pad, { backgroundColor: colors.orangeSoft, paddingTop: insets.top + 8, height: insets.top + 8 + HEADER_ROW + 100 }]}>
         <View style={styles.coverTop}>
@@ -90,29 +102,37 @@ function ProfileContent() {
             <AppText variant="h1" align="center">
               {user.fullName}
             </AppText>
-            <BadgeCheck size={20} color={colors.blue} fill={colors.blueSoft} accessibilityLabel="Verified" />
+            {(profile?.emailVerified ?? user.emailVerified) ? (
+              <BadgeCheck size={20} color={colors.blue} fill={colors.blueSoft} accessibilityLabel="Verified email" />
+            ) : null}
           </View>
           <View style={styles.row}>
-            <MapPin size={13} color={colors.muted} />
-            <AppText variant="caption">
-              {user.location} · Joined {user.joined}
-            </AppText>
+            {place ? <MapPin size={13} color={colors.muted} /> : null}
+            <AppText variant="caption">{[place, joined ? `Joined ${joined}` : ''].filter(Boolean).join(' · ')}</AppText>
           </View>
           {user.bio ? (
             <AppText variant="small" align="center" style={styles.bio}>
               {user.bio}
             </AppText>
           ) : null}
-          {stats ? (
+          {profile ? (
             <StatGrid
               variant="inline"
               stats={[
-                { label: 'Trades', value: stats.totalTrades, onPress: () => setTab('history') },
-                { label: 'Rating', value: `${stats.rating}★`, onPress: () => setTab('reviews') },
-                { label: 'Followers', value: stats.followers, onPress: () => router.push('/followers?tab=followers') },
-                { label: 'Following', value: stats.following, onPress: () => router.push('/followers?tab=following') },
+                { label: 'Listings', value: profile.listingCount, onPress: () => setTab('active') },
+                { label: 'Traded', value: profile.tradedListingCount, onPress: () => setTab('traded') },
+                { label: 'Followers', value: profile.followersCount, onPress: () => router.push('/followers?tab=followers') },
+                { label: 'Following', value: profile.followingCount, onPress: () => router.push('/followers?tab=following') },
               ]}
             />
+          ) : null}
+          {profile ? (
+            <AppText variant="caption" align="center">
+              {pluralize(profile.completedTradeCount, 'verified completed trade')} ·{' '}
+              {profile.reviewCount && profile.averageRating !== null
+                ? `${profile.averageRating}/5 from ${pluralize(profile.reviewCount, 'review')}`
+                : 'No trade reviews yet'}
+            </AppText>
           ) : null}
           <View style={styles.buttons}>
             <Button label="Edit profile" icon={Edit3} compact style={styles.flex} onPress={() => router.push('/settings?edit=profile')} />
@@ -121,17 +141,17 @@ function ProfileContent() {
         </Card>
       </View>
 
-      {stats && !strengthDone ? (
+      {profile && strength < 100 ? (
         <View style={pad}>
-          <Card onPress={() => router.push('/settings?edit=profile')} accessibilityLabel={`Profile ${stats.profileStrength}% complete`} style={styles.strength}>
+          <Card onPress={() => router.push('/settings?edit=profile')} accessibilityLabel={`Profile ${strength}% complete`} style={styles.strength}>
             <View style={styles.row}>
               <View style={styles.flex}>
-                <AppText variant="h3">Profile {stats.profileStrength}% complete</AppText>
-                <AppText variant="caption">{nextProfileStep(user)}</AppText>
+                <AppText variant="h3">Profile {strength}% complete</AppText>
+                <AppText variant="caption">{nextProfileStep(profile)}</AppText>
               </View>
               <ChevronRight size={18} color={colors.muted} />
             </View>
-            <ProgressBar value={stats.profileStrength} />
+            <ProgressBar value={strength} />
           </Card>
         </View>
       ) : null}
@@ -148,77 +168,30 @@ function ProfileContent() {
           value={tab}
           onChange={setTab}
           segments={[
-            { value: 'history', label: 'Trade history', count: history.length || undefined },
-            { value: 'reviews', label: 'Reviews', count: reviews.length || undefined },
+            { value: 'active', label: 'Listings', count: open.length || undefined },
+            { value: 'traded', label: 'Marked traded', count: traded.length || undefined },
           ]}
         />
 
-        {tab === 'history' ? (
-          history.length ? (
-            <Card style={styles.listCard}>
-              {history.slice(0, PREVIEW_COUNT).map((entry, index) => (
-                <View
-                  key={entry.id}
-                  style={[styles.historyRow, index > 0 && { borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth }]}>
-                  <IconTile icon={ArrowRightLeft} size={40} rounded />
-                  <View style={styles.flex}>
-                    <AppText variant="h3" numberOfLines={1}>
-                      {entry.title}
-                    </AppText>
-                    <AppText variant="caption" numberOfLines={1}>
-                      with {entry.partner} · {entry.date}
-                    </AppText>
-                  </View>
-                  <View style={styles.ratingPill}>
-                    <Star size={12} color={colors.yellow} fill={colors.yellow} />
-                    <AppText variant="caption" color="ink" weight="bold">
-                      {entry.rating.toFixed(1)}
-                    </AppText>
-                  </View>
-                </View>
-              ))}
-              {history.length > PREVIEW_COUNT ? (
-                <SeeAll label={`See all ${history.length} trades`} onPress={() => router.push('/activity')} />
-              ) : null}
-            </Card>
-          ) : (
-            <EmptyState icon={ArrowRightLeft} title="No trades yet" text="Your completed swaps will appear here." action="Browse items" onAction={() => router.navigate('/')} />
-          )
-        ) : reviews.length ? (
-          <Card style={styles.listCard}>
-            <View style={styles.summary}>
-              <AppText variant="hero">{averageRating.toFixed(1)}</AppText>
-              <View style={styles.flex}>
-                <Stars rating={averageRating} size={15} />
-                <AppText variant="caption">
-                  Based on {pluralize(reviews.length, 'review')}
-                </AppText>
-              </View>
-            </View>
-            {reviews.slice(0, PREVIEW_COUNT).map((review) => (
-              <View key={review.id} style={[styles.review, { borderTopColor: colors.hairline }]}>
-                <View style={styles.row}>
-                  <Avatar initials={review.initials} size="small" />
-                  <View style={styles.flex}>
-                    <AppText variant="h3">{review.author}</AppText>
-                    <View style={styles.row}>
-                      <Stars rating={review.rating} size={11} />
-                      <AppText variant="caption">· {review.date}</AppText>
-                    </View>
-                  </View>
-                </View>
-                <AppText variant="small" color="ink">
-                  {review.text}
-                </AppText>
-              </View>
-            ))}
-          </Card>
+        {listingsLoading || visible.length ? (
+          <>
+            <ItemGrid items={visible.slice(0, PREVIEW_COUNT)} loading={listingsLoading} />
+            {visible.length > PREVIEW_COUNT ? (
+              <Card style={styles.listCard}>
+                <SeeAll label={`See all ${visible.length} in My Items`} onPress={() => router.navigate('/my-items')} />
+              </Card>
+            ) : null}
+          </>
+        ) : tab === 'active' ? (
+          <EmptyState icon={Package} title="No listings yet" text="Post something you no longer need and start receiving offers." action="Post an item" onAction={() => router.push('/post-item')} />
         ) : (
-          <EmptyState icon={Star} title="No reviews yet" text="Traders can review you after a completed swap." />
+          <EmptyState icon={ArrowRightLeft} title="Nothing marked traded" text="Listings you mark as traded will appear here." />
         )}
 
+        <ProfileReviews userId={user.id} />
+
         <Card style={styles.listCard}>
-          <ListRow icon={Settings} title="Settings" subtitle="Account, notifications, privacy and help" onPress={() => router.push('/settings')} />
+          <ListRow icon={Settings} title="Settings" subtitle="Account, password, privacy and help" onPress={() => router.push('/settings')} />
           <ListRow icon={LogOut} iconTone="red" title="Sign out" showChevron={false} onPress={() => void signOut()} />
         </Card>
       </View>
@@ -246,7 +219,7 @@ function QuickAction({ icon, label, tone, onPress }: { icon: LucideIcon; label: 
       accessibilityLabel={label}
       onPress={onPress}
       scaleTo={0.94}
-      style={[styles.action, { backgroundColor: colors.surface, borderColor: colors.hairline }, elevation(1, colors)]}>
+      style={[styles.action, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
       <IconTile icon={icon} tone={tone} size={42} />
       <AppText variant="caption" color="ink" weight="bold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
         {label}
@@ -272,9 +245,5 @@ const styles = StyleSheet.create({
   action: { flex: 1, alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 22, paddingVertical: 14 },
   section: { gap: 14 },
   listCard: { paddingVertical: 4 },
-  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  ratingPill: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  summary: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10 },
-  review: { gap: 8, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
   seeAll: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
 });

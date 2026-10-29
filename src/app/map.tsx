@@ -62,7 +62,7 @@ export default function MapScreen() {
         <AppText variant="h2">{nearby.length} trades nearby</AppText>
         {nearby.map((item) => (
           <Pressable key={item.id} onPress={() => router.push(`/items/${item.id}`)} style={styles.row}>
-            <Image source={item.image} style={styles.thumb} contentFit="cover" />
+            <Image source={item.image} cachePolicy="memory-disk" style={styles.thumb} contentFit="cover" />
             <View style={styles.flex}>
               <AppText variant="h3" numberOfLines={1}>
                 {item.title}

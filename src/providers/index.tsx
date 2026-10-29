@@ -25,7 +25,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
 }
 
 export { useAuth } from "./AuthProvider";
-export { useMarketplace } from "./MarketplaceProvider";
+export { useMarketplace, useMarketplaceActions } from "./MarketplaceProvider";
 export { useTheme } from "./ThemeProvider";
 export { useToast } from "./ToastProvider";
 export { queryClient } from "./queryClient";

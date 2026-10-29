@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppText, Glass, PhotoScrim, PressableScale, Skeleton } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, maxFontScale } from '@/theme';
+import { fonts, maxFontScale, neu } from '@/theme';
 import type { Item } from '@/types/models';
 
 type ItemCardProps = {
@@ -24,9 +24,9 @@ export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: o
   const onSave = () => saveItem(item.id);
   const onHeart = () => heartItem(item.id);
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.surface }, neu(colors, 2)]}>
       <PressableScale accessibilityRole="button" accessibilityLabel={`View ${item.title}`} onPress={onOpen} scaleTo={0.97} style={styles.media}>
-        <Image source={item.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={item.id} />
+        <Image source={item.image} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={item.id} />
         <PhotoScrim />
         <View style={styles.topRow}>
           {item.hot ? (
@@ -82,8 +82,9 @@ export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: o
 });
 
 export function ItemCardSkeleton() {
+  const { colors } = useTheme();
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.surface }, neu(colors, 2)]}>
       <Skeleton style={[styles.media, styles.skeletonMedia]} />
       <View style={styles.body}>
         <Skeleton style={styles.skeletonTitle} />
@@ -95,9 +96,9 @@ export function ItemCardSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  card: { flex: 1, gap: 10 },
+  card: { flex: 1, gap: 10, borderRadius: 24, padding: 8, paddingBottom: 12 },
   flex: { flex: 1 },
-  media: { width: '100%', aspectRatio: 0.85, borderRadius: 20, overflow: 'hidden', justifyContent: 'space-between' },
+  media: { width: '100%', aspectRatio: 0.9, borderRadius: 18, overflow: 'hidden', justifyContent: 'space-between' },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 },
   hot: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   hotText: { fontFamily: fonts.extrabold, fontSize: 10 },
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
   inline: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
   inlineEnd: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   photoText: { fontFamily: fonts.bold, fontSize: 10.5 },
-  body: { gap: 3, paddingHorizontal: 2 },
+  body: { gap: 3, paddingHorizontal: 6 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   skeletonMedia: { borderRadius: 20 },
   skeletonTitle: { width: '85%', height: 15 },

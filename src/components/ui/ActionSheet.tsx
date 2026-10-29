@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/providers/ThemeProvider';
+import { neu } from '@/theme';
 import { AppText } from './AppText';
 import { IconTile } from './IconTile';
 
@@ -73,7 +74,7 @@ export function ActionSheet({ visible, onClose, title, subtitle, options }: Acti
         <Pressable
           accessibilityRole="button"
           onPress={onClose}
-          style={({ pressed }) => [styles.cancel, { backgroundColor: pressed ? colors.line : colors.surface2 }]}>
+          style={({ pressed }) => [styles.cancel, { backgroundColor: colors.surface }, neu(colors, 1, pressed)]}>
           <AppText variant="h3">Cancel</AppText>
         </Pressable>
       </View>
