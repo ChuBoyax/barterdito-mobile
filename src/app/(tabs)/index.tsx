@@ -6,11 +6,11 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { AppHeader, MenuButton, NotificationBell } from '@/components/layout';
 import { FeaturedCard, featuredCardWidth, FilterSheet, ItemGridRow, TraderRow, useGridRows, useInteractionSets, type GridRow } from '@/components/marketplace';
-import { AppText, Avatar, Button, ChipRow, EmptyState, IconTile, PressableScale, SectionHeading } from '@/components/ui';
+import { AppText, Avatar, Button, ChipRow, EmptyState, PressableScale, SectionHeading } from '@/components/ui';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
-import { avatarPalette, elevation, fonts, neu, type Tone, maxFontScale } from '@/theme';
+import { avatarPalette, elevation, fonts, neu, tone as getTone, type Tone, maxFontScale } from '@/theme';
 import type { ItemFilters, Trader } from '@/types/models';
 import { firstName, pluralize } from '@/utils/format';
 
@@ -327,8 +327,9 @@ function PrimaryShortcut({ onPress }: { onPress: () => void }) {
   );
 }
 
-function Shortcut({ icon, tone, title, onPress }: { icon: LucideIcon; tone: Tone; title: string; onPress: () => void }) {
+function Shortcut({ icon: Icon, tone, title, onPress }: { icon: LucideIcon; tone: Tone; title: string; onPress: () => void }) {
   const { colors } = useTheme();
+  const palette = getTone(colors, tone);
   return (
     <PressableScale
       accessibilityRole="button"
@@ -336,7 +337,7 @@ function Shortcut({ icon, tone, title, onPress }: { icon: LucideIcon; tone: Tone
       onPress={onPress}
       scaleTo={0.95}
       style={[styles.shortcut, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
-      <IconTile icon={icon} tone={tone} size={40} />
+      <Icon size={28} color={palette.fg} strokeWidth={1.9} />
       <AppText variant="caption" weight="semibold" color="ink" numberOfLines={1} align="center">
         {title}
       </AppText>
@@ -365,6 +366,6 @@ const styles = StyleSheet.create({
   primaryIcon: { width: 46, height: 46, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', opacity: 0.95 },
   primaryTitle: { fontFamily: fonts.extrabold, fontSize: 17 },
   primaryText: { fontFamily: fonts.medium, fontSize: 12.5, opacity: 0.88 },
-  shortcut: { flex: 1, alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 4 },
+  shortcut: { flex: 1, alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 4 },
   hRow: { gap: 14, paddingBottom: 6 },
 });
