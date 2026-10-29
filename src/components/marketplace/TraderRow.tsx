@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText, Avatar, PressableScale } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { elevation } from '@/theme';
 import type { Trader } from '@/types/models';
 
 type TraderRowProps = {
@@ -23,7 +22,7 @@ export function TraderRow({ trader, onPress, right, variant = 'row', subtitle }:
       <PressableScale
         onPress={onPress}
         scaleTo={0.96}
-        style={[styles.card, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
+        style={styles.card}>
         <Avatar initials={trader.initials} color={trader.color} imageUrl={trader.avatarUrl} size="large" online />
         <View style={styles.nameRow}>
           <AppText variant="h3" numberOfLines={1} align="center">
@@ -78,7 +77,7 @@ export function TraderRow({ trader, onPress, right, variant = 'row', subtitle }:
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
-  card: { width: 150, alignItems: 'center', gap: 9, borderWidth: 1, borderRadius: 26, paddingHorizontal: 12, paddingVertical: 18 },
+  card: { width: 130, alignItems: 'center', gap: 9, paddingHorizontal: 4, paddingVertical: 6 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '100%', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   body: { flex: 1, gap: 2 },

@@ -82,10 +82,6 @@ export function ItemGrid({ items, loading, columns: columnsOverride }: ItemGridP
   );
 }
 
-export const gridStyles = StyleSheet.create({
-  rowGap: { height: 22 },
-});
-
 const styles = StyleSheet.create({
   grid: { gap: 22 },
   row: { flexDirection: 'row', gap: 16 },
