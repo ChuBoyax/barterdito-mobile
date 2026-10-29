@@ -17,4 +17,3 @@ export class ServiceError extends Error {
   }
 }
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';

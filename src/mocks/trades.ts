@@ -1,28 +1,4 @@
-import type { ChatMessage, Offer, Thread } from '@/types/models';
-import { mockItems } from './items';
-
-export const mockOffers: Offer[] = [
-  {
-    id: '1',
-    person: 'Mika Santos',
-    initials: 'MS',
-    theirs: mockItems[0],
-    yours: mockItems[6],
-    status: 'Pending',
-    time: '12 min ago',
-    received: true,
-  },
-  {
-    id: '2',
-    person: 'Paolo Reyes',
-    initials: 'PR',
-    theirs: mockItems[1],
-    yours: mockItems[7],
-    status: 'Accepted',
-    time: 'Yesterday',
-    received: false,
-  },
-];
+import type { ChatMessage, Thread } from '@/types/models';
 
 export const mockThreads: Thread[] = [
   {

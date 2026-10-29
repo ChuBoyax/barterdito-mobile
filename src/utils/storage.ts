@@ -4,8 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const storageKeys = {
   theme: 'barterdito-theme',
   onboarded: 'barterdito-onboarded',
-  demoAuth: 'barterdito-demo-auth',
+  sessionUser: 'barterdito-session-user',
   postDraft: 'barterdito-post-draft',
+  interactions: 'barterdito-interactions',
 } as const;
 
 export async function readJson<T>(key: string): Promise<T | null> {

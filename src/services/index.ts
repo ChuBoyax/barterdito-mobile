@@ -1,5 +1,6 @@
 export { aiService } from './aiService';
 export { authService } from './authService';
+export { ApiError, API_URL, SITE_URL } from './api';
 export { ServiceError } from './client';
 export { communityService } from './communityService';
 export { itemService } from './itemService';

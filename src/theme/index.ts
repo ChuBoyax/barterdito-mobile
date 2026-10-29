@@ -17,24 +17,46 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 24,
+  sm: 14,
+  md: 18,
+  lg: 24,
+  xl: 28,
   pill: 999,
 } as const;
 
+const depths = {
+  1: { offset: 3, blur: 7 },
+  2: { offset: 6, blur: 14 },
+  3: { offset: 9, blur: 22 },
+} as const;
+
+export type NeuDepth = keyof typeof depths;
+
+/**
+ * Neumorphic (soft UI) shadow: a highlight from the top-left and a shadow to the
+ * bottom-right, so the element looks extruded from (or, with `inset`, pressed into)
+ * a surface of the same color. Uses `boxShadow`, which supports several layers.
+ */
+export function neu(colors: ThemeColors, depth: NeuDepth = 2, inset = false): ViewStyle {
+  // Cached per palette so every render reuses the same style object (no native prop churn).
+  let palette = shadowCache.get(colors);
+  if (!palette) shadowCache.set(colors, (palette = new Map()));
+  const key = inset ? -depth : depth;
+  let style = palette.get(key);
+  if (!style) {
+    const { offset, blur } = depths[depth];
+    const prefix = inset ? 'inset ' : '';
+    style = {
+      boxShadow: `${prefix}${offset}px ${offset}px ${blur}px ${colors.neuDark}, ${prefix}${-offset}px ${-offset}px ${blur}px ${colors.neuLight}`,
+    };
+    palette.set(key, style);
+  }
+  return style;
+}
+
+const shadowCache = new WeakMap<ThemeColors, Map<number, ViewStyle>>();
+
+/** Raised neumorphic surface; kept under the old name so every caller picks up the new look. */
 export function elevation(level: 1 | 2 | 3, colors: ThemeColors): ViewStyle {
-  const presets = {
-    1: { radius: 10, y: 3, android: 1 },
-    2: { radius: 18, y: 8, android: 3 },
-    3: { radius: 28, y: 14, android: 6 },
-  }[level];
-  return {
-    shadowColor: colors.shadow,
-    shadowOpacity: 1,
-    shadowRadius: presets.radius,
-    shadowOffset: { width: 0, height: presets.y },
-    elevation: presets.android,
-  };
+  return neu(colors, level);
 }

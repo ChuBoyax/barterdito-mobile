@@ -10,6 +10,9 @@ export type Item = {
   category: string;
   condition: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  tags?: string[];
   hearts: number;
   views: number;
   age: string;
@@ -36,17 +39,40 @@ export type User = {
   bio: string;
   location: string;
   joined: string;
+  createdAt?: string;
+  emailVerified?: boolean;
   avatarUrl?: string | null;
-  role?: 'member' | 'sentinel';
 };
 
-export type ProfileStats = {
-  completed: number;
-  totalTrades: number;
-  rating: number;
-  followers: number;
-  following: number;
-  profileStrength: number;
+export type Profile = {
+  id: string;
+  fullName: string;
+  initials: string;
+  bio: string;
+  location: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  joined: string;
+  emailVerified: boolean;
+  listingCount: number;
+  activeListingCount: number;
+  tradedListingCount: number;
+  followersCount: number;
+  followingCount: number;
+  isFollowing: boolean;
+  /** Verified by both traders through the trade workflow. */
+  completedTradeCount: number;
+  reviewCount: number;
+  averageRating: number | null;
+};
+
+export type Connection = {
+  id: string;
+  fullName: string;
+  initials: string;
+  location: string;
+  avatarUrl: string | null;
+  isFollowing: boolean;
 };
 
 export type Trader = {
@@ -55,22 +81,9 @@ export type Trader = {
   initials: string;
   rating: number;
   trades: number;
-  color: string;
+  color?: string;
   avatarUrl?: string | null;
   location?: string;
-};
-
-export type OfferStatus = 'Pending' | 'Accepted' | 'Declined' | 'Completed';
-
-export type Offer = {
-  id: string;
-  person: string;
-  initials: string;
-  theirs: Item;
-  yours: Item;
-  status: OfferStatus;
-  time: string;
-  received: boolean;
 };
 
 export type Thread = {
@@ -138,23 +151,6 @@ export type LeaderboardEntry = {
   isYou?: boolean;
 };
 
-export type TradeHistoryEntry = {
-  id: string;
-  title: string;
-  partner: string;
-  date: string;
-  rating: number;
-};
-
-export type Review = {
-  id: string;
-  author: string;
-  initials: string;
-  rating: number;
-  date: string;
-  text: string;
-};
-
 export type AnalyticsMetric = {
   key: 'views' | 'hearts' | 'offers' | 'conversion';
   label: string;
@@ -201,7 +197,10 @@ export type ItemDraft = {
   condition: string;
   lookingFor: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   tags: string;
+  status: ItemStatus;
   photos: string[];
 };
 

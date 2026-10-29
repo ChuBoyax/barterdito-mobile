@@ -1,35 +1,17 @@
-import { router } from 'expo-router';
-import { Inbox, Send } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Inbox, RotateCcw, Send } from 'lucide-react-native';
+import { useState } from 'react';
 
 import { AppHeader, RequireAuth } from '@/components/layout';
-import { OfferCard } from '@/components/marketplace';
-import { EmptyState, LoadingView, Screen, SegmentedControl } from '@/components/ui';
-import { offerStatusOrder } from '@/constants/status';
-import { useAsync } from '@/hooks/useAsync';
-import { queryClient, useToast } from '@/providers';
+import { TradeOfferCard } from '@/components/trades';
+import { Button, EmptyState, LoadingView, Screen, SegmentedControl } from '@/components/ui';
+import { queryClient, useAuth, useMarketplaceActions, useToast } from '@/providers';
+import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { tradeService } from '@/services';
-import type { Offer, OfferStatus } from '@/types/models';
-import { confirmAction, type ConfirmOptions } from '@/utils/confirm';
-import { firstName } from '@/utils/format';
-
-type Tab = 'received' | 'sent';
-
-
-const confirmations: Partial<Record<OfferStatus, (offer: Offer) => ConfirmOptions>> = {
-  Declined: (offer) => ({
-    title: 'Decline this offer?',
-    message: `${offer.person} will be notified. This can't be undone.`,
-    confirmLabel: 'Decline',
-    destructive: true,
-  }),
-  Completed: (offer) => ({
-    title: 'Mark trade as completed?',
-    message: `Only confirm once you've exchanged items with ${offer.person}.`,
-    confirmLabel: 'Confirm',
-    cancelLabel: 'Not yet',
-  }),
-};
+import type { OfferAction, OfferDirection, OffersPage, TradeOffer } from '@/types/trades';
+import { confirmAction } from '@/utils/confirm';
+import { errorMessage } from '@/utils/format';
+import { queryKeys } from '@/services/queryKeys';
 
 export default function OffersScreen() {
   return (
@@ -39,85 +21,111 @@ export default function OffersScreen() {
   );
 }
 
+const toasts: Record<OfferAction, string> = {
+  accept: 'Trade accepted. Both items are now reserved.',
+  decline: 'Proposal declined.',
+  cancel: 'Proposal cancelled.',
+};
+
+const selectOffers = (page: OffersPage) => page.offers;
+
 function OffersContent() {
   const showToast = useToast();
-  const [tab, setTab] = useState<Tab>('received');
+  const { user } = useAuth();
+  const { refresh: refreshListings } = useMarketplaceActions();
+  const params = useLocalSearchParams<{ tab?: OfferDirection }>();
+  const [tab, setTab] = useState<OfferDirection>(params.tab === 'sent' ? 'sent' : 'received');
   const [busyId, setBusyId] = useState<string | null>(null);
-  const { data: offers = [], loading, refreshing, setData, reload } = useAsync(['tradeService.getOffers'], () => tradeService.getOffers());
+  const query = usePagedQuery(queryKeys.offers(tab), (offset) => tradeService.getOffers(tab, offset), selectOffers);
+  const offers = query.rows;
+  const counts = query.firstPage;
 
-  const list = useMemo(
-    () => offers.filter((offer) => offer.received === (tab === 'received')).sort((a, b) => offerStatusOrder[a.status] - offerStatusOrder[b.status]),
-    [offers, tab],
-  );
-
-  const receivedPending = offers.filter((offer) => offer.received && offer.status === 'Pending').length;
-  const sentActive = offers.filter((offer) => !offer.received && (offer.status === 'Pending' || offer.status === 'Accepted')).length;
-
-  async function applyStatus(offer: Offer, status: OfferStatus) {
+  async function respond(offer: TradeOffer, action: OfferAction) {
+    if (busyId || !user) return;
+    if (action === 'cancel' && offer.status === 'accepted') {
+      const ok = await confirmAction({
+        title: 'Cancel this trade?',
+        message: 'The accepted trade will be cancelled and both items become available again.',
+        confirmLabel: 'Cancel trade',
+        cancelLabel: 'Keep trade',
+        destructive: true,
+      });
+      if (!ok) return;
+    }
     setBusyId(offer.id);
     try {
-      const updated = await tradeService.updateOfferStatus(offer.id, status);
-      setData((current = []) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-     
-      queryClient.setQueryData(['tradeService.getOffer', updated.id], updated);
-      const first = firstName(offer.person);
-      if (status === 'Accepted') showToast(`Offer accepted. Plan a meetup with ${first}.`);
-      if (status === 'Declined') showToast(`Offer declined. ${first} has been notified.`);
-      if (status === 'Completed') router.push(`/trade-complete/${offer.id}`);
-    } catch {
-      showToast('Something went wrong. Please try again.');
+      const updated = await tradeService.respond(offer.id, action);
+      queryClient.setQueryData(queryKeys.offers(tab), (current: typeof query.data) =>
+        current && { ...current, pages: current.pages.map((page) => ({ ...page, offers: page.offers.map((entry) => (entry.id === updated.id ? updated : entry)) })) },
+      );
+      // Accepting reserves items and can close other proposals for them.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.offers() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myItems });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
+      void refreshListings();
+      showToast(toasts[action]);
+      if (action === 'accept') router.push(`/messages/${offer.id}`);
+    } catch (caught) {
+      showToast(errorMessage(caught, 'Could not update this proposal. Please try again.'));
+      void query.refetch();
     } finally {
       setBusyId(null);
     }
   }
 
-  async function updateOffer(offer: Offer, status: OfferStatus) {
-    const ask = confirmations[status];
-    if (ask && !(await confirmAction(ask(offer)))) return;
-    await applyStatus(offer, status);
-  }
-
   return (
     <Screen
-      refreshing={refreshing}
-      onRefresh={() => void reload()}
+      refreshing={query.isRefetching}
+      onRefresh={() => void query.refetch()}
       header={<AppHeader eyebrow="Your swaps" title="Trade Offers" subtitle="Review proposals, accept fair swaps, and plan safe meetups." />}>
-      <SegmentedControl<Tab>
+      <SegmentedControl<OfferDirection>
         value={tab}
         onChange={setTab}
         segments={[
-          { value: 'received', label: 'Received', count: receivedPending || undefined },
-          { value: 'sent', label: 'Sent', count: sentActive || undefined },
+          { value: 'received', label: 'Received', count: counts?.receivedCount || undefined },
+          { value: 'sent', label: 'Sent', count: counts?.sentCount || undefined },
         ]}
       />
-      {loading && !offers.length ? (
+      {query.isPending ? (
         <LoadingView variant="cards" inline label="Loading offers" />
-      ) : list.length ? (
-        list.map((offer) => (
-          <OfferCard
-            key={offer.id}
-            offer={offer}
-            busy={busyId === offer.id}
-            onChat={() => router.push(`/messages/${offer.id}`)}
-            onMeetup={() => router.push(`/meetups/${offer.id}`)}
-            onReview={() => router.push(`/trade-review/${offer.id}`)}
-            onOpenItem={(itemId) => router.push(`/items/${itemId}`)}
-            onUpdate={(status) => void updateOffer(offer, status)}
-          />
-        ))
+      ) : query.isError && !offers.length ? (
+        <EmptyState
+          icon={Inbox}
+          title="Could not load offers"
+          text={errorMessage(query.error)}
+          action="Try again"
+          actionIcon={RotateCcw}
+          onAction={() => void query.refetch()}
+        />
+      ) : offers.length && user ? (
+        <>
+          {offers.map((offer) => (
+            <TradeOfferCard
+              key={offer.id}
+              offer={offer}
+              userId={user.id}
+              busy={busyId === offer.id}
+              disabled={Boolean(busyId)}
+              onRespond={(action) => void respond(offer, action)}
+            />
+          ))}
+          {query.hasNextPage ? (
+            <Button label="Load more offers" variant="secondary" loading={query.isFetchingNextPage} onPress={() => void query.fetchNextPage()} />
+          ) : null}
+        </>
       ) : tab === 'received' ? (
         <EmptyState
           icon={Inbox}
-          title="No offers yet"
-          text="When someone wants to swap for one of your items, their offer will show up here."
-          action="Post an item"
-          onAction={() => router.push('/post-item')}
+          title="No received proposals yet"
+          text="When someone offers an item for yours, their proposal will appear here."
+          action="My items"
+          onAction={() => router.navigate('/my-items')}
         />
       ) : (
         <EmptyState
           icon={Send}
-          title="You haven't sent any offers"
-          text="Find something you like and propose a swap with one of your items."
+          title="You have not sent a proposal yet"
+          text="Find an item you like and offer one of your active listings."
           action="Browse items"
           onAction={() => router.navigate('/')}
         />

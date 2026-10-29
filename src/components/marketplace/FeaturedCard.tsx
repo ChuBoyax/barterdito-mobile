@@ -21,7 +21,7 @@ export function FeaturedCard({ item, onPress }: { item: Item; onPress: () => voi
   const cardWidth = featuredCardWidth(innerWidth, columns);
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={item.title} onPress={onPress} scaleTo={0.97} style={[styles.card, { width: cardWidth, height: Math.round(cardWidth / 0.85) }]}>
-      <Image source={item.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <Image source={item.image} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" />
       <PhotoScrim />
       <View style={styles.top}>
         <Badge label={item.category} tone="glass" />

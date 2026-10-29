@@ -1,20 +1,21 @@
-import * as Location from 'expo-location';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowRight, Check, MapPin, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react-native';
+import { ArrowRight, Check, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { RequireAuth } from '@/components/layout';
-import { ListingPreview, PhotoGrid, StepIndicator } from '@/components/listing';
+import { ListingPreview, LocationField, PhotoGrid, StepIndicator } from '@/components/listing';
 import { AppText, Badge, Button, Card, InfoNote, Screen, SelectField, TextField } from '@/components/ui';
+import { itemStatuses } from '@/constants/status';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
-import { queryClient, useAuth, useMarketplace, useTheme, useToast } from '@/providers';
+import { queryClient, useAuth, useMarketplaceActions, useTheme, useToast } from '@/providers';
 import { aiService, itemService } from '@/services';
-import type { ItemDraft } from '@/types/models';
+import type { ItemDraft, ItemStatus } from '@/types/models';
 import { errorMessage } from '@/utils/format';
-import { emptyDraft, firstInvalidStep, itemToDraft, MAX_PHOTOS, validateDraft, withCover } from '@/utils/listing';
+import { emptyDraft, firstInvalidStep, itemToDraft, MAX_DESCRIPTION_LENGTH, MAX_PHOTOS, validateDraft, withCover } from '@/utils/listing';
 import { readJson, removeKey, storageKeys, writeJson } from '@/utils/storage';
+import { queryKeys } from '@/services/queryKeys';
 
 const LAST_STEP = 2;
 const copy = {
@@ -41,14 +42,13 @@ function PostItemForm() {
   const showToast = useToast();
   const pickImages = useImagePicker();
   const { user } = useAuth();
-  const { upsertItem } = useMarketplace();
+  const { upsertItem } = useMarketplaceActions();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const mode = edit ? 'edit' : 'create';
 
   const [draft, setDraft] = useState<ItemDraft>(emptyDraft);
   const [step, setStep] = useState(0);
   const [generating, setGenerating] = useState(false);
-  const [locating, setLocating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -57,30 +57,34 @@ function PostItemForm() {
   const errors = showErrors ? validateDraft(draft) : {};
   const dirty = edit !== undefined && original.current !== null && original.current !== JSON.stringify(draft);
   const allowLeave = useUnsavedChangesGuard(dirty, 'Your edits to this listing have not been saved.');
+  // Drafts are scoped to the account, like the website's local drafts.
+  const draftKey = `${storageKeys.postDraft}:${user?.id ?? 'guest'}`;
 
- 
   useEffect(() => {
     if (edit) {
       void itemService
         .getItem(edit)
         .then((item) => {
+          if (!item.mine) {
+            showToast('Only the owner can edit this listing');
+            return router.back();
+          }
           const loaded = itemToDraft(item);
           original.current = JSON.stringify(loaded);
           setDraft(loaded);
         })
-        .catch(() => showToast('Could not load this listing'));
+        .catch((error) => showToast(errorMessage(error, 'Could not load this listing')));
       return;
     }
-    void readJson<ItemDraft>(storageKeys.postDraft).then((saved) => {
-      if (saved) setDraft({ ...emptyDraft, ...saved });
+    void readJson<ItemDraft>(draftKey).then((saved) => {
+      if (saved) setDraft({ ...emptyDraft, ...saved, status: 'Active' });
       setHydrated(true);
     });
-  }, [edit, showToast]);
-
+  }, [edit, draftKey, showToast]);
 
   useEffect(() => {
-    if (hydrated && !edit) void writeJson(storageKeys.postDraft, draft);
-  }, [draft, hydrated, edit]);
+    if (hydrated && !edit) void writeJson(draftKey, draft);
+  }, [draft, hydrated, edit, draftKey]);
 
   const update = <K extends keyof ItemDraft>(field: K, value: ItemDraft[K]) => setDraft((current) => ({ ...current, [field]: value }));
 
@@ -115,24 +119,6 @@ function PostItemForm() {
     }
   }
 
-  async function fillLocationFromGps() {
-    setLocating(true);
-    try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) return showToast('Location permission was not granted');
-      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const [place] = await Location.reverseGeocodeAsync(coords).catch(() => []);
-      const city = place?.city ?? place?.subregion ?? place?.region;
-      update('location', city ?? `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`);
-      showToast(city ? `Location set to ${city}` : 'Location added — replace coordinates with your city if preferred');
-    } catch {
-      showToast('Could not get your location');
-    } finally {
-      setLocating(false);
-    }
-  }
-
-
   function validateUpTo(target: number) {
     const failing = firstInvalidStep(validateDraft(draft), target);
     if (failing === -1) return true;
@@ -143,27 +129,27 @@ function PostItemForm() {
   }
 
   function goTo(target: number) {
-   
     if (!edit && target > step && !validateUpTo(target)) return;
     setStep(target);
   }
 
   async function submit() {
-    if (!user || !validateUpTo(LAST_STEP + 1)) return;
+    if (!user || publishing || !validateUpTo(LAST_STEP + 1)) return;
     setPublishing(true);
     try {
+      const saved = edit ? await itemService.updateItem(edit, draft) : await itemService.createItem(draft);
+      // A listing is reported live only after the API confirms it.
+      upsertItem(saved);
+      queryClient.setQueryData(queryKeys.item(saved.id), saved);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myItems });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profiles });
       if (edit) {
-        const updated = await itemService.updateItem(edit, draft);
-        upsertItem(updated);
-        queryClient.setQueryData(['itemService.getItem', edit], updated);
-        void queryClient.invalidateQueries({ queryKey: ['itemService.getMyItems'] });
         allowLeave();
         showToast('Changes saved');
         if (router.canGoBack()) router.back();
         else router.replace('/my-items');
       } else {
-        upsertItem(await itemService.createItem(draft, user));
-        await removeKey(storageKeys.postDraft);
+        await removeKey(draftKey);
         showToast('Listing published!');
         router.replace('/my-items');
       }
@@ -233,7 +219,7 @@ function PostItemForm() {
               value={draft.description}
               onChangeText={(value) => update('description', value)}
               placeholder="Share the story, condition, and anything a trader should know…"
-              maxLength={1000}
+              maxLength={MAX_DESCRIPTION_LENGTH}
               showCount
               error={errors.description}
               labelAction={
@@ -256,25 +242,30 @@ function PostItemForm() {
               value={draft.lookingFor}
               onChangeText={(value) => update('lookingFor', value)}
               placeholder="Tell traders what you’d consider in exchange…"
+              maxLength={1000}
               error={errors.lookingFor}
             />
-            <TextField
-              label="Location"
-              icon={MapPin}
+            <LocationField
               value={draft.location}
-              onChangeText={(value) => update('location', value)}
-              placeholder="Barangay or city"
+              pin={draft.latitude !== null && draft.longitude !== null ? { latitude: draft.latitude, longitude: draft.longitude } : null}
               error={errors.location}
-              right={
-                <Pressable disabled={locating} onPress={() => void fillLocationFromGps()} hitSlop={6}>
-                  <AppText variant="caption" color="orange" weight="bold">
-                    {locating ? 'Locating…' : 'Use GPS'}
-                  </AppText>
-                </Pressable>
+              onChange={(location, pin) =>
+                setDraft((current) => ({ ...current, location, latitude: pin?.latitude ?? null, longitude: pin?.longitude ?? null }))
               }
             />
-            <TextField label="Tags" value={draft.tags} onChangeText={(value) => update('tags', value)} placeholder="camera, photography, mirrorless" autoCapitalize="none" />
-            <InfoNote icon={ShieldCheck} title="Your exact address stays private" text="Only your city is shown publicly. Choose the meetup location later in chat." />
+            <TextField
+              label="Tags"
+              value={draft.tags}
+              onChangeText={(value) => update('tags', value)}
+              placeholder="camera, photography, mirrorless"
+              autoCapitalize="none"
+              hint="Separate with commas. Up to 10 tags."
+              error={errors.tags}
+            />
+            {edit ? (
+              <SelectField label="Listing status" value={draft.status} options={itemStatuses} onChange={(value) => update('status', value as ItemStatus)} />
+            ) : null}
+            <InfoNote icon={ShieldCheck} title="Only the area is public" text="Your pickup area and optional map pin are public. Pick a public place, not your home address." />
           </>
         ) : null}
 
@@ -282,7 +273,6 @@ function PostItemForm() {
 
         <View style={styles.actions}>
           {edit ? (
-           
             <>
               {step < LAST_STEP ? <Button label="Next" iconRight={ArrowRight} variant="secondary" style={styles.flex} onPress={() => goTo(step + 1)} /> : back}
               <Button label="Save changes" icon={Check} loading={publishing} style={styles.flex} onPress={() => void submit()} />

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import type { Tone } from '@/theme';
+import { neu, type Tone } from '@/theme';
 import { AppText } from './AppText';
 import { IconTile } from './IconTile';
 
@@ -51,7 +51,7 @@ export function ListRow({ icon, iconTone = 'orange', title, subtitle, onPress, t
           ios_backgroundColor={colors.line}
         />
       ) : showChevron && onPress ? (
-        <View style={[styles.chevron, { backgroundColor: colors.surface2 }]}>
+        <View style={[styles.chevron, { backgroundColor: colors.surface }, neu(colors, 1)]}>
           <ChevronRight size={16} color={colors.muted} strokeWidth={2.4} />
         </View>
       ) : null}

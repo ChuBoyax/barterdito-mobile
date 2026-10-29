@@ -9,29 +9,31 @@ import {
   Flag,
   Heart,
   MapPin,
+  MapPinned,
   Package,
   Share2,
   ShieldCheck,
   Sparkles,
-  Star,
   Tag,
   UserCheck,
   UserPlus,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ItemStatusBadge, ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
 import { AppText, Avatar, Badge, Button, EmptyState, Glass, IconButton, InfoNote, LoadingView, PhotoScrim, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
-import { useAuth, useMarketplace, useTheme, useToast } from '@/providers';
+import { queryClient, useAuth, useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService, tradeService, userService } from '@/services';
 import { elevation, fonts, maxFontScale } from '@/theme';
-import { firstName } from '@/utils/format';
+import { errorMessage, firstName } from '@/utils/format';
+import { mapLink } from '@/utils/listing';
 import { shareItem } from '@/utils/share';
+import { queryKeys } from '@/services/queryKeys';
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,26 +43,41 @@ export default function ItemDetailScreen() {
   const { requireAuth, authenticated } = useAuth();
   const showToast = useToast();
   const { items, savedIds, heartedIds, toggleSaved, toggleHeart } = useMarketplace();
-  const { data: fetched, loading, error } = useAsync(['itemService.getItem', id], () => itemService.getItem(id));
+  const { data: fetched, loading, error } = useAsync(queryKeys.item(id), () => itemService.getItem(id));
   const [activeImage, setActiveImage] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [following, setFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  const item = items.find((entry) => entry.id === id) ?? fetched;
+  // The fetched detail is authoritative; the feed copy only fills in while it loads.
+  const item = fetched ?? items.find((entry) => entry.id === id);
   const ownerId = item?.userId;
-  const myItems = useMemo(() => items.filter((entry) => entry.mine && entry.status === 'Active'), [items]);
 
   useEffect(() => {
-    if (authenticated && ownerId) void userService.isFollowing(ownerId).then(setFollowing);
-  }, [authenticated, ownerId]);
+    if (!authenticated || !ownerId || item?.mine) return;
+    let active = true;
+    userService
+      .getProfile(ownerId)
+      .then((profile) => active && setFollowing(profile.isFollowing))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [authenticated, ownerId, item?.mine]);
 
   if (loading && !item) return <LoadingView variant="detail" />;
-  if (!item || error) {
+  if (!item) {
     return (
       <Screen>
-        <EmptyState icon={Package} title="Item not found" text="This listing may have been traded or removed." action="Browse items" onAction={() => router.navigate('/')} />
+        <EmptyState
+          icon={Package}
+          title={error && !/not found/i.test(error) ? 'Could not load this item' : 'Item not found'}
+          text={error && !/not found/i.test(error) ? error : 'This listing may have been traded or removed.'}
+          action="Browse items"
+          onAction={() => router.navigate('/')}
+        />
       </Screen>
     );
   }
@@ -75,17 +92,26 @@ export default function ItemDetailScreen() {
   const longDescription = item.description.length > 220;
 
   function toggleFollow() {
-    requireAuth(() => {
-      if (!ownerId) return;
+    requireAuth(async () => {
+      if (!ownerId || followBusy) return;
       const next = !following;
+      setFollowBusy(true);
       setFollowing(next);
-      void userService.setFollowing(ownerId, next);
-      showToast(next ? `Following ${item!.owner}` : `Unfollowed ${item!.owner}`);
+      try {
+        const profile = await userService.setFollowing(ownerId, next);
+        setFollowing(profile.isFollowing);
+        showToast(next ? `Following ${item!.owner}` : `Unfollowed ${item!.owner}`);
+      } catch (caught) {
+        setFollowing(!next);
+        showToast(errorMessage(caught, 'Could not update follow status'));
+      } finally {
+        setFollowBusy(false);
+      }
     });
   }
 
   function toggleSave() {
-    showToast(saved ? 'Removed from your wishlist' : 'Saved to your wishlist');
+    if (authenticated) showToast(saved ? 'Removed from your wishlist' : 'Saved to your wishlist');
     toggleSaved(item!.id);
   }
 
@@ -94,7 +120,8 @@ export default function ItemDetailScreen() {
     requireAuth(() => setSwapOpen(true));
   }
 
-  const primaryLabel = item.mine ? 'Manage your listing' : traded ? 'Already traded' : 'Propose a swap';
+  const unavailable = item.status !== 'Active';
+  const primaryLabel = item.mine ? 'Manage your listing' : traded ? 'Already traded' : unavailable ? 'In negotiation' : 'Propose a swap';
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
@@ -107,7 +134,7 @@ export default function ItemDetailScreen() {
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={(event) => setActiveImage(Math.round(event.nativeEvent.contentOffset.x / width))}>
             {gallery.map((uri, index) => (
-              <Image key={uri + index} source={uri} style={{ width, height: heroHeight }} contentFit="cover" transition={250} accessibilityLabel={`${item.title} photo ${index + 1}`} />
+              <Image key={uri + index} source={uri} cachePolicy="memory-disk" style={{ width, height: heroHeight }} contentFit="cover" transition={250} accessibilityLabel={`${item.title} photo ${index + 1}`} />
             ))}
           </ScrollView>
           <PhotoScrim position="top" />
@@ -148,6 +175,29 @@ export default function ItemDetailScreen() {
             <Fact label="Posted" value={item.age} />
           </View>
 
+          {item.latitude != null && item.longitude != null ? (
+            <PressableScale
+              accessibilityRole="link"
+              accessibilityLabel="Open pickup pin in OpenStreetMap"
+              onPress={() => void Linking.openURL(mapLink(item.latitude!, item.longitude!))}
+              scaleTo={0.98}
+              style={[styles.mapLink, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
+              <MapPinned size={18} color={colors.blue} />
+              <View style={styles.flex}>
+                <AppText variant="h3">Pickup pin on the map</AppText>
+                <AppText variant="caption">Open in OpenStreetMap</AppText>
+              </View>
+            </PressableScale>
+          ) : null}
+
+          {item.tags?.length ? (
+            <View style={styles.badges}>
+              {item.tags.map((tag) => (
+                <Badge key={tag} label={`#${tag}`} tone="neutral" />
+              ))}
+            </View>
+          ) : null}
+
           <View style={styles.section}>
             <AppText variant="h2">About this item</AppText>
             <AppText variant="body" color="muted" numberOfLines={longDescription && !expanded ? 4 : undefined}>
@@ -165,8 +215,8 @@ export default function ItemDetailScreen() {
           <PressableScale
             onPress={() => item.userId && !item.mine && router.push(`/traders/${item.userId}`)}
             scaleTo={0.98}
-            style={[styles.owner, { backgroundColor: colors.surface, borderColor: colors.hairline }, elevation(1, colors)]}>
-            <Avatar initials={item.ownerAvatar} imageUrl={item.ownerAvatarUrl} size="large" ring online />
+            style={[styles.owner, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
+            <Avatar initials={item.ownerAvatar} imageUrl={item.ownerAvatarUrl} size="large" ring />
             <View style={styles.flex}>
               <AppText variant="eyebrow" color="muted">
                 Offered by
@@ -175,13 +225,7 @@ export default function ItemDetailScreen() {
                 <AppText variant="h2">{item.owner}</AppText>
                 <BadgeCheck size={16} color={colors.blue} fill={colors.blueSoft} />
               </View>
-              <View style={styles.inline}>
-                <Star size={12} color={colors.yellow} fill={colors.yellow} />
-                <AppText variant="caption" color="ink" weight="bold">
-                  {item.rating}
-                </AppText>
-                <AppText variant="caption">· {item.trades} completed trades</AppText>
-              </View>
+              <AppText variant="caption">{item.mine ? 'This is your listing' : 'Tap to view profile'}</AppText>
             </View>
             {!item.mine ? (
               <IconButton
@@ -203,8 +247,8 @@ export default function ItemDetailScreen() {
                   <PressableScale
                     key={other.id}
                     onPress={() => router.push(`/items/${other.id}`)}
-                    style={[styles.mini, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
-                    <Image source={other.image} style={styles.miniImage} contentFit="cover" />
+                    style={[styles.mini, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
+                    <Image source={other.image} cachePolicy="memory-disk" style={styles.miniImage} contentFit="cover" />
                     <View style={styles.flex}>
                       <AppText variant="small" color="ink" weight="bold" numberOfLines={1}>
                         {other.title}
@@ -251,7 +295,7 @@ export default function ItemDetailScreen() {
           icon={item.mine ? Package : ArrowRightLeft}
           variant={item.mine ? 'secondary' : 'primary'}
           style={styles.flex}
-          disabled={!item.mine && traded}
+          disabled={!item.mine && unavailable}
           onPress={primaryAction}
         />
       </Glass>
@@ -260,20 +304,17 @@ export default function ItemDetailScreen() {
         visible={swapOpen}
         onClose={() => setSwapOpen(false)}
         target={item}
-        myItems={myItems}
         onPostItem={() => {
           setSwapOpen(false);
           router.push('/post-item');
         }}
-        onSubmit={async (myItemId) => {
-          try {
-            await tradeService.proposeTrade(item.id, myItemId);
-            setSwapOpen(false);
-            showToast(`Proposal sent to ${firstName(item.owner)}`);
-            router.navigate('/offers');
-          } catch {
-            showToast('Could not send your proposal. Please try again.');
-          }
+        onViewOffers={() => {
+          setSwapOpen(false);
+          router.navigate('/offers?tab=sent');
+        }}
+        onSubmit={async (offeredId, message) => {
+          await tradeService.proposeTrade(item.id, offeredId, message);
+          void queryClient.invalidateQueries({ queryKey: queryKeys.offers() });
         }}
       />
 
@@ -305,7 +346,7 @@ function Meta({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
 function Fact({ label, value, icon: Icon }: { label: string; value: string; icon?: LucideIcon }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.fact, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
+    <View style={[styles.fact, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
       <View style={styles.inline}>
         {Icon ? <Icon size={11} color={colors.muted} strokeWidth={2.4} /> : null}
         <AppText variant="caption" numberOfLines={1}>
@@ -342,6 +383,7 @@ const styles = StyleSheet.create({
   moreRow: { gap: 10 },
   mini: { width: 230, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 20, padding: 8 },
   miniImage: { width: 58, height: 58, borderRadius: 14 },
+  mapLink: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 18, padding: 14 },
   report: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 },
   topBar: { position: 'absolute', flexDirection: 'row', justifyContent: 'space-between' },
   topRight: { flexDirection: 'row', gap: 8 },

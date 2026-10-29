@@ -20,7 +20,7 @@ const screenTitles: Record<string, string> = {
   'direct-messages/[id]': 'Direct Chat',
   'meetups/[id]': 'Schedule Meetup',
   'trade-review/[id]': 'Rate Your Trade',
-  'trade-complete/[id]': 'Trade Complete',
+  'trade-complete/[id]': 'Trade Status',
   'post-item': 'Post an Item',
   leaderboard: 'Leaderboard',
   events: 'Trade Events',

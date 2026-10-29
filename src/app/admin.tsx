@@ -4,8 +4,9 @@ import { StyleSheet, View } from 'react-native';
 import { RequireAuth } from '@/components/layout';
 import { StatGrid } from '@/components/marketplace';
 import { AppText, Card, EmptyState, ListRow, LoadingView, Screen, SectionHeading } from '@/components/ui';
+import { SENTINEL_PREVIEW } from '@/constants/app';
 import { useAsync } from '@/hooks/useAsync';
-import { useAuth, useTheme, useToast } from '@/providers';
+import { useTheme, useToast } from '@/providers';
 import { communityService } from '@/services';
 
 export default function AdminScreen() {
@@ -18,9 +19,9 @@ export default function AdminScreen() {
 
 function AdminContent() {
   const { colors } = useTheme();
-  const { user } = useAuth();
   const showToast = useToast();
-  const allowed = user?.role === 'sentinel' || __DEV__;
+  // Presentation switch only, like the website's NEXT_PUBLIC_SENTINEL_PREVIEW; there are no server roles yet.
+  const allowed = SENTINEL_PREVIEW;
   const { data: summary, loading } = useAsync(['communityService.getAdminSummary'], () => communityService.getAdminSummary());
 
   if (!allowed) {

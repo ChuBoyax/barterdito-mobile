@@ -46,7 +46,7 @@ export function StatGrid({ stats, variant = 'tiles' }: StatGridProps) {
       {stats.map(({ label, value, icon, change, tone }, index) => (
         <View
           key={label}
-          style={[styles.tile, third && styles.tileThird, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+          style={[styles.tile, third && styles.tileThird, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
           {icon ? <IconTile icon={icon} size={38} tone={tone ?? defaultTones[index % defaultTones.length]} /> : null}
           <AppText variant={third ? 'h2' : 'h1'} style={styles.value}>
             {value}

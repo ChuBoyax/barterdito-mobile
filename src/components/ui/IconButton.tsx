@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, maxFontScale } from '@/theme';
+import { fonts, maxFontScale, neu } from '@/theme';
 import { Glass } from './Glass';
 import { PressableScale } from './PressableScale';
 
@@ -45,8 +45,8 @@ export function IconButton({
           style={[
             styles.center,
             shape,
-            tone === 'default' && { backgroundColor: active ? colors.orangeSoft : colors.surface, borderWidth: 1, borderColor: colors.line },
-            tone === 'danger' && { backgroundColor: colors.redSoft },
+            tone === 'default' && [{ backgroundColor: colors.surface }, neu(colors, 1, active)],
+            tone === 'danger' && [{ backgroundColor: colors.surface }, neu(colors, 1)],
           ]}>
           {icon}
         </View>

@@ -10,7 +10,7 @@ export type TabConfig = {
 export const tabs: TabConfig[] = [
   { name: 'index', title: 'Browse', icon: Compass },
   { name: 'offers', title: 'Offers', icon: ArrowRightLeft },
-  { name: 'inbox', title: 'Inbox', icon: MessageCircle, badge: 2 },
+  { name: 'inbox', title: 'Inbox', icon: MessageCircle },
   { name: 'my-items', title: 'My Items', icon: Grid2X2 },
   { name: 'profile', title: 'Profile', icon: User },
 ];

@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { ActivityIndicator, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { brand, fonts, type ThemeColors, maxFontScale } from '@/theme';
+import { fonts, neu, type ThemeColors, maxFontScale } from '@/theme';
 import { PressableScale } from './PressableScale';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
@@ -23,15 +23,15 @@ type ButtonProps = {
 function variantStyle(variant: ButtonVariant, colors: ThemeColors) {
   switch (variant) {
     case 'primary':
-      return { bg: colors.orange, fg: colors.onPrimary, border: colors.orange };
+      return { bg: colors.orange, fg: colors.onPrimary, raised: true };
     case 'success':
-      return { bg: colors.green, fg: colors.onPrimary, border: colors.green };
+      return { bg: colors.green, fg: colors.onPrimary, raised: true };
     case 'secondary':
-      return { bg: colors.surface, fg: colors.ink, border: colors.line };
+      return { bg: colors.surface, fg: colors.ink, raised: true };
     case 'danger':
-      return { bg: colors.redSoft, fg: colors.red, border: colors.redSoft };
+      return { bg: colors.surface, fg: colors.red, raised: true };
     default:
-      return { bg: 'transparent', fg: colors.orange, border: 'transparent' };
+      return { bg: 'transparent', fg: colors.orange, raised: false };
   }
 }
 
@@ -63,8 +63,8 @@ export function Button({
       style={[
         styles.base,
         compact ? styles.compact : styles.regular,
-        { backgroundColor: palette.bg, borderColor: palette.border },
-        variant === 'primary' && !inactive && styles.primaryShadow,
+        { backgroundColor: palette.bg },
+        palette.raised && !inactive && neu(colors, compact ? 1 : 2),
         fullWidth && styles.full,
         inactive && styles.inactive,
         style,
@@ -79,12 +79,11 @@ export function Button({
 }
 
 const styles = StyleSheet.create({
-  base: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1 },
-  regular: { height: 50, paddingHorizontal: 20 },
-  compact: { height: 38, paddingHorizontal: 14, borderRadius: 12 },
+  base: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999 },
+  regular: { height: 52, paddingHorizontal: 22 },
+  compact: { height: 40, paddingHorizontal: 16 },
   full: { alignSelf: 'stretch' },
   inactive: { opacity: 0.5 },
-  primaryShadow: { shadowColor: brand.orange, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
   label: { fontFamily: fonts.bold, fontSize: 14 },
   labelCompact: { fontSize: 12.5 },
 });

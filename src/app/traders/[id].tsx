@@ -1,42 +1,39 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Flag, MapPin, MessageCircle, Package, Share2, User, UserCheck, UserPlus } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { BadgeCheck, Flag, MapPin, MessageCircle, Package, Share2, User, UserCheck, UserPlus } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ItemGrid, ReportSheet, StatGrid } from '@/components/marketplace';
-import { AppText, Avatar, Button, Card, EmptyState, IconButton, LoadingView, PressableScale, Screen, SectionHeading, Stars } from '@/components/ui';
+import { ProfileReviews } from '@/components/trades';
+import { AppText, Avatar, Button, Card, EmptyState, IconButton, LoadingView, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
-import { useAuth, useTheme, useToast } from '@/providers';
+import { queryClient, useAuth, useTheme, useToast } from '@/providers';
 import { itemService, messageService, userService } from '@/services';
-import { firstName as getFirstName } from '@/utils/format';
+import { errorMessage, firstName as getFirstName, pluralize } from '@/utils/format';
 import { shareTrader } from '@/utils/share';
+import { queryKeys } from '@/services/queryKeys';
 
 export default function TraderProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
-  const { user, requireAuth, authenticated } = useAuth();
+  const { user, requireAuth } = useAuth();
   const showToast = useToast();
-  const { data: trader, loading, error } = useAsync(['userService.getTrader', id], () => userService.getTrader(id));
-  const { data: listings = [], loading: listingsLoading } = useAsync(['itemService.getItemsByTrader', id], () => itemService.getItemsByTrader(id));
-  const { data: reviews = [] } = useAsync(['userService.getReviews'], () => userService.getReviews());
-  const [following, setFollowing] = useState(false);
+  const { data: trader, loading, error, refreshing, reload, setData } = useAsync(queryKeys.profile(id), () => userService.getProfile(id));
+  const { data: listings = [], loading: listingsLoading, reload: reloadListings } = useAsync(queryKeys.traderItems(id), () => itemService.getItemsByTrader(id));
   const [reportOpen, setReportOpen] = useState(false);
   const [opening, setOpening] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
 
   const available = useMemo(() => listings.filter((item) => item.status !== 'Traded'), [listings]);
 
-  useEffect(() => {
-    if (authenticated) void userService.isFollowing(id).then(setFollowing);
-  }, [authenticated, id]);
-
   if (loading) return <LoadingView variant="profile" />;
-  if (!trader || error) {
+  if (!trader) {
     return (
       <Screen>
         <EmptyState
           icon={User}
-          title="Trader not found"
-          text="This profile may no longer be public."
+          title={error && !/not found/i.test(error) ? 'Could not load this profile' : 'Trader not found'}
+          text={error && !/not found/i.test(error) ? error : 'This profile may no longer be public.'}
           action="Browse items"
           onAction={() => router.navigate('/')}
         />
@@ -45,14 +42,23 @@ export default function TraderProfileScreen() {
   }
 
   const isMe = user?.id === trader.id;
-  const firstName = getFirstName(trader.name);
+  const firstName = getFirstName(trader.fullName);
 
   function toggleFollow() {
-    requireAuth(() => {
-      const next = !following;
-      setFollowing(next);
-      void userService.setFollowing(id, next);
-      showToast(next ? `Following ${firstName}` : `Unfollowed ${firstName}`);
+    requireAuth(async () => {
+      if (!trader || followBusy) return;
+      const next = !trader.isFollowing;
+      setFollowBusy(true);
+      try {
+        setData(await userService.setFollowing(trader.id, next));
+        void queryClient.invalidateQueries({ queryKey: queryKeys.myProfile });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.connections() });
+        showToast(next ? `Following ${firstName}` : `Unfollowed ${firstName}`);
+      } catch (caught) {
+        showToast(errorMessage(caught, 'Could not update follow status'));
+      } finally {
+        setFollowBusy(false);
+      }
     });
   }
 
@@ -60,7 +66,7 @@ export default function TraderProfileScreen() {
     requireAuth(async () => {
       setOpening(true);
       try {
-        const threadId = await messageService.openDirectThread(trader!.name, trader!.initials);
+        const threadId = await messageService.openDirectThread(trader!.fullName, trader!.initials);
         router.push(`/direct-messages/${threadId}`);
       } catch {
         showToast('Could not open the chat. Please try again.');
@@ -70,54 +76,75 @@ export default function TraderProfileScreen() {
     });
   }
 
-  const share = () => void shareTrader(trader);
+  const share = () => void shareTrader({ id: trader.id, name: trader.fullName });
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: trader.name,
-          headerRight: () => <IconButton icon={Share2} label={`Share ${trader.name}'s profile`} size={18} dimension={40} onPress={share} />,
+          title: trader.fullName,
+          headerRight: () => <IconButton icon={Share2} label={`Share ${trader.fullName}'s profile`} size={18} dimension={40} onPress={share} />,
         }}
       />
-      <Screen>
+      <Screen
+        refreshing={refreshing}
+        onRefresh={() => {
+          void reload();
+          void reloadListings();
+        }}>
         <Card style={styles.hero}>
           <View style={styles.main}>
-            <Avatar initials={trader.initials} color={trader.color} imageUrl={trader.avatarUrl} size="hero" />
+            <Avatar initials={trader.initials} imageUrl={trader.avatarUrl} size="hero" />
             <View style={styles.flex}>
               <AppText variant="caption" color="green" weight="bold">
                 ● Public trader
               </AppText>
-              <AppText variant="h1">{trader.name}</AppText>
+              <View style={styles.row}>
+                <AppText variant="h1" style={styles.shrink}>
+                  {trader.fullName}
+                </AppText>
+                {trader.emailVerified ? <BadgeCheck size={18} color={colors.blue} fill={colors.blueSoft} accessibilityLabel="Verified email" /> : null}
+              </View>
               {trader.location ? (
                 <View style={styles.row}>
                   <MapPin size={13} color={colors.muted} />
                   <AppText variant="caption">{trader.location}</AppText>
                 </View>
               ) : null}
+              {trader.joined ? <AppText variant="caption">Joined {trader.joined}</AppText> : null}
             </View>
           </View>
-          <AppText variant="small">Local Barterdito member offering useful finds and open to fair community swaps.</AppText>
+          {trader.bio ? <AppText variant="small">{trader.bio}</AppText> : null}
           <StatGrid
             variant="inline"
             stats={[
-              { label: 'Completed', value: trader.trades },
-              { label: 'Available', value: available.length },
-              { label: 'Avg rating', value: trader.rating ? `${trader.rating}★` : '—' },
+              { label: 'Available', value: trader.activeListingCount },
+              { label: 'Traded', value: trader.tradedListingCount },
+              { label: 'Followers', value: trader.followersCount },
+              { label: 'Following', value: trader.followingCount },
             ]}
           />
+          <AppText variant="caption">
+            {pluralize(trader.completedTradeCount, 'verified completed trade')} ·{' '}
+            {trader.reviewCount && trader.averageRating !== null
+              ? `${trader.averageRating}/5 from ${pluralize(trader.reviewCount, 'review')}`
+              : 'No trade reviews yet'}
+          </AppText>
           {!isMe ? (
             <View style={styles.actions}>
               <Button
-                label={following ? 'Following' : 'Follow'}
-                icon={following ? UserCheck : UserPlus}
-                variant={following ? 'secondary' : 'primary'}
+                label={trader.isFollowing ? 'Following' : 'Follow'}
+                icon={trader.isFollowing ? UserCheck : UserPlus}
+                variant={trader.isFollowing ? 'secondary' : 'primary'}
+                loading={followBusy}
                 style={styles.flex}
                 onPress={toggleFollow}
               />
               <Button label="Message" icon={MessageCircle} variant="secondary" loading={opening} style={styles.flex} onPress={message} />
             </View>
-          ) : null}
+          ) : (
+            <Button label="Edit my profile" variant="secondary" onPress={() => router.push('/settings?edit=profile')} />
+          )}
         </Card>
 
         <View>
@@ -128,35 +155,12 @@ export default function TraderProfileScreen() {
             <EmptyState
               icon={Package}
               title="Nothing listed right now"
-              text={following ? `We'll let you know when ${firstName} posts something new.` : `Follow ${firstName} to get notified about new listings.`}
+              text={isMe ? 'Post an item to see it here.' : `Follow ${firstName} and check back for new listings.`}
             />
           )}
         </View>
 
-        {reviews.length ? (
-          <View>
-            <SectionHeading eyebrow="Reviews" title="What traders say" />
-            <View style={styles.reviews}>
-              {reviews.slice(0, 2).map((review) => (
-                <Card key={review.id} style={styles.review}>
-                  <View style={styles.row}>
-                    <Avatar initials={review.initials} size="small" />
-                    <View style={styles.flex}>
-                      <AppText variant="h3">{review.author}</AppText>
-                      <View style={styles.stars}>
-                        <Stars rating={review.rating} />
-                        <AppText variant="caption">· {review.date}</AppText>
-                      </View>
-                    </View>
-                  </View>
-                  <AppText variant="small" color="ink">
-                    {review.text}
-                  </AppText>
-                </Card>
-              ))}
-            </View>
-          </View>
-        ) : null}
+        <ProfileReviews userId={trader.id} />
 
         {!isMe ? (
           <PressableScale onPress={() => requireAuth(() => setReportOpen(true))} style={styles.report}>
@@ -185,10 +189,8 @@ const styles = StyleSheet.create({
   hero: { gap: 14 },
   main: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   flex: { flex: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stars: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  shrink: { flexShrink: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   actions: { flexDirection: 'row', gap: 10 },
-  reviews: { gap: 10 },
-  review: { gap: 10 },
   report: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 },
 });

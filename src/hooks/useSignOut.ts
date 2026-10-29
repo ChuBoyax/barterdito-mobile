@@ -17,7 +17,12 @@ export function useSignOut() {
       destructive: true,
     });
     if (!ok) return;
-    await signOut();
+    try {
+      await signOut();
+    } catch {
+      showToast('Could not sign out. Please try again when the server is available.');
+      return;
+    }
     showToast('You’re signed out');
     router.navigate('/');
   }, [signOut, showToast]);

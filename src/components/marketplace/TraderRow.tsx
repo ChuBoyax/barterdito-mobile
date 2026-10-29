@@ -12,16 +12,18 @@ type TraderRowProps = {
   onPress?: () => void;
   right?: ReactNode;
   variant?: 'card' | 'row';
+  /** Replaces the rating line, e.g. with a location or listing count. */
+  subtitle?: string;
 };
 
-export function TraderRow({ trader, onPress, right, variant = 'row' }: TraderRowProps) {
+export function TraderRow({ trader, onPress, right, variant = 'row', subtitle }: TraderRowProps) {
   const { colors } = useTheme();
   if (variant === 'card') {
     return (
       <PressableScale
         onPress={onPress}
         scaleTo={0.96}
-        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.hairline }, elevation(1, colors)]}>
+        style={[styles.card, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
         <Avatar initials={trader.initials} color={trader.color} imageUrl={trader.avatarUrl} size="large" online />
         <View style={styles.nameRow}>
           <AppText variant="h3" numberOfLines={1} align="center">
@@ -30,11 +32,19 @@ export function TraderRow({ trader, onPress, right, variant = 'row' }: TraderRow
           <BadgeCheck size={14} color={colors.blue} fill={colors.blueSoft} />
         </View>
         <View style={[styles.rating, { backgroundColor: colors.surface2 }]}>
-          <Star size={11} color={colors.yellow} fill={colors.yellow} />
-          <AppText variant="caption" color="ink" weight="bold">
-            {trader.rating}
-          </AppText>
-          <AppText variant="caption">· {trader.trades} trades</AppText>
+          {subtitle !== undefined ? (
+            <AppText variant="caption" numberOfLines={1}>
+              {subtitle}
+            </AppText>
+          ) : (
+            <>
+              <Star size={11} color={colors.yellow} fill={colors.yellow} />
+              <AppText variant="caption" color="ink" weight="bold">
+                {trader.rating}
+              </AppText>
+              <AppText variant="caption">· {trader.trades} trades</AppText>
+            </>
+          )}
         </View>
       </PressableScale>
     );
@@ -46,12 +56,20 @@ export function TraderRow({ trader, onPress, right, variant = 'row' }: TraderRow
         <AppText variant="h3" numberOfLines={1}>
           {trader.name}
         </AppText>
-        <View style={styles.meta}>
-          <Star size={12} color={colors.yellow} fill={colors.yellow} />
-          <AppText variant="caption">
-            {trader.rating} · {trader.trades} trades
-          </AppText>
-        </View>
+        {subtitle !== undefined ? (
+          subtitle ? (
+            <AppText variant="caption" numberOfLines={1}>
+              {subtitle}
+            </AppText>
+          ) : null
+        ) : (
+          <View style={styles.meta}>
+            <Star size={12} color={colors.yellow} fill={colors.yellow} />
+            <AppText variant="caption">
+              {trader.rating} · {trader.trades} trades
+            </AppText>
+          </View>
+        )}
       </View>
       {right ?? (onPress ? <ChevronRight size={18} color={colors.muted} /> : null)}
     </Pressable>
@@ -62,7 +80,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
   card: { width: 150, alignItems: 'center', gap: 9, borderWidth: 1, borderRadius: 26, paddingHorizontal: 12, paddingVertical: 18 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '100%', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   body: { flex: 1, gap: 2 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });

@@ -34,7 +34,7 @@ export function Avatar({ initials, color, imageUrl, size = 'medium', ring, onlin
       ]}>
       <View style={[styles.avatar, { width: box, height: box, borderRadius: box / 2, backgroundColor: color ?? colors.blue }]} accessibilityLabel={initials}>
         {imageUrl ? (
-          <Image source={imageUrl} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <Image source={imageUrl} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
           <Text maxFontSizeMultiplier={maxFontScale} style={[styles.text, { fontSize: font, color: colors.onPrimary }]}>{initials}</Text>
         )}

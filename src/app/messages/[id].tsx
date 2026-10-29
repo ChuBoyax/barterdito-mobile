@@ -1,18 +1,20 @@
-import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
-import { CalendarDays, ChevronRight, Inbox, ShieldCheck, Star } from 'lucide-react-native';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { ChevronRight, ClipboardList } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActionSheetIOS, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ChatView } from '@/components/chat';
+import { MessageBubble, MessageComposer } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
-import { OfferStatusBadge } from '@/components/marketplace';
-import { AppText, Button, LoadingView } from '@/components/ui';
-import { useAsync } from '@/hooks/useAsync';
-import { useTheme } from '@/providers';
-import { messageService, tradeService } from '@/services';
-import { elevation } from '@/theme';
-import type { Offer } from '@/types/models';
-import { firstName } from '@/utils/format';
+import { TradePair } from '@/components/trades';
+import { AppText, Avatar, Button, LoadingView } from '@/components/ui';
+import { usePolling, useTradeConversation } from '@/hooks/useTradeConversation';
+import { useAuth, useTheme } from '@/providers';
+import { tradeService } from '@/services';
+import { clientId } from '@/services/tradeService';
+import type { Conversation, TradeMessage } from '@/types/trades';
+import { confirmAction } from '@/utils/confirm';
+import { errorMessage } from '@/utils/format';
+import { confirmations, otherTrader } from '@/utils/trades';
 
 export default function TradeChatScreen() {
   return (
@@ -22,103 +24,294 @@ export default function TradeChatScreen() {
   );
 }
 
-function TradeChat() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: thread, loading } = useAsync(['messageService.getThread', id], () => messageService.getThread(id));
-  const { data: offer } = useAsync(['tradeService.getOffer', id], () => tradeService.getOffer(id).catch(() => undefined));
-
-  if (loading) return <LoadingView variant="chat" />;
-  const name = thread?.name ?? offer?.person ?? 'Trader';
-  const initials = thread?.initials ?? offer?.initials ?? 'BD';
-  const traderId = offer?.theirs.userId;
-
-  return (
-    <ChatView
-      kind="trade"
-      threadId={id}
-      name={name}
-      initials={initials}
-      subtitle={traderId ? 'Tap to view profile' : 'Trade conversation'}
-      onPressProfile={traderId ? () => router.push(`/traders/${traderId}`) : undefined}
-      header={offer ? <TradeContext offer={offer} tradeId={id} /> : null}
-    />
-  );
+function messageTime(message: TradeMessage) {
+  const time = new Date(message.createdAt).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return message.editedAt && !message.deletedAt ? `${time} · edited` : time;
 }
 
+function merge(current: TradeMessage[], incoming: TradeMessage[]) {
+  return [...new Map([...current, ...incoming].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.id - b.id);
+}
 
-function TradeContext({ offer, tradeId }: { offer: Offer; tradeId: string }) {
+/** One-line summary of what happens next, shown above the chat. */
+function nextStep(data: Conversation, userId: string) {
+  if (data.status === 'completed') return 'Trade completed. Rate your trade.';
+  if (data.status === 'cancelled') return 'This trade was cancelled.';
+  if (data.issues.some((entry) => entry.status === 'open')) return 'Completion paused: a problem was reported.';
+  const { mine, theirs } = confirmations(data, userId);
+  if (mine) return 'You confirmed. Waiting for the other trader.';
+  if (theirs) return 'The other trader confirmed the exchange.';
+  if (data.meetups.some((entry) => entry.status === 'accepted')) return 'Meetup agreed. Confirm after the exchange.';
+  if (data.meetups.some((entry) => entry.status === 'pending')) return 'A meetup proposal is waiting.';
+  return 'Arrange a public meetup.';
+}
+
+function TradeChat() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
-  const first = firstName(offer.person);
+  const { user } = useAuth();
+  const state = useTradeConversation(id);
+  const [messages, setMessages] = useState<TradeMessage[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [editing, setEditing] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [olderBusy, setOlderBusy] = useState(false);
+  const [error, setError] = useState('');
+  const scrollRef = useRef<ScrollView>(null);
+  const pending = useRef<{ body: string; client: string } | null>(null);
+  const lock = useRef(false);
+  const fetching = useRef(false);
+  const revision = useRef(0);
+  const followLatest = useRef(true);
 
-  const action =
-    offer.status === 'Accepted'
-      ? { label: 'Schedule meetup', icon: CalendarDays, onPress: () => router.push(`/meetups/${tradeId}`) }
-      : offer.status === 'Completed'
-        ? { label: 'Leave a review', icon: Star, onPress: () => router.push(`/trade-review/${tradeId}`) }
-        : offer.status === 'Pending' && offer.received
-          ? { label: 'Respond to offer', icon: Inbox, onPress: () => router.navigate('/offers') }
-          : null;
+  const load = useCallback(async () => {
+    if (fetching.current) return;
+    fetching.current = true;
+    const current = revision.current;
+    try {
+      const page = await tradeService.getMessages(id);
+      if (current !== revision.current) return;
+      setMessages((old) => merge(old, page.messages));
+      setLoaded((wasLoaded) => {
+        if (!wasLoaded) setHasMore(page.hasMore);
+        return true;
+      });
+      setError('');
+    } catch (caught) {
+      setError(errorMessage(caught, 'Could not load messages.'));
+    } finally {
+      fetching.current = false;
+    }
+  }, [id]);
 
-  const hint =
-    offer.status === 'Pending' && !offer.received
-      ? `Waiting for ${first} to accept your offer.`
-      : offer.status === 'Declined'
-        ? 'This offer was declined.'
-        : null;
+  usePolling(() => void load());
 
-  function explainSupport() {
-    Alert.alert(
-      '7-day trade support',
-      'After the trade is completed, both traders can still access this chat and file a dispute for seven days if something goes wrong.',
-    );
+  const newestId = messages.at(-1)?.id;
+  useEffect(() => {
+    if (!followLatest.current) return;
+    const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
+    return () => clearTimeout(timer);
+  }, [newestId]);
+
+  const data = state.data;
+  if (!user) return null;
+  if (!data) {
+    if (state.error) {
+      return (
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <AppText variant="h3" align="center">
+            {state.error}
+          </AppText>
+          <Button label="Try again" variant="secondary" onPress={() => void state.reload()} />
+        </View>
+      );
+    }
+    return <LoadingView variant="chat" />;
+  }
+
+  const userId = user.id;
+  const active = data.status === 'active';
+  const other = otherTrader(data.offer, userId);
+  const proposerMine = data.offer.proposer.id === userId;
+
+  async function send() {
+    const text = draft.trim();
+    if (lock.current || !text) return;
+    revision.current++;
+    lock.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      if (editing !== null) {
+        const updated = await tradeService.editMessage(id, editing, text);
+        setMessages((old) => merge(old, [updated]));
+      } else {
+        // Reuse the request id when retrying the same text so it is not saved twice.
+        if (!pending.current || pending.current.body !== text) pending.current = { body: text, client: clientId() };
+        const sent = await tradeService.sendMessage(id, text, pending.current.client);
+        setMessages((old) => merge(old, [sent]));
+        pending.current = null;
+      }
+      followLatest.current = true;
+      setDraft('');
+      setEditing(null);
+    } catch (caught) {
+      setError(errorMessage(caught, 'Message could not be sent. Try again.'));
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function remove(message: TradeMessage) {
+    if (lock.current) return;
+    const ok = await confirmAction({ title: 'Remove this message?', confirmLabel: 'Remove', destructive: true });
+    if (!ok) return;
+    revision.current++;
+    lock.current = true;
+    setBusy(true);
+    try {
+      const removed = await tradeService.removeMessage(id, message.id);
+      setMessages((old) => merge(old, [removed]));
+      if (editing === message.id) {
+        setEditing(null);
+        setDraft('');
+      }
+    } catch (caught) {
+      setError(errorMessage(caught, 'Could not remove the message.'));
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function older() {
+    if (!messages.length || olderBusy) return;
+    setOlderBusy(true);
+    followLatest.current = false;
+    try {
+      const page = await tradeService.getMessages(id, messages[0]!.id);
+      setMessages((old) => merge(old, page.messages));
+      setHasMore(page.hasMore);
+    } catch (caught) {
+      setError(errorMessage(caught, 'Could not load older messages.'));
+    } finally {
+      setOlderBusy(false);
+    }
+  }
+
+  function openActions(message: TradeMessage) {
+    const edit = () => {
+      setEditing(message.id);
+      setDraft(message.body);
+    };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions({ options: ['Edit', 'Remove', 'Cancel'], destructiveButtonIndex: 1, cancelButtonIndex: 2 }, (index) => {
+        if (index === 0) edit();
+        if (index === 1) void remove(message);
+      });
+      return;
+    }
+    Alert.alert('Message', undefined, [
+      { text: 'Edit', onPress: edit },
+      { text: 'Remove', style: 'destructive', onPress: () => void remove(message) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   }
 
   return (
-    <View style={[styles.context, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+    <KeyboardAvoidingView
+      style={[styles.flex, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
+      <Stack.Screen options={{ title: 'Trade Chat' }} />
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`View ${offer.theirs.title}`}
-        onPress={() => router.push(`/items/${offer.theirs.id}`)}
-        style={styles.summary}>
-        <View style={styles.thumbs}>
-          <Image source={offer.theirs.image} style={[styles.thumb, { borderColor: colors.surface }]} contentFit="cover" />
-          <Image source={offer.yours.image} style={[styles.thumb, styles.thumbBack, { borderColor: colors.surface }]} contentFit="cover" />
-        </View>
+        accessibilityLabel={`View ${other.fullName}'s profile`}
+        onPress={() => router.push(`/traders/${other.id}`)}
+        style={[styles.chatHeader, { borderBottomColor: colors.line, backgroundColor: colors.surface }]}>
+        <Avatar initials={other.initials} imageUrl={other.avatarUrl} size="small" />
         <View style={styles.flex}>
-          <AppText variant="small" color="ink" weight="bold" numberOfLines={1}>
-            You get {offer.theirs.title}
-          </AppText>
+          <AppText variant="h3">{other.fullName}</AppText>
           <AppText variant="caption" numberOfLines={1}>
-            You give {offer.yours.title}
+            Private trade conversation · {data.status}
           </AppText>
         </View>
-        <OfferStatusBadge status={offer.status} />
       </Pressable>
 
-      {action ? <Button label={action.label} icon={action.icon} compact onPress={action.onPress} /> : null}
-      {hint ? (
-        <AppText variant="caption" align="center">
-          {hint}
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={200}
+        onScroll={({ nativeEvent }) => {
+          const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+          followLatest.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+        }}>
+        <TradePair
+          left={{ item: data.offer.offered, label: proposerMine ? 'You offer' : `${data.offer.proposer.fullName} offers` }}
+          right={{ item: data.offer.requested, label: proposerMine ? `${data.offer.recipient.fullName}'s item` : 'Your item' }}
+        />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push(`/trade-complete/${id}`)}
+          style={[styles.status, { backgroundColor: colors.orangeSoft }]}>
+          <ClipboardList size={16} color={colors.orange} />
+          <View style={styles.flex}>
+            <AppText variant="small" color="ink" weight="bold">
+              {nextStep(data, userId)}
+            </AppText>
+            <AppText variant="caption">Meetup, confirmation, and problem reports</AppText>
+          </View>
+          <ChevronRight size={16} color={colors.orange} />
+        </Pressable>
+
+        {hasMore ? <Button label="Load older messages" variant="ghost" compact loading={olderBusy} onPress={() => void older()} /> : null}
+        {!loaded ? (
+          <AppText variant="caption" align="center">
+            Loading messages…
+          </AppText>
+        ) : !messages.length ? (
+          <AppText variant="caption" align="center">
+            Start the conversation and arrange your exchange.
+          </AppText>
+        ) : null}
+        {messages.map((message) =>
+          message.kind === 'system' ? (
+            <View key={message.id} style={[styles.system, { backgroundColor: colors.surface2 }]}>
+              <AppText variant="caption" align="center">
+                {message.body}
+              </AppText>
+            </View>
+          ) : (
+            <MessageBubble
+              key={message.id}
+              message={{
+                id: String(message.id),
+                mine: message.senderId === userId,
+                text: message.deletedAt ? 'Message removed' : message.body,
+                time: messageTime(message),
+              }}
+              onLongPress={active && message.senderId === userId && !message.deletedAt && !busy ? () => openActions(message) : undefined}
+            />
+          ),
+        )}
+      </ScrollView>
+
+      {error || state.error ? (
+        <AppText variant="caption" color="red" align="center" style={styles.error}>
+          {error || state.error}
         </AppText>
       ) : null}
-
-      <Pressable accessibilityRole="button" onPress={explainSupport} hitSlop={6} style={styles.support}>
-        <ShieldCheck size={13} color={colors.green} strokeWidth={2.4} />
-        <AppText variant="caption" style={styles.flex}>
-          Protected by 7-day trade support
+      {active ? (
+        <MessageComposer
+          value={draft}
+          onChange={(value) => setDraft(value.slice(0, 2000))}
+          onSend={() => void send()}
+          editing={editing !== null}
+          onCancelEdit={() => {
+            setEditing(null);
+            setDraft('');
+          }}
+        />
+      ) : (
+        <AppText variant="caption" align="center" style={styles.readonly}>
+          This conversation is read-only.
         </AppText>
-        <ChevronRight size={14} color={colors.muted2} />
-      </Pressable>
-    </View>
+      )}
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  context: { gap: 10, borderWidth: 1, borderRadius: 20, padding: 12, margin: 12, marginBottom: 0 },
-  summary: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  thumbs: { width: 62, height: 44 },
-  thumb: { position: 'absolute', left: 0, width: 44, height: 44, borderRadius: 12, borderWidth: 2, zIndex: 2 },
-  thumbBack: { left: 20, top: 0, zIndex: 1 },
   flex: { flex: 1 },
-  support: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
+  chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, paddingHorizontal: 20, paddingVertical: 12 },
+  list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, padding: 12 },
+  system: { alignSelf: 'center', maxWidth: '90%', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
+  error: { paddingHorizontal: 16 },
+  readonly: { padding: 16 },
 });

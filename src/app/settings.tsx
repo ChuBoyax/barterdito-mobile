@@ -7,8 +7,11 @@ import {
   CircleHelp,
   FileText,
   Gift,
+  Eye,
+  EyeOff,
   HandHeart,
   Heart,
+  KeyRound,
   Lock,
   LogOut,
   Megaphone,
@@ -19,15 +22,17 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { Children, Fragment, useEffect, useState, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { EditProfileSheet } from '@/components/account';
-import { AppText, Avatar, Button, Card, ListRow, Screen, SegmentedControl } from '@/components/ui';
+import { AppText, Avatar, Button, Card, ListRow, Screen, SegmentedControl, TextField } from '@/components/ui';
+import { SENTINEL_PREVIEW } from '@/constants/app';
 import { useSignOut } from '@/hooks/useSignOut';
-import { useAuth, useTheme } from '@/providers';
+import { useAuth, useTheme, useToast } from '@/providers';
 import type { ThemeMode } from '@/providers/ThemeProvider';
-import { userService } from '@/services';
+import { authService, userService } from '@/services';
 import type { NotificationPrefs } from '@/types/models';
+import { errorMessage } from '@/utils/format';
 
 const notificationRows: { key: keyof NotificationPrefs; title: string; subtitle: string; icon: LucideIcon }[] = [
   { key: 'offers', title: 'Trade offers', subtitle: 'New, accepted, and declined offers', icon: ArrowRightLeft },
@@ -100,6 +105,8 @@ export default function SettingsScreen() {
         </View>
       </Section>
 
+      {authenticated ? <ChangePassword /> : null}
+
       {authenticated ? (
         <Section title="Push notifications" footer={allOff ? 'All notifications are off. You may miss new offers and messages.' : undefined}>
           {prefs
@@ -130,7 +137,7 @@ export default function SettingsScreen() {
         <ListRow icon={HandHeart} iconTone="neutral" title="Support Barterdito" subtitle="Help keep local trading free" onPress={() => router.push('/donate')} />
         <ListRow icon={FileText} iconTone="neutral" title="Terms of service" onPress={() => router.push('/terms')} />
         <ListRow icon={Lock} iconTone="neutral" title="Privacy policy" onPress={() => router.push('/privacy')} />
-        {user?.role === 'sentinel' || __DEV__ ? (
+        {SENTINEL_PREVIEW ? (
           <ListRow icon={ShieldCheck} iconTone="neutral" title="Sentinel admin" subtitle="Moderation tools (preview)" onPress={() => router.push('/admin')} />
         ) : null}
       </Section>
@@ -150,6 +157,77 @@ export default function SettingsScreen() {
   );
 }
 
+/** Same flow as the website: the backend revokes every session, so the user signs in again. */
+function ChangePassword() {
+  const { colors } = useTheme();
+  const { forgetSession } = useAuth();
+  const showToast = useToast();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [visible, setVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit() {
+    setError('');
+    if (!current) return setError('Enter your current password.');
+    const length = new TextEncoder().encode(next).length;
+    if (length < 8 || length > 72) return setError('New password must be between 8 and 72 characters.');
+    setBusy(true);
+    try {
+      await authService.changePassword(current, next);
+      await forgetSession();
+      showToast('Password changed. Sign in with your new password.');
+      router.replace('/login');
+    } catch (caught) {
+      setError(errorMessage(caught, 'Could not change password.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const toggle = (
+    <Pressable accessibilityLabel={visible ? 'Hide passwords' : 'Show passwords'} onPress={() => setVisible(!visible)} hitSlop={8}>
+      {visible ? <EyeOff size={18} color={colors.muted} /> : <Eye size={18} color={colors.muted} />}
+    </Pressable>
+  );
+
+  return (
+    <Section title="Password">
+      <View style={styles.password}>
+        <TextField
+          label="Current password"
+          icon={Lock}
+          value={current}
+          onChangeText={(value) => {
+            setCurrent(value);
+            setError('');
+          }}
+          secureTextEntry={!visible}
+          autoCapitalize="none"
+          autoComplete="current-password"
+          right={toggle}
+        />
+        <TextField
+          label="New password"
+          icon={KeyRound}
+          value={next}
+          onChangeText={(value) => {
+            setNext(value);
+            setError('');
+          }}
+          placeholder="At least 8 characters"
+          secureTextEntry={!visible}
+          autoCapitalize="none"
+          autoComplete="new-password"
+          error={error || undefined}
+          hint="You will be signed out on all devices."
+        />
+        <Button label="Change password" icon={KeyRound} variant="secondary" loading={busy} disabled={!current || !next} onPress={() => void submit()} />
+      </View>
+    </Section>
+  );
+}
 
 function Section({ title, footer, children }: { title: string; footer?: string; children: ReactNode }) {
   const { colors } = useTheme();
@@ -186,5 +264,6 @@ const styles = StyleSheet.create({
   group: { paddingVertical: 4 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 55 },
   appearance: { gap: 6, paddingVertical: 8 },
+  password: { gap: 12, paddingVertical: 8 },
   version: { marginTop: -4 },
 });

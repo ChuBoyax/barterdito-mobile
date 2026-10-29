@@ -1,18 +1,23 @@
 import { router } from 'expo-router';
-import { Archive, Mail, MailOpen, MessageCircle, Search } from 'lucide-react-native';
+import { ArrowRightLeft, MessageCircle, MessageSquare, RotateCcw, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { AppHeader, RequireAuth } from '@/components/layout';
 import { ThreadRow } from '@/components/marketplace';
-import { ActionSheet, AppText, Card, EmptyState, LoadingView, Screen, SegmentedControl, TextField, type ActionSheetOption } from '@/components/ui';
-import { useAsync } from '@/hooks/useAsync';
-import { useToast } from '@/providers';
-import { messageService } from '@/services';
-import type { Thread } from '@/types/models';
-import { confirmAction } from '@/utils/confirm';
+import { Button, Card, EmptyState, ListRow, LoadingView, Screen, SegmentedControl, TextField } from '@/components/ui';
+import { usePagedQuery } from '@/hooks/usePagedQuery';
+import { usePolling } from '@/hooks/useTradeConversation';
+import { useAuth } from '@/providers';
+import { tradeService } from '@/services';
+import type { ConversationSummary } from '@/types/trades';
+import { errorMessage } from '@/utils/format';
+import { otherTrader } from '@/utils/trades';
+import { queryKeys } from '@/services/queryKeys';
 
-type Filter = 'all' | 'unread';
+type Filter = 'all' | 'completed';
+
+const statusLabels = { active: 'Active trade', completed: 'Completed trade', cancelled: 'Cancelled trade' } as const;
 
 export default function InboxScreen() {
   return (
@@ -22,118 +27,96 @@ export default function InboxScreen() {
   );
 }
 
+function shortDate(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  return date.toDateString() === today.toDateString()
+    ? date.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
+    : date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+}
+
+const INBOX_POLL_MS = 10_000;
+const selectConversations = (page: { conversations: ConversationSummary[]; total: number }) => page.conversations;
+
 function InboxContent() {
-  const showToast = useToast();
+  const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
-  const [query, setQuery] = useState('');
-  const [menuThread, setMenuThread] = useState<Thread | null>(null);
-  const { data: threads = [], loading, refreshing, setData, reload } = useAsync(['messageService.getThreads'], () => messageService.getThreads());
-  const unreadThreads = threads.filter((thread) => thread.unread > 0).length;
+  const [search, setSearch] = useState('');
+  const query = usePagedQuery(queryKeys.conversations(filter), (offset) => tradeService.getConversations(filter === 'completed', offset), selectConversations);
+  // The inbox only needs a gentle refresh; open chats poll faster on their own screen.
+  usePolling(() => {
+    if (query.data && !query.isFetching) void query.refetch();
+  }, INBOX_POLL_MS);
 
+  const rows = query.rows;
   const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return threads.filter(
-      (thread) =>
-        (filter === 'all' || thread.unread > 0) &&
-        `${thread.name} ${thread.item ?? ''} ${thread.preview}`.toLowerCase().includes(needle),
+    const needle = search.trim().toLowerCase();
+    return rows.filter(({ offer, lastMessage }) =>
+      [offer.proposer.fullName, offer.recipient.fullName, offer.offered.title, offer.requested.title, lastMessage].join(' ').toLowerCase().includes(needle),
     );
-  }, [threads, filter, query]);
-
-  const setUnread = (id: string, unread: number) =>
-    setData((current = []) => current.map((thread) => (thread.id === id ? { ...thread, unread } : thread)));
-
-  function markRead(thread: Thread) {
-    if (!thread.unread) return;
-    setUnread(thread.id, 0);
-    void messageService.markThreadRead(thread.id);
-  }
-
-  function open(thread: Thread) {
-    markRead(thread);
-    router.push(thread.item ? `/messages/${thread.id}` : `/direct-messages/${thread.id}`);
-  }
-
-  async function archive(thread: Thread) {
-    const ok = await confirmAction({
-      title: 'Archive conversation?',
-      message: `Your chat with ${thread.name} will be removed from your inbox.`,
-      confirmLabel: 'Archive',
-      destructive: true,
-    });
-    if (!ok) return;
-    setData((current = []) => current.filter((entry) => entry.id !== thread.id));
-    await messageService.archiveThread(thread.id);
-    showToast('Conversation archived');
-  }
-
-  const menuOptions = (thread: Thread): ActionSheetOption[] => [
-    { label: 'Open conversation', icon: MessageCircle, onPress: () => open(thread) },
-    thread.unread
-      ? { label: 'Mark as read', icon: MailOpen, onPress: () => markRead(thread) }
-      : { label: 'Mark as unread', icon: Mail, onPress: () => setUnread(thread.id, 1) },
-    { label: 'Archive conversation', icon: Archive, description: 'Remove it from your inbox', destructive: true, onPress: () => void archive(thread) },
-  ];
-
-  const empty = !loading && !threads.length;
+  }, [rows, search]);
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => void reload()} header={<AppHeader eyebrow="Conversations" title="Inbox" />}>
-      {empty ? (
-        <EmptyState
-          icon={MessageCircle}
-          title="No conversations yet"
-          text="When you propose a swap or message a trader, your chats will show up here."
-          action="Browse items"
-          onAction={() => router.navigate('/')}
-        />
-      ) : (
-        <>
-          <TextField icon={Search} value={query} onChangeText={setQuery} placeholder="Search by name or item" />
-          <SegmentedControl<Filter>
-            value={filter}
-            onChange={setFilter}
-            segments={[
-              { value: 'all', label: 'All' },
-              { value: 'unread', label: 'Unread', count: unreadThreads || undefined },
-            ]}
-          />
-          {loading && !threads.length ? (
-            <LoadingView variant="list" inline />
-          ) : visible.length ? (
-            <>
-              <Card padded={false} style={styles.list}>
-                {visible.map((thread, index) => (
-                  <ThreadRow
-                    key={thread.id}
-                    thread={thread}
-                    divider={index < visible.length - 1}
-                    onPress={() => open(thread)}
-                    onLongPress={() => setMenuThread(thread)}
-                  />
-                ))}
-              </Card>
-              <AppText variant="caption" align="center">
-                Long press a conversation for more options
-              </AppText>
-            </>
-          ) : query.trim() ? (
-            <EmptyState icon={Search} title="No results" text={`No conversations match “${query.trim()}”.`} action="Clear search" onAction={() => setQuery('')} />
-          ) : (
-            <EmptyState icon={MessageCircle} title="You're all caught up" text="No unread messages right now." action="Show all" onAction={() => setFilter('all')} />
-          )}
-        </>
-      )}
-      <ActionSheet
-        visible={Boolean(menuThread)}
-        onClose={() => setMenuThread(null)}
-        title={menuThread?.name}
-        subtitle={menuThread?.item}
-        options={menuThread ? menuOptions(menuThread) : []}
+    <Screen refreshing={query.isRefetching && !query.isFetchingNextPage} onRefresh={() => void query.refetch()} header={<AppHeader eyebrow="Conversations" title="Inbox" />}>
+      <Card style={styles.offers}>
+        <ListRow icon={ArrowRightLeft} title="Trade offers" subtitle="Review received proposals or check those you sent" onPress={() => router.navigate('/offers')} />
+      </Card>
+      <SegmentedControl<Filter>
+        value={filter}
+        onChange={setFilter}
+        segments={[
+          { value: 'all', label: 'Messages' },
+          { value: 'completed', label: 'Completed' },
+        ]}
       />
+      {rows.length ? <TextField icon={Search} value={search} onChangeText={setSearch} placeholder="Search loaded conversations" /> : null}
+      {query.isPending ? (
+        <LoadingView variant="list" inline />
+      ) : query.isError && !rows.length ? (
+        <EmptyState icon={MessageCircle} title="Could not load conversations" text={errorMessage(query.error)} action="Try again" actionIcon={RotateCcw} onAction={() => void query.refetch()} />
+      ) : !rows.length ? (
+        <EmptyState
+          icon={MessageSquare}
+          title={filter === 'completed' ? 'No completed trades yet' : 'No trade conversations yet'}
+          text="Accepted proposals appear here. Both traders must confirm an exchange to complete it."
+          action="Trade offers"
+          onAction={() => router.navigate('/offers')}
+        />
+      ) : visible.length && user ? (
+        <>
+          <Card padded={false} style={styles.list}>
+            {visible.map(({ offer, status, lastMessage, updatedAt }, index) => {
+              const other = otherTrader(offer, user.id);
+              return (
+                <ThreadRow
+                  key={offer.id}
+                  thread={{
+                    id: offer.id,
+                    name: other.fullName,
+                    initials: other.initials,
+                    item: `${offer.offered.title} ↔ ${offer.requested.title}`,
+                    preview: `${statusLabels[status]} · ${lastMessage}`,
+                    time: shortDate(updatedAt),
+                    unread: 0,
+                  }}
+                  divider={index < visible.length - 1}
+                  onPress={() => router.push(`/messages/${offer.id}`)}
+                />
+              );
+            })}
+          </Card>
+          {query.hasNextPage ? (
+            <Button label="Load more conversations" variant="secondary" loading={query.isFetchingNextPage} onPress={() => void query.fetchNextPage()} />
+          ) : null}
+        </>
+      ) : (
+        <EmptyState icon={Search} title="No results" text={`No conversations match “${search.trim()}”.`} action="Clear search" onAction={() => setSearch('')} />
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  offers: { paddingVertical: 4 },
   list: { padding: 6 },
 });

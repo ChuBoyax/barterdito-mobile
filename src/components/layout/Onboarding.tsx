@@ -43,13 +43,13 @@ export function Onboarding({ visible, onFinish }: { visible: boolean; onFinish: 
               <Icon size={68} color={colors.onPrimary} strokeWidth={1.8} />
             </View>
           </Animated.View>
-          <View style={[styles.mini, styles.miniA, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+          <View style={[styles.mini, styles.miniA, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
             <Camera size={20} color={colors.orange} />
             <AppText variant="caption" color="ink" weight="bold">
               Your item
             </AppText>
           </View>
-          <View style={[styles.mini, styles.miniB, { backgroundColor: colors.surface, borderColor: colors.line }, elevation(1, colors)]}>
+          <View style={[styles.mini, styles.miniB, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
             <Bike size={20} color={colors.blue} />
             <AppText variant="caption" color="ink" weight="bold">
               Their item

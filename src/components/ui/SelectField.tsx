@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, maxFontScale } from '@/theme';
+import { fonts, maxFontScale, neu } from '@/theme';
 import { BottomSheet } from './BottomSheet';
 
 type SelectFieldProps = {
@@ -26,7 +26,7 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
         accessibilityRole="button"
         accessibilityLabel={label ?? placeholder}
         onPress={() => setOpen(true)}
-        style={[styles.field, { backgroundColor: colors.surface, borderColor: error ? colors.red : colors.line }]}>
+        style={[styles.field, { backgroundColor: colors.background, borderColor: error ? colors.red : 'transparent' }, neu(colors, 2, true)]}>
         <Text maxFontSizeMultiplier={maxFontScale} style={[styles.value, { color: value ? colors.ink : colors.muted2 }]} numberOfLines={1}>
           {value || placeholder}
         </Text>
@@ -43,7 +43,7 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
                 onChange(option);
                 setOpen(false);
               }}
-              style={[styles.option, { backgroundColor: active ? colors.orangeSoft : colors.surface2 }]}>
+              style={[styles.option, { backgroundColor: active ? colors.orangeSoft : colors.surface }, active ? neu(colors, 1, true) : neu(colors, 1)]}>
               <Text maxFontSizeMultiplier={maxFontScale} style={[styles.optionText, { color: active ? colors.orange : colors.ink }]}>{option}</Text>
               {active ? <Check size={18} color={colors.orange} /> : null}
             </Pressable>
