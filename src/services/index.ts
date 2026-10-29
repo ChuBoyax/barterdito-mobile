@@ -5,6 +5,7 @@ export { ServiceError } from './client';
 export { communityService } from './communityService';
 export { itemService } from './itemService';
 export { messageService } from './messageService';
+export { notificationService } from './notificationService';
 export { paymentService } from './paymentService';
 export { tradeService } from './tradeService';
 export { userService } from './userService';

@@ -18,4 +18,8 @@ export const queryKeys = {
   offers: (direction?: OfferDirection) => (direction ? (['offers', direction] as const) : (['offers'] as const)),
   conversations: (filter?: 'all' | 'completed') => (filter ? (['conversations', filter] as const) : (['conversations'] as const)),
   reviews: (userId: string) => ['reviews', userId] as const,
+
+  notifications: ['notifications'] as const,
+  notificationList: ['notifications', 'list'] as const,
+  notificationCounts: ['notifications', 'counts'] as const,
 };

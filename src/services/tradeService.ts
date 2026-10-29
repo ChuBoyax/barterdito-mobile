@@ -157,11 +157,20 @@ export const tradeService = {
   },
 
   async getConversations(completed: boolean, offset = 0): Promise<{ conversations: ConversationSummary[]; total: number }> {
-    const result = await get<{ conversations: { offer: OfferRow; status: ConversationSummary['status']; last_message: string; updated_at: string }[]; total: number }>(
+    const result = await get<{
+      conversations: { offer: OfferRow; status: ConversationSummary['status']; last_message: string; updated_at: string; unread_count?: number }[];
+      total: number;
+    }>(
       `/trades/conversations?status=${completed ? 'completed' : 'all'}&limit=50&offset=${offset}`,
     );
     return {
-      conversations: result.conversations.map((row) => ({ offer: toOffer(row.offer), status: row.status, lastMessage: row.last_message, updatedAt: row.updated_at })),
+      conversations: result.conversations.map((row) => ({
+        offer: toOffer(row.offer),
+        status: row.status,
+        lastMessage: row.last_message,
+        updatedAt: row.updated_at,
+        unreadCount: row.unread_count ?? 0,
+      })),
       total: result.total,
     };
   },

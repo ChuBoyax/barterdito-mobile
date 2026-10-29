@@ -5,7 +5,6 @@ export { FilterSheet } from './FilterSheet';
 export { HeroBanner } from './HeroBanner';
 export { ItemCard, ItemCardSkeleton } from './ItemCard';
 export { ItemGrid, ItemGridRow, useGridRows, useInteractionSets, type GridRow } from './ItemGrid';
-export { NotificationRow } from './NotificationRow';
 export { ReportSheet } from './ReportSheet';
 export { StatGrid, type Stat } from './StatGrid';
 export { ThreadRow } from './ThreadRow';

@@ -61,4 +61,4 @@ export type Conversation = {
   reviews: TradeReview[];
 };
 
-export type ConversationSummary = { offer: TradeOffer; status: TradeStatus; lastMessage: string; updatedAt: string };
+export type ConversationSummary = { offer: TradeOffer; status: TradeStatus; lastMessage: string; updatedAt: string; unreadCount: number };

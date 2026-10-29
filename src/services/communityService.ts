@@ -1,12 +1,10 @@
 import {
-  mockActivity,
   mockAdminSummary,
   mockAnalytics,
   mockCampaign,
   mockEvents,
   mockFaqs,
   mockForumThreads,
-  mockNotifications,
   mockPrivacy,
   mockReferral,
   mockTerms,
@@ -14,7 +12,6 @@ import {
 import type {
   AdminSummary,
   AnalyticsSummary,
-  AppNotification,
   Campaign,
   Faq,
   ForumThread,
@@ -24,7 +21,6 @@ import type {
 } from '@/types/models';
 import { clone, delay } from './client';
 
-let notifications = clone(mockNotifications);
 const rsvps = new Set<string>();
 
 export const communityService = {
@@ -45,20 +41,6 @@ export const communityService = {
 
   async getActiveCampaign(): Promise<Campaign> {
     return delay(clone(mockCampaign));
-  },
-
-  
-  async getNotifications(): Promise<AppNotification[]> {
-    return delay(clone(notifications), 200);
-  },
-
-  async markAllNotificationsRead(): Promise<void> {
-    notifications = notifications.map((entry) => ({ ...entry, unread: false }));
-    await delay(undefined, 150);
-  },
-
-  async getActivity(): Promise<AppNotification[]> {
-    return delay(clone(mockActivity));
   },
 
   

@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/ui';
+import { useNotificationCounts } from '@/hooks/useNotificationCounts';
 import { tabs } from '@/navigation/tabs';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useTheme } from '@/providers';
@@ -12,6 +13,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { contentWidth } = useResponsive();
+  const counts = useNotificationCounts();
 
   return (
     <View style={[styles.bar, { backgroundColor: colors.surface, paddingBottom: Math.max(insets.bottom, 8) }, neu(colors, 2)]}>
@@ -22,6 +24,8 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
         const focused = state.index === index;
         const color = focused ? colors.orange : colors.muted;
         const Icon = tab.icon;
+        // Inbox shows unread trade messages; other tabs use their static badge, if any.
+        const badge = tab.name === 'inbox' ? counts?.unreadMessageCount : tab.badge;
         return (
           <PressableScale
             key={route.key}
@@ -36,9 +40,9 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
             style={styles.tab}>
             <View style={[styles.iconWrap, focused && [{ backgroundColor: colors.background }, neu(colors, 1, true)]]}>
               <Icon size={21} color={color} strokeWidth={focused ? 2.4 : 2} />
-              {tab.badge ? (
+              {badge ? (
                 <View style={[styles.badge, { backgroundColor: colors.orange, borderColor: colors.surface }]}>
-                  <Text maxFontSizeMultiplier={maxFontScale} style={[styles.badgeText, { color: colors.onPrimary }]}>{tab.badge}</Text>
+                  <Text maxFontSizeMultiplier={maxFontScale} style={[styles.badgeText, { color: colors.onPrimary }]}>{badge > 99 ? '99+' : badge}</Text>
                 </View>
               ) : null}
             </View>
