@@ -9,7 +9,7 @@ export default function TradeStatusScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return (
     <RequireAuth>
-      <WorkflowScreen id={id} title="Your trade status">
+      <WorkflowScreen id={id}>
         {(state, userId) => <TradeControls state={state} userId={userId} />}
       </WorkflowScreen>
     </RequireAuth>

@@ -21,4 +21,5 @@ export { SectionHeading } from './SectionHeading';
 export { SegmentedControl, type Segment } from './SegmentedControl';
 export { SelectField } from './SelectField';
 export { Stars } from './Stars';
+export { StatRow, type StatItem } from './StatRow';
 export { TextField } from './TextField';

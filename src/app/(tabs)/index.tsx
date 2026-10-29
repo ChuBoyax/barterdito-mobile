@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ArrowUpRight, Bell, CalendarDays, Map, Plus, RotateCcw, Search, SlidersHorizontal, Sparkles, Trophy, X, type LucideIcon } from 'lucide-react-native';
+import { ArrowUpRight, Bell, CalendarDays, Map, Plus, RotateCcw, Search, SlidersHorizontal, Trophy, X, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -116,7 +116,7 @@ export default function BrowseScreen() {
           }
           actions={
             <View style={styles.actions}>
-              <IconButton icon={Bell} label="Notifications" size={19} badge={2} onPress={() => router.push('/notifications')} />
+              <IconButton icon={Bell} label="Notifications" size={19} onPress={() => router.push('/notifications')} />
               <MenuButton />
             </View>
           }
@@ -185,7 +185,6 @@ export default function BrowseScreen() {
             <PrimaryShortcut onPress={() => requireAuth(() => router.push('/post-item'))} />
             <View style={styles.shortcutRow}>
               <Shortcut icon={Map} tone="blue" title="Nearby" onPress={() => router.push('/map')} />
-              <Shortcut icon={Sparkles} tone="violet" title="For you" onPress={() => requireAuth(() => router.push('/recommendations'))} />
               <Shortcut icon={CalendarDays} tone="green" title="Events" onPress={() => router.push('/events')} />
               <Shortcut icon={Trophy} tone="yellow" title="Top traders" onPress={() => router.push('/leaderboard')} />
             </View>

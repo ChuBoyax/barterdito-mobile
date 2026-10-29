@@ -12,7 +12,7 @@ type ItemCardProps = {
   item: Item;
   saved: boolean;
   hearted?: boolean;
-  onOpen: (id: string) => void;
+  onOpen: (item: Item) => void;
   onSave: (id: string) => void;
   onHeart: (id: string) => void;
 };
@@ -20,7 +20,7 @@ type ItemCardProps = {
 
 export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: openItem, onSave: saveItem, onHeart: heartItem }: ItemCardProps) {
   const { colors } = useTheme();
-  const onOpen = () => openItem(item.id);
+  const onOpen = () => openItem(item);
   const onSave = () => saveItem(item.id);
   const onHeart = () => heartItem(item.id);
   return (
@@ -69,7 +69,7 @@ export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: o
         </View>
         <View style={styles.inline}>
           <ArrowRightLeft size={11} color={colors.orange} strokeWidth={2.4} />
-          <AppText variant="caption" color="orange" weight="semibold" numberOfLines={1} style={styles.flex}>
+          <AppText variant="caption" color="ink" weight="medium" numberOfLines={1} style={styles.flex}>
             {item.wanted}
           </AppText>
         </View>

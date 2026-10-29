@@ -1,16 +1,16 @@
-import { QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import type { ReactNode } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "./AuthProvider";
 import { MarketplaceProvider } from "./MarketplaceProvider";
-import { queryClient } from "./queryClient";
+import { persistOptions, queryClient } from "./queryClient";
 import { ThemeProvider } from "./ThemeProvider";
 import { ToastProvider } from "./ToastProvider";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
       <SafeAreaProvider>
         <ThemeProvider>
           <ToastProvider>
@@ -20,7 +20,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
           </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 

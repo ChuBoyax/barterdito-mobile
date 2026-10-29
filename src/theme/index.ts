@@ -25,9 +25,9 @@ export const radius = {
 } as const;
 
 const depths = {
-  1: { offset: 3, blur: 7 },
-  2: { offset: 6, blur: 14 },
-  3: { offset: 9, blur: 22 },
+  1: { offset: 3, blur: 8 },
+  2: { offset: 5, blur: 14 },
+  3: { offset: 8, blur: 22 },
 } as const;
 
 export type NeuDepth = keyof typeof depths;

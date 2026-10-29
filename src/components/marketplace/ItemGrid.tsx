@@ -1,13 +1,12 @@
-import { router } from 'expo-router';
 import { memo, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useResponsive } from '@/hooks/useResponsive';
 import { useMarketplace } from '@/providers';
 import type { Item } from '@/types/models';
+import { openItem } from '@/utils/navigation';
 import { ItemCard, ItemCardSkeleton } from './ItemCard';
 
-const openItem = (id: string) => router.push(`/items/${id}`);
 
 /** A grid row: items, or `null` placeholders while loading. */
 export type GridRow = { key: string; cells: (Item | null)[] };
