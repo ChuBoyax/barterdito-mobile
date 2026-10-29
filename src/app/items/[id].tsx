@@ -29,7 +29,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { queryClient, useAuth, useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService, tradeService, userService } from '@/services';
-import { elevation, fonts, maxFontScale } from '@/theme';
+import { elevation, fonts, maxFontScale, neu } from '@/theme';
 import { errorMessage, firstName } from '@/utils/format';
 import { mapLink } from '@/utils/listing';
 import { shareItem } from '@/utils/share';
@@ -121,12 +121,13 @@ export default function ItemDetailScreen() {
   }
 
   const unavailable = item.status !== 'Active';
+  const pinned = item.latitude != null && item.longitude != null;
   const primaryLabel = item.mine ? 'Manage your listing' : traded ? 'Already traded' : unavailable ? 'In negotiation' : 'Propose a swap';
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: ACTION_BAR_SPACE + Math.max(insets.bottom, 12) }}>
         <View style={{ height: heroHeight }}>
           <ScrollView
             horizontal
@@ -171,24 +172,35 @@ export default function ItemDetailScreen() {
 
           <View style={styles.facts}>
             <Fact label="Condition" value={item.condition} />
-            <Fact label="Meetup area" value={item.location} icon={MapPin} />
             <Fact label="Posted" value={item.age} />
           </View>
 
-          {item.latitude != null && item.longitude != null ? (
-            <PressableScale
-              accessibilityRole="link"
-              accessibilityLabel="Open pickup pin in OpenStreetMap"
-              onPress={() => void Linking.openURL(mapLink(item.latitude!, item.longitude!))}
-              scaleTo={0.98}
-              style={[styles.mapLink, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
-              <MapPinned size={18} color={colors.blue} />
-              <View style={styles.flex}>
-                <AppText variant="h3">Pickup pin on the map</AppText>
-                <AppText variant="caption">Open in OpenStreetMap</AppText>
+          {/* Full width so long barangay/city labels never get cut off. */}
+          <PressableScale
+            accessibilityRole={pinned ? 'link' : undefined}
+            accessibilityLabel={pinned ? `Meetup area ${item.location}. Open pickup pin in OpenStreetMap` : `Meetup area ${item.location}`}
+            disabled={!pinned}
+            onPress={() => pinned && void Linking.openURL(mapLink(item.latitude!, item.longitude!))}
+            scaleTo={0.98}
+            style={[styles.place, { backgroundColor: colors.surface }, elevation(1, colors)]}>
+            <View style={[styles.placeIcon, { backgroundColor: colors.background }, neu(colors, 1, true)]}>
+              <MapPin size={18} color={colors.orange} strokeWidth={2.3} />
+            </View>
+            <View style={styles.flex}>
+              <AppText variant="caption">Meetup area</AppText>
+              <AppText variant="h3" numberOfLines={3}>
+                {item.location}
+              </AppText>
+            </View>
+            {pinned ? (
+              <View style={[styles.mapChip, { backgroundColor: colors.background }, neu(colors, 1)]}>
+                <MapPinned size={14} color={colors.blue} />
+                <AppText variant="caption" color="blue" weight="bold">
+                  Map
+                </AppText>
               </View>
-            </PressableScale>
-          ) : null}
+            ) : null}
+          </PressableScale>
 
           {item.tags?.length ? (
             <View style={styles.badges}>
@@ -346,23 +358,25 @@ function Meta({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
 function Fact({ label, value, icon: Icon }: { label: string; value: string; icon?: LucideIcon }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.fact, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
+    <View style={[styles.fact, { backgroundColor: colors.surface }, elevation(1, colors)]}>
       <View style={styles.inline}>
         {Icon ? <Icon size={11} color={colors.muted} strokeWidth={2.4} /> : null}
         <AppText variant="caption" numberOfLines={1}>
           {label}
         </AppText>
       </View>
-      <AppText variant="h3" numberOfLines={2}>
+      <AppText variant="h3" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
         {value}
       </AppText>
     </View>
   );
 }
 
+/** Room for the floating action bar so the last section is never hidden under it. */
+const ACTION_BAR_SPACE = 96;
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { paddingBottom: 130 },
   dots: { position: 'absolute', bottom: 44, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4 },
   dotIdle: { opacity: 0.55 },
@@ -375,15 +389,17 @@ const styles = StyleSheet.create({
   wantsIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   wantsLabel: { fontFamily: fonts.extrabold, fontSize: 10, letterSpacing: 1.4 },
   wantsText: { fontFamily: fonts.bold, fontSize: 15.5, lineHeight: 21, marginTop: 2 },
-  facts: { flexDirection: 'row', gap: 10 },
-  fact: { flex: 1, gap: 3, borderWidth: 1, borderRadius: 18, padding: 13 },
+  facts: { flexDirection: 'row', gap: 12 },
+  fact: { flex: 1, minWidth: 0, gap: 3, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12 },
+  place: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 14 },
+  placeIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  mapChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   section: { gap: 8 },
   owner: { flexDirection: 'row', alignItems: 'center', gap: 13, borderWidth: 1, borderRadius: 26, padding: 14 },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   moreRow: { gap: 10 },
   mini: { width: 230, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 20, padding: 8 },
   miniImage: { width: 58, height: 58, borderRadius: 14 },
-  mapLink: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 18, padding: 14 },
   report: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 },
   topBar: { position: 'absolute', flexDirection: 'row', justifyContent: 'space-between' },
   topRight: { flexDirection: 'row', gap: 8 },
