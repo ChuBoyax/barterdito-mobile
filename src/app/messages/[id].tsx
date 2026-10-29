@@ -2,15 +2,18 @@ import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ChevronRight, Package } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Alert, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MessageBubble, MessageComposer } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
 import { shortDate } from '@/components/trades';
 import { AppText, Avatar, Badge, Button, LoadingView } from '@/components/ui';
 import { usePolling, useTradeConversation } from '@/hooks/useTradeConversation';
-import { useAuth, useTheme } from '@/providers';
+import { setNotificationCounts } from '@/hooks/useNotificationCounts';
+import { queryClient, useAuth, useTheme } from '@/providers';
 import { tradeService } from '@/services';
+import { notificationService } from '@/services/notificationService';
+import { queryKeys } from '@/services/queryKeys';
 import { clientId } from '@/services/tradeService';
 import { neu } from '@/theme';
 import type { Conversation, TradeMessage } from '@/types/trades';
@@ -91,6 +94,29 @@ function TradeChat() {
   usePolling(() => void load());
 
   const newestId = messages.at(-1)?.id;
+  const newestRef = useRef<number | undefined>(undefined);
+  newestRef.current = newestId;
+  const acknowledged = useRef(0);
+
+  // Like the website: acknowledge only when the newest message is on screen (scrolled to the bottom).
+  const markRead = useCallback(() => {
+    const newest = newestRef.current;
+    if (!newest || newest <= acknowledged.current || !followLatest.current || AppState.currentState !== 'active') return;
+    acknowledged.current = newest;
+    notificationService
+      .markChatRead(id, newest)
+      .then((counts) => {
+        setNotificationCounts(counts);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
+      })
+      .catch(() => {
+        acknowledged.current = 0;
+      });
+  }, [id]);
+
+  useEffect(() => {
+    if (loaded) markRead();
+  }, [loaded, newestId, markRead]);
   useEffect(() => {
     if (!followLatest.current) return;
     const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
@@ -255,6 +281,7 @@ function TradeChat() {
         onScroll={({ nativeEvent }) => {
           const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
           followLatest.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+          if (followLatest.current) markRead();
         }}>
         {hasMore ? <Button label="Earlier messages" variant="ghost" compact loading={olderBusy} onPress={() => void older()} /> : null}
         {loaded && !messages.length ? (

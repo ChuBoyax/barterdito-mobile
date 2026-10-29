@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
-import { ArrowUpRight, Bell, CalendarDays, Map, Plus, RotateCcw, Search, SlidersHorizontal, Trophy, X, type LucideIcon } from 'lucide-react-native';
+import { ArrowUpRight, CalendarDays, Map, Plus, RotateCcw, Search, SlidersHorizontal, Trophy, X, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { AppHeader, MenuButton } from '@/components/layout';
+import { AppHeader, MenuButton, NotificationBell } from '@/components/layout';
 import { FeaturedCard, featuredCardWidth, FilterSheet, ItemGridRow, TraderRow, useGridRows, useInteractionSets, type GridRow } from '@/components/marketplace';
-import { AppText, Avatar, Button, ChipRow, EmptyState, IconButton, IconTile, PressableScale, SectionHeading } from '@/components/ui';
+import { AppText, Avatar, Button, ChipRow, EmptyState, IconTile, PressableScale, SectionHeading } from '@/components/ui';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
@@ -116,7 +116,7 @@ export default function BrowseScreen() {
           }
           actions={
             <View style={styles.actions}>
-              <IconButton icon={Bell} label="Notifications" size={19} onPress={() => router.push('/notifications')} />
+              <NotificationBell />
               <MenuButton />
             </View>
           }

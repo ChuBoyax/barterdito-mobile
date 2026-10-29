@@ -1,7 +1,6 @@
 import type {
   AdminSummary,
   AnalyticsSummary,
-  AppNotification,
   Campaign,
   Faq,
   ForumThread,
@@ -56,19 +55,6 @@ export const mockCampaign: Campaign = {
   raised: 34200,
   goal: 50000,
 };
-
-export const mockNotifications: AppNotification[] = [
-  { id: 'n1', kind: 'offer', text: 'Mika sent a new offer for your iPhone 13 Mini', time: '12m', unread: true },
-  { id: 'n2', kind: 'heart', text: 'Your Cordless Tool Set received a heart', time: '2h', unread: true },
-  { id: 'n3', kind: 'trade', text: 'Paolo accepted your trade offer', time: '1d', unread: false },
-  { id: 'n4', kind: 'follow', text: 'Bea started following you', time: '2d', unread: false },
-];
-
-export const mockActivity: AppNotification[] = [
-  ...mockNotifications,
-  { id: 'a1', kind: 'badge', text: 'You earned the Friendly Trader badge', time: '4d', unread: false },
-  { id: 'a2', kind: 'system', text: 'Your profile reached 100 followers', time: '1w', unread: false },
-];
 
 export const mockAnalytics: AnalyticsSummary = {
   metrics: [

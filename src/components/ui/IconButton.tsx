@@ -53,7 +53,7 @@ export function IconButton({
       )}
       {badge ? (
         <View style={[styles.badge, { backgroundColor: colors.orange, borderColor: colors.background }]}>
-          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.badgeText, { color: colors.onPrimary }]}>{badge}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.badgeText, { color: colors.onPrimary }]}>{badge > 99 ? '99+' : badge}</Text>
         </View>
       ) : null}
     </PressableScale>

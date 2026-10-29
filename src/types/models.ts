@@ -132,16 +132,6 @@ export type Campaign = {
   goal: number;
 };
 
-export type NotificationKind = 'offer' | 'heart' | 'trade' | 'follow' | 'badge' | 'system';
-
-export type AppNotification = {
-  id: string;
-  kind: NotificationKind;
-  text: string;
-  time: string;
-  unread: boolean;
-};
-
 export type LeaderboardEntry = {
   name: string;
   initials: string;
