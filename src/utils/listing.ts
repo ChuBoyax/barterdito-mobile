@@ -75,3 +75,8 @@ export function withCover(photos: string[], index: number): string[] {
 export function mapLink(latitude: number, longitude: number): string {
   return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`;
 }
+
+/** Drops the trailing "(lat, lng)" the backend appends to pinned pickup areas, e.g. "Pinned pickup area (10.43, 124.72)". */
+export function displayLocation(location: string) {
+  return location.replace(/\s*\(\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*\)\s*$/, '').trim() || location;
+}

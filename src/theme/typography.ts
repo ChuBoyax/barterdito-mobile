@@ -24,13 +24,3 @@ export const fonts = {
 } as const;
 
 export type FontWeight = keyof typeof fonts;
-
-export const fontSizes = {
-  xs: 10,
-  sm: 12,
-  md: 14,
-  lg: 16,
-  xl: 19,
-  xxl: 24,
-  hero: 32,
-} as const;

@@ -1,7 +1,4 @@
-
-
 export type ItemStatus = 'Active' | 'In Negotiation' | 'Traded';
-export type ItemCondition = 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
 
 export type Item = {
   id: string;
@@ -192,14 +189,6 @@ export type ItemDraft = {
   tags: string;
   status: ItemStatus;
   photos: string[];
-};
-
-export type MeetupProposal = {
-  tradeId: string;
-  date: string;
-  time: string;
-  location: string;
-  notes: string;
 };
 
 export type DisputeInput = {
