@@ -263,7 +263,7 @@ export default function LoginScreen() {
                   icon={User}
                   value={fullName}
                   onChangeText={edit(setFullName)}
-                  placeholder="Juan Dela Cruz"
+                  placeholder="Enter your full name"
                   autoCapitalize="words"
                   autoComplete="name"
                   textContentType="name"
@@ -277,7 +277,7 @@ export default function LoginScreen() {
                   icon={Hash}
                   value={code}
                   onChangeText={edit((value) => setCode(value.replace(/\D/g, '').slice(0, 6)))}
-                  placeholder="123456"
+                  placeholder="Enter the 6-digit code"
                   keyboardType="number-pad"
                   autoComplete="one-time-code"
                   textContentType="oneTimeCode"
@@ -290,7 +290,7 @@ export default function LoginScreen() {
                   icon={Mail}
                   value={email}
                   onChangeText={edit((value) => setEmail(value.replace(/\s/g, '')))}
-                  placeholder="you@example.com"
+                  placeholder="Enter your email"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -307,7 +307,7 @@ export default function LoginScreen() {
                     icon={Lock}
                     value={password}
                     onChangeText={edit(setPassword)}
-                    placeholder={mode === 'login' ? 'Your password' : 'Create a strong password'}
+                    placeholder={mode === 'reset' ? 'Enter your new password' : 'Enter your password'}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -326,7 +326,7 @@ export default function LoginScreen() {
                     icon={KeyRound}
                     value={confirmPassword}
                     onChangeText={edit(setConfirmPassword)}
-                    placeholder="Type your password again"
+                    placeholder="Re-enter your password"
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
