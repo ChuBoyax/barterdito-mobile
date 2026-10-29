@@ -1,20 +1,41 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Hash, KeyRound, Lock, LogIn, Mail, MailCheck, User, UserPlus, X } from 'lucide-react-native';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PasswordStrength } from '@/components/auth';
 import { AppText, Button, IconButton, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth, useTheme, useToast } from '@/providers';
 import { authService } from '@/services';
 import { elevation } from '@/theme';
 import { errorMessage, firstName } from '@/utils/format';
+import {
+  NAME_MAX_LENGTH,
+  normalizeEmail,
+  normalizeName,
+  validateCode,
+  validateConfirmPassword,
+  validateEmail,
+  validateFullName,
+  validateLoginPassword,
+  validateNewPassword,
+} from '@/utils/validation';
 
 type Mode = 'login' | 'signup' | 'verify' | 'forgot' | 'reset';
+type Field = 'fullName' | 'email' | 'code' | 'password' | 'confirm';
+type FieldErrors = Partial<Record<Field, string>>;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Fields each mode shows, in screen order — also the order used to focus the first invalid one. */
+const modeFields: Record<Mode, Field[]> = {
+  login: ['email', 'password'],
+  signup: ['fullName', 'email', 'password', 'confirm'],
+  verify: ['code'],
+  forgot: ['email'],
+  reset: ['code', 'password'],
+};
 
 const headings: Record<Mode, [string, string]> = {
   login: ['Welcome back,\n', 'ka-barter.'],
@@ -32,11 +53,6 @@ const submitLabels: Record<Mode, string> = {
   reset: 'Reset password',
 };
 
-/** UTF-8 byte length; the backend accepts passwords of 8 to 72 bytes. */
-function byteLength(value: string) {
-  return new TextEncoder().encode(value).length;
-}
-
 export default function LoginScreen() {
   const params = useLocalSearchParams<{ mode?: Mode }>();
   const { colors } = useTheme();
@@ -52,44 +68,84 @@ export default function LoginScreen() {
   const [pendingEmail, setPendingEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
+  const [attempted, setAttempted] = useState(false);
+  const [serverError, setServerError] = useState('');
+
+  const refs = {
+    fullName: useRef<TextInput>(null),
+    email: useRef<TextInput>(null),
+    code: useRef<TextInput>(null),
+    password: useRef<TextInput>(null),
+    confirm: useRef<TextInput>(null),
+  };
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const usesCode = mode === 'verify' || mode === 'reset';
-  const passwordsMatch = password === confirmPassword;
-  const blocked = mode === 'signup' && (!confirmPassword || !passwordsMatch);
+  const fields = modeFields[mode];
+  const newPassword = mode === 'signup' || mode === 'reset';
+
+  const errors = useMemo<FieldErrors>(() => {
+    const result: FieldErrors = {
+      fullName: validateFullName(fullName) ?? undefined,
+      email: validateEmail(email) ?? undefined,
+      code: validateCode(code) ?? undefined,
+      password:
+        (newPassword ? validateNewPassword(password, { email: mode === 'reset' ? pendingEmail : email, fullName }) : validateLoginPassword(password)) ?? undefined,
+      confirm: validateConfirmPassword(password, confirmPassword) ?? undefined,
+    };
+    return Object.fromEntries(fields.map((field) => [field, result[field]]));
+  }, [fields, fullName, email, code, password, confirmPassword, newPassword, mode, pendingEmail]);
+
+  const passwordsMatch = !!confirmPassword && password === confirmPassword;
+
+  /** Errors stay quiet until the user leaves a field or tries to submit, then update live. */
+  function visibleError(field: Field) {
+    if (field === 'confirm' && confirmPassword && confirmPassword.length >= password.length && !passwordsMatch) return errors.confirm;
+    return touched[field] || attempted ? errors[field] : undefined;
+  }
+
+  function touch(field: Field) {
+    setTouched((current) => (current[field] ? current : { ...current, [field]: true }));
+  }
+
+  function edit(setter: (value: string) => void) {
+    return (value: string) => {
+      setter(value);
+      setServerError('');
+    };
+  }
+
+  function focusNext(field: Field) {
+    const next = fields[fields.indexOf(field) + 1];
+    if (next) refs[next].current?.focus();
+    else void submit();
+  }
 
   function changeMode(next: Mode) {
     setMode(next);
-    setError('');
+    setServerError('');
+    setTouched({});
+    setAttempted(false);
     setCode('');
     setPassword('');
     setConfirmPassword('');
   }
 
-  function validate(address: string): string | null {
-    if (!EMAIL_PATTERN.test(address)) return 'Enter a valid email address.';
-    const name = fullName.trim();
-    if (mode === 'signup' && (name.length < 2 || name.length > 120)) return 'Full name must be between 2 and 120 characters.';
-    if ((mode === 'signup' || mode === 'reset') && (byteLength(password) < 8 || byteLength(password) > 72)) {
-      return 'Password must be between 8 and 72 characters.';
-    }
-    if (mode === 'signup' && !passwordsMatch) return 'Passwords do not match. Please retype your password.';
-    if (usesCode && !/^\d{6}$/.test(code.trim())) return 'Enter the six-digit code you received.';
-    if (mode === 'login' && !password) return 'Enter your password.';
-    return null;
-  }
-
   async function submit() {
     if (submitting) return;
-    const address = (usesCode ? pendingEmail : email).trim().toLowerCase();
-    setError('');
-    const invalid = validate(address);
-    if (invalid) return setError(invalid);
+    setAttempted(true);
+    setServerError('');
+    const firstInvalid = fields.find((field) => errors[field]);
+    if (firstInvalid) {
+      refs[firstInvalid].current?.focus();
+      return;
+    }
+    const address = normalizeEmail(usesCode ? pendingEmail : email);
     setSubmitting(true);
     try {
       if (mode === 'signup') {
-        await register({ email: address, fullName, password });
+        await register({ email: address, fullName: normalizeName(fullName), password });
         setPendingEmail(address);
         changeMode('verify');
         return;
@@ -112,7 +168,7 @@ export default function LoginScreen() {
       showToast(mode === 'verify' ? `Welcome to Barterdito, ${firstName(user.fullName)}!` : `Welcome back, ${firstName(user.fullName)}!`);
       close();
     } catch (caught) {
-      setError(errorMessage(caught, 'Authentication failed.'));
+      setServerError(errorMessage(caught, 'Authentication failed.'));
     } finally {
       setSubmitting(false);
     }
@@ -120,14 +176,14 @@ export default function LoginScreen() {
 
   async function resend() {
     if (submitting) return;
-    setError('');
+    setServerError('');
     setSubmitting(true);
     try {
       if (mode === 'verify') await authService.resendVerification(pendingEmail);
       else await authService.resendPasswordReset(pendingEmail);
       showToast('A new code has been sent.');
     } catch (caught) {
-      setError(errorMessage(caught, 'Could not resend the code.'));
+      setServerError(errorMessage(caught, 'Could not resend the code.'));
     } finally {
       setSubmitting(false);
     }
@@ -149,6 +205,16 @@ export default function LoginScreen() {
       {showPassword ? <EyeOff size={18} color={colors.muted} /> : <Eye size={18} color={colors.muted} />}
     </Pressable>
   );
+
+  /** Shared props that wire a field into touch tracking and the next-field keyboard chain. */
+  const fieldProps = (field: Field) => ({
+    ref: refs[field],
+    error: visibleError(field),
+    onBlur: () => touch(field),
+    onSubmitEditing: () => focusNext(field),
+    returnKeyType: field === fields[fields.length - 1] ? ('done' as const) : ('next' as const),
+    submitBehavior: field === fields[fields.length - 1] ? ('blurAndSubmit' as const) : ('submit' as const),
+  });
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
@@ -191,17 +257,26 @@ export default function LoginScreen() {
                 />
               ) : null}
               {mode === 'signup' ? (
-                <TextField label="Full name" icon={User} value={fullName} onChangeText={setFullName} placeholder="Juan Dela Cruz" autoComplete="name" maxLength={120} />
+                <TextField
+                  {...fieldProps('fullName')}
+                  label="Full name"
+                  icon={User}
+                  value={fullName}
+                  onChangeText={edit(setFullName)}
+                  placeholder="Juan Dela Cruz"
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  textContentType="name"
+                  maxLength={NAME_MAX_LENGTH}
+                />
               ) : null}
               {usesCode ? (
                 <TextField
+                  {...fieldProps('code')}
                   label="Six-digit code"
                   icon={Hash}
                   value={code}
-                  onChangeText={(value) => {
-                    setCode(value.replace(/\D/g, '').slice(0, 6));
-                    setError('');
-                  }}
+                  onChangeText={edit((value) => setCode(value.replace(/\D/g, '').slice(0, 6)))}
                   placeholder="123456"
                   keyboardType="number-pad"
                   autoComplete="one-time-code"
@@ -210,65 +285,69 @@ export default function LoginScreen() {
                 />
               ) : (
                 <TextField
+                  {...fieldProps('email')}
                   label="Email address"
                   icon={Mail}
                   value={email}
-                  onChangeText={(value) => {
-                    setEmail(value);
-                    setError('');
-                  }}
+                  onChangeText={edit((value) => setEmail(value.replace(/\s/g, '')))}
                   placeholder="you@example.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
                   autoComplete="email"
+                  textContentType="emailAddress"
+                  maxLength={254}
                 />
               )}
-              {mode === 'login' || mode === 'signup' || mode === 'reset' ? (
-                <TextField
-                  label={mode === 'reset' ? 'New password' : 'Password'}
-                  icon={Lock}
-                  value={password}
-                  onChangeText={(value) => {
-                    setPassword(value);
-                    setError('');
-                  }}
-                  placeholder={mode === 'login' ? 'Your password' : 'At least 8 characters'}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  right={passwordToggle}
-                />
+              {mode === 'login' || newPassword ? (
+                <View style={styles.group}>
+                  <TextField
+                    {...fieldProps('password')}
+                    label={mode === 'reset' ? 'New password' : 'Password'}
+                    icon={Lock}
+                    value={password}
+                    onChangeText={edit(setPassword)}
+                    placeholder={mode === 'login' ? 'Your password' : 'Create a strong password'}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    textContentType={mode === 'login' ? 'password' : 'newPassword'}
+                    right={passwordToggle}
+                  />
+                  {newPassword && password ? <PasswordStrength password={password} rejected={!!errors.password} /> : null}
+                </View>
               ) : null}
               {mode === 'signup' ? (
-                <View style={styles.confirm}>
+                <View style={styles.group}>
                   <TextField
+                    {...fieldProps('confirm')}
                     label="Retype password"
                     icon={KeyRound}
                     value={confirmPassword}
-                    onChangeText={(value) => {
-                      setConfirmPassword(value);
-                      setError('');
-                    }}
+                    onChangeText={edit(setConfirmPassword)}
                     placeholder="Type your password again"
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
+                    autoCorrect={false}
                     autoComplete="new-password"
+                    textContentType="newPassword"
                   />
-                  {confirmPassword ? (
+                  {passwordsMatch ? (
                     <View style={styles.match} accessibilityLiveRegion="polite">
-                      {passwordsMatch ? <CheckCircle2 size={14} color={colors.green} /> : <AlertCircle size={14} color={colors.red} />}
-                      <AppText variant="caption" color={passwordsMatch ? 'green' : 'red'} weight="semibold">
-                        {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
+                      <CheckCircle2 size={14} color={colors.green} />
+                      <AppText variant="caption" color="green" weight="semibold">
+                        Passwords match
                       </AppText>
                     </View>
                   ) : null}
                 </View>
               ) : null}
-              {error ? (
+              {serverError ? (
                 <View accessibilityLiveRegion="polite" style={[styles.error, { backgroundColor: colors.redSoft }]}>
                   <AlertCircle size={16} color={colors.red} />
                   <AppText variant="small" color="red" weight="semibold" style={styles.flex}>
-                    {error}
+                    {serverError}
                   </AppText>
                 </View>
               ) : null}
@@ -276,7 +355,6 @@ export default function LoginScreen() {
                 label={submitLabels[mode]}
                 icon={mode === 'signup' ? UserPlus : mode === 'verify' ? MailCheck : mode === 'login' ? LogIn : KeyRound}
                 loading={submitting}
-                disabled={blocked}
                 onPress={() => void submit()}
               />
               {mode !== 'signup' ? (
@@ -317,7 +395,7 @@ const styles = StyleSheet.create({
   logo: { width: 80, height: 80, borderRadius: 40 },
   lead: { maxWidth: 300 },
   card: { borderRadius: 24, borderWidth: 1, padding: 20, gap: 16 },
-  confirm: { gap: 6 },
+  group: { gap: 10 },
   match: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4 },
   links: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 18, rowGap: 8 },
   note: { paddingHorizontal: 20 },
