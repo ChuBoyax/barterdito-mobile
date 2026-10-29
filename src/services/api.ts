@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 /**
  * HTTP transport for the FastAPI backend. Like the website, the app uses the cookie
@@ -73,8 +74,8 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, timeou
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
-        'Cache-Control': 'no-cache',
-        Origin: SITE_URL,
+        // Native only: browsers set Origin themselves, and an extra header would trigger a CORS preflight the backend rejects.
+        ...(Platform.OS === 'web' ? {} : { 'Cache-Control': 'no-cache', Origin: SITE_URL }),
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
