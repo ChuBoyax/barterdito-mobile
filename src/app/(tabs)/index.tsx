@@ -37,6 +37,8 @@ export default function BrowseScreen() {
   const pad = { paddingHorizontal: gutter };
   const hRow = [styles.hRow, pad];
   const featuredSnap = featuredCardWidth(innerWidth, columns) + 14;
+  // Exactly three trader cards fit across; the rest scroll in three at a time.
+  const traderWidth = Math.floor((innerWidth - TRADER_GAP * 2) / 3);
   const { user, requireAuth } = useAuth();
   const { items, loading, loadingMore, error, hasMore, refresh, loadMore } = useMarketplace();
   const [filters, setFilters] = useState(defaultFilters);
@@ -192,6 +194,27 @@ export default function BrowseScreen() {
               <Shortcut icon={Trophy} tone="yellow" title="Top traders" onPress={() => router.push('/leaderboard')} />
             </View>
           </Animated.View>
+          {traders.length ? (
+            <View>
+              <View style={pad}>
+                <SectionHeading eyebrow="Community" title="Active traders" />
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[...hRow, styles.tradersRow]}
+                decelerationRate="fast"
+                snapToInterval={(traderWidth + TRADER_GAP) * 3}>
+                {traders.map((trader) => (
+                  <TraderRow
+                    key={trader.id}
+                    trader={trader}
+                    variant="card"
+                    width={traderWidth}
+                    subtitle={pluralize(trader.listings, 'listing')}
+                    onPress={() => router.push(`/traders/${trader.id}`)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
           {hotItems.length ? (
             <View>
               <View style={pad}>
@@ -244,28 +267,6 @@ export default function BrowseScreen() {
           <Button label={browsing ? 'Search more listings' : 'Load more'} variant="secondary" loading={loadingMore} onPress={() => void loadMore()} />
         </View>
       ) : null}
-      {!browsing ? (
-        <>
-          {traders.length ? (
-            <View>
-              <View style={pad}>
-                <SectionHeading eyebrow="Community" title="Active traders" />
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hRow}>
-                {traders.map((trader) => (
-                  <TraderRow
-                    key={trader.id}
-                    trader={trader}
-                    variant="card"
-                    subtitle={pluralize(trader.listings, 'listing')}
-                    onPress={() => router.push(`/traders/${trader.id}`)}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
-        </>
-      ) : null}
     </View>
   );
 
@@ -304,6 +305,7 @@ export default function BrowseScreen() {
   );
 }
 
+const TRADER_GAP = 10;
 const rowKey = (row: GridRow) => row.key;
 const RowGap = () => <View style={styles.rowGap} />;
 
@@ -373,4 +375,5 @@ const styles = StyleSheet.create({
   primaryText: { fontFamily: fonts.medium, fontSize: 12.5, opacity: 0.88 },
   shortcut: { flex: 1, alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 4 },
   hRow: { gap: 14, paddingBottom: 6 },
+  tradersRow: { gap: TRADER_GAP, paddingTop: 2 },
 });
