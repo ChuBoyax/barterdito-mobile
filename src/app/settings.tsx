@@ -25,6 +25,7 @@ import { Children, Fragment, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { EditProfileSheet } from '@/components/account';
+import { PasswordStrength } from '@/components/auth';
 import { AppText, Avatar, Button, Card, ListRow, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { SENTINEL_PREVIEW } from '@/constants/app';
 import { useMountOnOpen } from '@/hooks/useMountOnOpen';
@@ -34,6 +35,7 @@ import type { ThemeMode } from '@/providers/ThemeProvider';
 import { authService, userService } from '@/services';
 import type { NotificationPrefs } from '@/types/models';
 import { errorMessage } from '@/utils/format';
+import { validateNewPassword } from '@/utils/validation';
 
 const notificationRows: { key: keyof NotificationPrefs; title: string; icon: LucideIcon }[] = [
   { key: 'offers', title: 'Trade offers', icon: ArrowRightLeft },
@@ -155,7 +157,7 @@ export default function SettingsScreen() {
 /** Same flow as the website: the backend revokes every session, so the user signs in again. */
 function ChangePassword() {
   const { colors } = useTheme();
-  const { forgetSession } = useAuth();
+  const { forgetSession, user } = useAuth();
   const showToast = useToast();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -167,8 +169,10 @@ function ChangePassword() {
   async function submit() {
     setError('');
     if (!current) return setError('Enter your current password.');
-    const length = new TextEncoder().encode(next).length;
-    if (length < 8 || length > 72) return setError('New password must be between 8 and 72 characters.');
+    // Same rules as sign-up, as on the website's change-password form.
+    const issue = validateNewPassword(next, { email: user?.email, fullName: user?.fullName });
+    if (issue) return setError(issue);
+    if (next === current) return setError('Choose a new password that is different from your current one.');
     setBusy(true);
     try {
       await authService.changePassword(current, next);
@@ -202,6 +206,7 @@ function ChangePassword() {
         <TextField
           label="Current password"
           icon={Lock}
+          placeholder="Enter your current password"
           value={current}
           onChangeText={(value) => {
             setCurrent(value);
@@ -220,13 +225,14 @@ function ChangePassword() {
             setNext(value);
             setError('');
           }}
-          placeholder="At least 8 characters"
+          placeholder="Create a strong new password"
           secureTextEntry={!visible}
           autoCapitalize="none"
           autoComplete="new-password"
           error={error || undefined}
           hint="Signs you out on all devices"
         />
+        {next ? <PasswordStrength password={next} rejected={!!validateNewPassword(next, { email: user?.email, fullName: user?.fullName })} /> : null}
         <View style={styles.actions}>
           <Button
             label="Cancel"

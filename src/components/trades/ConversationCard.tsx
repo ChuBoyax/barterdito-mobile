@@ -31,7 +31,7 @@ export const ConversationCard = memo(function ConversationCard({ conversation, u
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`Trade chat with ${other.fullName} about ${theirs.title} and ${yours.title}. ${unreadCount ? `${unreadCount} unread. ` : ''}${closed ? `${status}. ` : ''}${lastMessage}`}
+      accessibilityLabel={`Trade chat with ${other.fullName} about ${theirs.title} and ${yours.title}. ${unreadCount ? `${unreadCount} unread. ` : ''}${closed ? `${status}. ` : ''}${lastMessage || 'No messages yet'}`}
       onPress={() => router.push(`/messages/${offer.id}`)}
       scaleTo={0.98}
       style={[styles.card, { backgroundColor: colors.surface }, neu(colors, 1)]}>
@@ -51,7 +51,7 @@ export const ConversationCard = memo(function ConversationCard({ conversation, u
         </View>
         <View style={styles.row}>
           <AppText variant="small" color={unreadCount ? 'ink' : 'muted'} weight={unreadCount ? 'semibold' : 'medium'} numberOfLines={1} style={styles.flex}>
-            {lastMessage}
+            {lastMessage || 'No messages yet'}
           </AppText>
           {unreadCount ? (
             <View style={[styles.unread, { backgroundColor: colors.orange }]}>

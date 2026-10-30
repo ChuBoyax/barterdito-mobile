@@ -35,7 +35,8 @@ export default function MyItemsScreen() {
 function MyItemsContent() {
   const showToast = useToast();
   const { removeItem, upsertItem } = useMarketplaceActions();
-  const [tab, setTab] = useState('All');
+  // Active first, like the website; "All" comes last.
+  const [tab, setTab] = useState('Active');
   const [menuItem, setMenuItem] = useState<Item | null>(null);
   const { data: items = [], loading, refreshing, error, setData, reload } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
   const { gutter } = useResponsive();
@@ -51,8 +52,8 @@ function MyItemsContent() {
     }
     return { counts, views, hearts };
   }, [items]);
-  const options = ['All', ...itemStatuses.map((status) => (summary.counts[status] ? `${status} · ${summary.counts[status]}` : status))];
-  const selected = options.find((option) => option.startsWith(tab)) ?? 'All';
+  const options = [...itemStatuses.map((status) => (summary.counts[status] ? `${status} · ${summary.counts[status]}` : status)), 'All'];
+  const selected = options.find((option) => option.startsWith(tab)) ?? options[0];
   const visible = useMemo(() => items.filter((item) => tab === 'All' || item.status === tab), [items, tab]);
   const openMenu = useCallback((item: Item) => setMenuItem(item), []);
 
@@ -107,7 +108,8 @@ function MyItemsContent() {
     }
     const options: (ActionSheetOption | false)[] = [
       { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => openItem(item) },
-      { label: 'Edit listing', icon: Edit3, description: 'Update photos, details, status, or what you want', onPress: () => router.push(`/post-item?edit=${item.id}`) },
+      // Only active listings can be edited; the backend rejects edits to reserved or traded ones.
+      open && { label: 'Edit listing', icon: Edit3, description: 'Update photos, details, status, or what you want', onPress: () => router.push(`/post-item?edit=${item.id}`) },
       { label: 'Share', icon: Share2, description: 'Send the link to friends', onPress: () => void shareItem(item) },
       open && { label: 'Mark as traded', icon: CheckCircle2, description: 'Remove it from the marketplace', onPress: () => void changeStatus(item, 'Traded') },
       !open && { label: 'Mark as active', icon: RotateCcw, description: 'List it in the marketplace again', onPress: () => void changeStatus(item, 'Active') },

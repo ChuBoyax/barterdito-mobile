@@ -1,11 +1,12 @@
 import type { Conversation, OfferFilter, TradeOffer } from '@/types/trades';
 
+/** In chip order; "All" comes first. */
 export const offerFilterLabels: Record<OfferFilter, string> = {
+  all: 'All',
   pending: 'Pending',
   accepted: 'Accepted',
   cancelled: 'Cancelled',
   completed: 'Completed',
-  all: 'All',
 };
 
 /** The filter an offer currently falls under — mirrors the backend's offer_status_filter. */

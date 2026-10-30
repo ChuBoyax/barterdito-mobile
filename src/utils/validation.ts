@@ -64,6 +64,7 @@ export function passwordRules(password: string): PasswordRule[] {
     { key: 'case', label: 'Upper and lowercase letters', met: /\p{Lu}/u.test(password) && /\p{Ll}/u.test(password) },
     { key: 'number', label: 'At least one number', met: /\d/.test(password) },
     { key: 'symbol', label: 'At least one symbol (e.g. ! @ # ?)', met: /[^\p{L}\p{N}\s]/u.test(password) },
+    { key: 'spaces', label: 'No spaces', met: password.length > 0 && !/\s/.test(password) },
   ];
 }
 
@@ -84,7 +85,7 @@ export function passwordStrength(password: string, rejected = false): PasswordSt
 /** Validates a password being created (sign up or reset). `context` holds personal info it must not contain. */
 export function validateNewPassword(password: string, context: { email?: string; fullName?: string } = {}): string | null {
   if (!password) return 'Password is required.';
-  if (password !== password.trim()) return 'Password cannot start or end with a space.';
+  if (/\s/.test(password)) return 'Password cannot contain spaces.';
   const bytes = byteLength(password);
   if (bytes < PASSWORD_MIN_BYTES) return `Password must be at least ${PASSWORD_MIN_BYTES} characters.`;
   if (bytes > PASSWORD_MAX_BYTES) return `Password must be ${PASSWORD_MAX_BYTES} characters or fewer.`;
