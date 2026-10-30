@@ -24,7 +24,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ItemStatusBadge, ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
-import { AppText, Avatar, Badge, Button, EmptyState, Glass, IconButton, InfoNote, LoadingView, PhotoScrim, PressableScale, Screen, SectionHeading } from '@/components/ui';
+import { AppText, Avatar, Badge, Button, EmptyState, Glass, IconButton, InfoNote, LoadingView, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -104,7 +104,7 @@ export default function ItemDetailScreen() {
   const saved = savedIds.includes(item.id);
   const hearted = heartedIds.includes(item.id);
   const more = items.filter((other) => other.userId === item.userId && other.id !== item.id);
-  const heroHeight = Math.round(Math.min(width * 1.1, height * 0.62));
+  const heroHeight = Math.round(Math.min(width * 0.9, height * 0.46));
   const sideInset = Math.max(14, (width - contentWidth) / 2 + 14);
   const traded = item.status === 'Traded';
   const longDescription = item.description.length > 220;
@@ -158,7 +158,6 @@ export default function ItemDetailScreen() {
               <Image key={uri + index} source={uri} cachePolicy="memory-disk" priority={index === 0 ? 'high' : 'normal'} style={{ width, height: heroHeight }} contentFit="cover" transition={250} accessibilityLabel={`${item.title} photo ${index + 1}`} />
             ))}
           </ScrollView>
-          <PhotoScrim position="top" />
           {gallery.length > 1 ? (
             <View style={styles.dots}>
               {gallery.map((_, index) => (
