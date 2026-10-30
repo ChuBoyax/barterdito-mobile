@@ -41,8 +41,8 @@ function OffersContent() {
   const { gutter } = useResponsive();
   const params = useLocalSearchParams<{ tab?: OfferDirection; offer?: string }>();
   const [tab, setTab] = useState<OfferDirection>(params.tab === 'sent' ? 'sent' : 'received');
-  // Like the website, both tabs open on Pending; "All" keeps declined/unavailable history.
-  const [statusFilter, setStatusFilter] = useState<OfferFilter>('pending');
+  // Like the website, both tabs open on All, which also keeps declined/unavailable history.
+  const [statusFilter, setStatusFilter] = useState<OfferFilter>('all');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [focused, setFocused] = useState<TradeOffer | null>(null);
   const focusedFor = useRef('');
@@ -134,7 +134,7 @@ function OffersContent() {
           inset={gutter}
           options={filterOptions.map((status) => offerFilterLabels[status])}
           value={offerFilterLabels[statusFilter]}
-          onChange={(label) => setStatusFilter(filterOptions.find((status) => offerFilterLabels[status] === label) ?? 'pending')}
+          onChange={(label) => setStatusFilter(filterOptions.find((status) => offerFilterLabels[status] === label) ?? 'all')}
         />
       </View>
       {query.isPending ? (

@@ -70,6 +70,10 @@ function PostItemForm() {
             showToast('Only the owner can edit this listing');
             return router.back();
           }
+          if (item.status !== 'Active') {
+            showToast(`Cannot edit items that are ${item.status.toLowerCase()}`);
+            return router.back();
+          }
           const loaded = itemToDraft(item);
           original.current = JSON.stringify(loaded);
           setDraft(loaded);
