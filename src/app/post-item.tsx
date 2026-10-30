@@ -14,6 +14,7 @@ import { aiService, itemService } from '@/services';
 import type { ItemDraft, ItemStatus } from '@/types/models';
 import { errorMessage } from '@/utils/format';
 import { emptyDraft, firstInvalidStep, itemToDraft, MAX_DESCRIPTION_LENGTH, MAX_PHOTOS, validateDraft, withCover } from '@/utils/listing';
+import { proposalReturn } from '@/utils/proposalReturn';
 import { readJson, removeKey, storageKeys, writeJson } from '@/utils/storage';
 import { queryKeys } from '@/services/queryKeys';
 
@@ -43,7 +44,7 @@ function PostItemForm() {
   const pickImages = useImagePicker();
   const { user } = useAuth();
   const { upsertItem } = useMarketplaceActions();
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const { edit, proposal } = useLocalSearchParams<{ edit?: string; proposal?: string }>();
   const mode = edit ? 'edit' : 'create';
 
   const [draft, setDraft] = useState<ItemDraft>(emptyDraft);
@@ -150,8 +151,15 @@ function PostItemForm() {
         else router.replace('/my-items');
       } else {
         await removeKey(draftKey);
-        showToast('Listing published!');
-        router.replace('/my-items');
+        if (proposal && router.canGoBack()) {
+          // Opened from a trade proposal: return to it with this listing selected.
+          proposalReturn.set(saved.id);
+          showToast('Listing published! It’s selected in your proposal.');
+          router.back();
+        } else {
+          showToast('Listing published!');
+          router.replace('/my-items');
+        }
       }
     } catch (error) {
       showToast(errorMessage(error, edit ? 'Could not save your changes' : 'Could not publish your listing'));

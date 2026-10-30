@@ -6,6 +6,7 @@ import type {
   MessagesPage,
   OfferAction,
   OfferDirection,
+  OfferFilter,
   OfferListing,
   OfferPerson,
   OffersPage,
@@ -141,9 +142,9 @@ export const tradeService = {
     );
   },
 
-  async getOffers(direction: OfferDirection, offset = 0): Promise<OffersPage> {
+  async getOffers(direction: OfferDirection, offset = 0, status: OfferFilter = 'all'): Promise<OffersPage> {
     const result = await get<{ offers: OfferRow[]; total: number; received_count: number; sent_count: number }>(
-      `/trades/offers?direction=${direction}&limit=20&offset=${offset}`,
+      `/trades/offers?direction=${direction}&status=${status}&limit=20&offset=${offset}`,
     );
     return { offers: result.offers.map(toOffer), total: result.total, receivedCount: result.received_count, sentCount: result.sent_count };
   },

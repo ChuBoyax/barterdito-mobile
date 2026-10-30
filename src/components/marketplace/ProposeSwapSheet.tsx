@@ -15,13 +15,17 @@ type ProposeSwapSheetProps = {
   visible: boolean;
   onClose: () => void;
   target: Item;
-  onPostItem: () => void;
+  /** Restores a proposal after returning from adding a listing: the new listing and the typed message. */
+  initialSelected?: string | null;
+  initialMessage?: string;
+  /** Receives the typed message so it survives the trip to the listing form. */
+  onPostItem: (message: string) => void;
   onViewOffers: () => void;
   onSubmit: (offeredListingId: string, message: string) => Promise<void>;
 };
 
 /** One of your active listings for theirs, with an optional note — same as the website's dialog. */
-export function ProposeSwapSheet({ visible, onClose, target, onPostItem, onViewOffers, onSubmit }: ProposeSwapSheetProps) {
+export function ProposeSwapSheet({ visible, onClose, target, initialSelected = null, initialMessage = '', onPostItem, onViewOffers, onSubmit }: ProposeSwapSheetProps) {
   const { colors } = useTheme();
   const { data: mine = [], loading, error, reload } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
   const options = mine.filter((item) => item.status === 'Active' && item.id !== target.id);
@@ -33,8 +37,8 @@ export function ProposeSwapSheet({ visible, onClose, target, onPostItem, onViewO
 
   useEffect(() => {
     if (!visible) return;
-    setSelected(null);
-    setMessage('');
+    setSelected(initialSelected);
+    setMessage(initialMessage);
     setSendError('');
     setSent(false);
     void reload();
@@ -99,13 +103,26 @@ export function ProposeSwapSheet({ visible, onClose, target, onPostItem, onViewO
           <AppText variant="small" align="center">
             You need an active listing before proposing a trade.
           </AppText>
-          <Button label="Add an item" icon={Plus} variant="secondary" onPress={onPostItem} />
+          <Button label="Add an item" icon={Plus} variant="secondary" disabled={sending} onPress={() => onPostItem(message)} />
         </View>
       ) : null}
       <View style={styles.list}>
         {options.map((item) => (
           <Option key={item.id} item={item} selected={selected === item.id} onPress={() => setSelected(item.id)} />
         ))}
+        {options.length ? (
+          <PressableScale
+            accessibilityRole="button"
+            disabled={sending}
+            onPress={() => onPostItem(message)}
+            scaleTo={0.98}
+            style={[styles.addItem, { borderColor: colors.muted2 }, sending && styles.dimmed]}>
+            <Plus size={18} color={colors.orange} strokeWidth={2.4} />
+            <AppText variant="small" color="orange" weight="bold">
+              Add another item
+            </AppText>
+          </PressableScale>
+        ) : null}
       </View>
 
       <TextField
@@ -173,5 +190,7 @@ const styles = StyleSheet.create({
   success: { alignItems: 'center', gap: 10, paddingVertical: 8 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 18, padding: 10 },
   thumb: { width: 52, height: 52, borderRadius: 14 },
+  addItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 18, paddingVertical: 14 },
+  dimmed: { opacity: 0.6 },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });

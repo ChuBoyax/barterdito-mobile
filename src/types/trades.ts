@@ -2,6 +2,8 @@
 
 export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'unavailable';
 export type OfferDirection = 'received' | 'sent';
+/** `status` filter on GET /trades/offers; applied by the backend before pagination. */
+export type OfferFilter = 'pending' | 'accepted' | 'cancelled' | 'completed' | 'all';
 export type OfferAction = 'accept' | 'decline' | 'cancel';
 export type TradeStatus = 'active' | 'completed' | 'cancelled';
 
