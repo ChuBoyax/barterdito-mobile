@@ -27,6 +27,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { EditProfileSheet } from '@/components/account';
 import { AppText, Avatar, Button, Card, ListRow, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { SENTINEL_PREVIEW } from '@/constants/app';
+import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useSignOut } from '@/hooks/useSignOut';
 import { useAuth, useTheme, useToast } from '@/providers';
 import type { ThemeMode } from '@/providers/ThemeProvider';
@@ -49,6 +50,7 @@ export default function SettingsScreen() {
   const params = useLocalSearchParams<{ edit?: string }>();
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [editOpen, setEditOpen] = useState(params.edit === 'profile');
+  const editMounted = useMountOnOpen(editOpen);
 
   useEffect(() => {
     void userService.getNotificationPrefs().then(setPrefs);
@@ -145,7 +147,7 @@ export default function SettingsScreen() {
         Barterdito v{Constants.expoConfig?.version ?? '1.0.0'}
       </AppText>
 
-      <EditProfileSheet visible={editOpen} onClose={() => setEditOpen(false)} />
+      {editMounted ? <EditProfileSheet visible={editOpen} onClose={() => setEditOpen(false)} /> : null}
     </Screen>
   );
 }

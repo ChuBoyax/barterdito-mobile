@@ -14,6 +14,7 @@ import { itemService } from '@/services';
 import type { Item, ItemStatus } from '@/types/models';
 import { confirmAction } from '@/utils/confirm';
 import { errorMessage } from '@/utils/format';
+import { openItem } from '@/utils/navigation';
 import { shareItem } from '@/utils/share';
 import { queryKeys } from '@/services/queryKeys';
 
@@ -99,13 +100,13 @@ function MyItemsContent() {
     const open = item.status !== 'Traded';
     if (item.status === 'In Negotiation') {
       return [
-        { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => router.push(`/items/${item.id}`) },
+        { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => openItem(item) },
         { label: 'Open trade offers', icon: Inbox, description: 'Reserved by an accepted trade', onPress: () => router.navigate('/offers') },
         { label: 'Share', icon: Share2, description: 'Send the link to friends', onPress: () => void shareItem(item) },
       ];
     }
     const options: (ActionSheetOption | false)[] = [
-      { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => router.push(`/items/${item.id}`) },
+      { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => openItem(item) },
       { label: 'Edit listing', icon: Edit3, description: 'Update photos, details, status, or what you want', onPress: () => router.push(`/post-item?edit=${item.id}`) },
       { label: 'Share', icon: Share2, description: 'Send the link to friends', onPress: () => void shareItem(item) },
       open && { label: 'Mark as traded', icon: CheckCircle2, description: 'Remove it from the marketplace', onPress: () => void changeStatus(item, 'Traded') },

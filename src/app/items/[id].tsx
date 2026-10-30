@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
   ArrowRightLeft,
@@ -26,12 +26,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ItemStatusBadge, ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
 import { AppText, Avatar, Badge, Button, EmptyState, Glass, IconButton, InfoNote, LoadingView, PhotoScrim, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useResponsive } from '@/hooks/useResponsive';
 import { queryClient, useAuth, useMarketplace, useTheme, useToast } from '@/providers';
 import { itemService, tradeService, userService } from '@/services';
 import { elevation, fonts, maxFontScale, neu } from '@/theme';
 import { errorMessage, firstName } from '@/utils/format';
 import { mapLink } from '@/utils/listing';
+import { openItem } from '@/utils/navigation';
 import { proposalReturn } from '@/utils/proposalReturn';
 import { shareItem } from '@/utils/share';
 import { queryKeys } from '@/services/queryKeys';
@@ -54,6 +56,8 @@ export default function ItemDetailScreen() {
   const [following, setFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const swapMounted = useMountOnOpen(swapOpen);
+  const reportMounted = useMountOnOpen(reportOpen);
 
   // The fetched detail is authoritative; the feed copy only fills in while it loads.
   const item = fetched ?? items.find((entry) => entry.id === id);
@@ -143,7 +147,6 @@ export default function ItemDetailScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: ACTION_BAR_SPACE + Math.max(insets.bottom, 12) }}>
         <View style={{ height: heroHeight }}>
           <ScrollView
@@ -152,7 +155,7 @@ export default function ItemDetailScreen() {
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={(event) => setActiveImage(Math.round(event.nativeEvent.contentOffset.x / width))}>
             {gallery.map((uri, index) => (
-              <Image key={uri + index} source={uri} cachePolicy="memory-disk" style={{ width, height: heroHeight }} contentFit="cover" transition={250} accessibilityLabel={`${item.title} photo ${index + 1}`} />
+              <Image key={uri + index} source={uri} cachePolicy="memory-disk" priority={index === 0 ? 'high' : 'normal'} style={{ width, height: heroHeight }} contentFit="cover" transition={250} accessibilityLabel={`${item.title} photo ${index + 1}`} />
             ))}
           </ScrollView>
           <PhotoScrim position="top" />
@@ -275,7 +278,7 @@ export default function ItemDetailScreen() {
                 {more.map((other) => (
                   <PressableScale
                     key={other.id}
-                    onPress={() => router.push(`/items/${other.id}`)}
+                    onPress={() => openItem(other)}
                     style={[styles.mini, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
                     <Image source={other.image} cachePolicy="memory-disk" style={styles.miniImage} contentFit="cover" />
                     <View style={styles.flex}>
@@ -329,36 +332,40 @@ export default function ItemDetailScreen() {
         />
       </Glass>
 
-      <ProposeSwapSheet
-        visible={swapOpen}
-        onClose={() => setSwapOpen(false)}
-        target={item}
-        initialSelected={swapSeed.selected}
-        initialMessage={swapSeed.message}
-        onPostItem={(message) => {
-          pendingProposal.current = { message };
-          setSwapOpen(false);
-          router.push('/post-item?proposal=1');
-        }}
-        onViewOffers={() => {
-          setSwapOpen(false);
-          router.navigate('/offers?tab=sent');
-        }}
-        onSubmit={async (offeredId, message) => {
-          await tradeService.proposeTrade(item.id, offeredId, message);
-          void queryClient.invalidateQueries({ queryKey: queryKeys.offers() });
-        }}
-      />
+      {swapMounted ? (
+        <ProposeSwapSheet
+          visible={swapOpen}
+          onClose={() => setSwapOpen(false)}
+          target={item}
+          initialSelected={swapSeed.selected}
+          initialMessage={swapSeed.message}
+          onPostItem={(message) => {
+            pendingProposal.current = { message };
+            setSwapOpen(false);
+            router.push('/post-item?proposal=1');
+          }}
+          onViewOffers={() => {
+            setSwapOpen(false);
+            router.navigate('/offers?tab=sent');
+          }}
+          onSubmit={async (offeredId, message) => {
+            await tradeService.proposeTrade(item.id, offeredId, message);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.offers() });
+          }}
+        />
+      ) : null}
 
-      <ReportSheet
-        visible={reportOpen}
-        title="Report this item"
-        onClose={() => setReportOpen(false)}
-        onSubmit={async (reason, details) => {
-          await itemService.reportItem(item.id, reason, details);
-          showToast(`Report submitted: ${reason}`);
-        }}
-      />
+      {reportMounted ? (
+        <ReportSheet
+          visible={reportOpen}
+          title="Report this item"
+          onClose={() => setReportOpen(false)}
+          onSubmit={async (reason, details) => {
+            await itemService.reportItem(item.id, reason, details);
+            showToast(`Report submitted: ${reason}`);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

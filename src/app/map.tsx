@@ -1,5 +1,4 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { ArrowUpRight, ChevronRight, LocateFixed, MapPin, Search, SearchX } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, type DimensionValue } from 'react-native';
@@ -11,6 +10,7 @@ import { neu } from '@/theme';
 import type { Item } from '@/types/models';
 import { displayLocation } from '@/utils/listing';
 import { pluralize } from '@/utils/format';
+import { openItem } from '@/utils/navigation';
 
 /** Illustrative preview, same as the web: pins are spread deterministically, not plotted from coordinates. */
 function pinPosition(index: number) {
@@ -150,7 +150,7 @@ function Callout({ item }: { item: Item }) {
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`Open ${item.title}`}
-        onPress={() => router.push(`/items/${item.id}`)}
+        onPress={() => openItem(item)}
         scaleTo={0.98}
         style={[styles.callout, { backgroundColor: colors.surface }, neu(colors, 2)]}>
         <Image source={item.image} cachePolicy="memory-disk" style={styles.calloutImage} contentFit="cover" />
@@ -179,7 +179,7 @@ function NearbyRow({ item, first, active }: { item: Item; first: boolean; active
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Open ${item.title}`}
-      onPress={() => router.push(`/items/${item.id}`)}
+      onPress={() => openItem(item)}
       style={({ pressed }) => [
         styles.row,
         !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },

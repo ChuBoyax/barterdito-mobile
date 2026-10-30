@@ -7,12 +7,14 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { AppHeader, MenuButton, NotificationBell } from '@/components/layout';
 import { FeaturedCard, featuredCardWidth, FilterSheet, ItemGridRow, TraderRow, useGridRows, useInteractionSets, type GridRow } from '@/components/marketplace';
 import { AppText, Avatar, Button, ChipRow, EmptyState, PressableScale, SectionHeading } from '@/components/ui';
+import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
 import { avatarPalette, elevation, fonts, neu, tone as getTone, type Tone, maxFontScale } from '@/theme';
 import type { ItemFilters, Trader } from '@/types/models';
 import { firstName, pluralize } from '@/utils/format';
+import { openItem } from '@/utils/navigation';
 
 const defaultFilters: ItemFilters = {
   category: 'All',
@@ -39,6 +41,7 @@ export default function BrowseScreen() {
   const { items, loading, loadingMore, error, hasMore, refresh, loadMore } = useMarketplace();
   const [filters, setFilters] = useState(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersMounted = useMountOnOpen(filtersOpen);
   const [refreshing, setRefreshing] = useState(false);
 
   const visibleItems = useMemo(() => itemService.filterItems(items, filters), [items, filters]);
@@ -196,7 +199,7 @@ export default function BrowseScreen() {
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hRow} decelerationRate="fast" snapToInterval={featuredSnap}>
                 {hotItems.map((item) => (
-                  <FeaturedCard key={item.id} item={item} onPress={() => router.push(`/items/${item.id}`)} />
+                  <FeaturedCard key={item.id} item={item} onPress={() => openItem(item)} />
                 ))}
               </ScrollView>
             </View>
@@ -287,14 +290,16 @@ export default function BrowseScreen() {
         contentContainerStyle={[styles.list, { maxWidth: contentWidth }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.orange} colors={[colors.orange]} />}
       />
-      <FilterSheet
-        visible={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        filters={filters}
-        locations={locations}
-        conditions={itemService.getConditions()}
-        onChange={update}
-      />
+      {filtersMounted ? (
+        <FilterSheet
+          visible={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          filters={filters}
+          locations={locations}
+          conditions={itemService.getConditions()}
+          onChange={update}
+        />
+      ) : null}
     </View>
   );
 }
