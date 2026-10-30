@@ -1,4 +1,20 @@
-import type { Conversation, TradeOffer } from '@/types/trades';
+import type { Conversation, OfferFilter, TradeOffer } from '@/types/trades';
+
+export const offerFilterLabels: Record<OfferFilter, string> = {
+  pending: 'Pending',
+  accepted: 'Accepted',
+  cancelled: 'Cancelled',
+  completed: 'Completed',
+  all: 'All',
+};
+
+/** The filter an offer currently falls under — mirrors the backend's offer_status_filter. */
+export function offerFilterFor(offer: TradeOffer): OfferFilter {
+  if (offer.tradeStatus === 'completed') return 'completed';
+  if (offer.status === 'cancelled' || offer.tradeStatus === 'cancelled') return 'cancelled';
+  if (offer.status === 'accepted') return 'accepted';
+  return offer.status === 'pending' ? 'pending' : 'all';
+}
 
 export function offerDate(value: string): string {
   const date = new Date(value);

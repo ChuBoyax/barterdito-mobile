@@ -1,5 +1,5 @@
 import type { ConnectionKind } from './userService';
-import type { OfferDirection } from '@/types/trades';
+import type { OfferDirection, OfferFilter } from '@/types/trades';
 
 /**
  * Every React Query cache key for backend data lives here, so reads and
@@ -15,7 +15,8 @@ export const queryKeys = {
   profile: (id: string) => ['profile', id] as const,
   connections: (kind?: ConnectionKind) => (kind ? (['connections', kind] as const) : (['connections'] as const)),
 
-  offers: (direction?: OfferDirection) => (direction ? (['offers', direction] as const) : (['offers'] as const)),
+  offers: (direction?: OfferDirection, status?: OfferFilter) =>
+    direction ? (status ? (['offers', direction, status] as const) : (['offers', direction] as const)) : (['offers'] as const),
   conversations: (filter?: 'all' | 'completed') => (filter ? (['conversations', filter] as const) : (['conversations'] as const)),
   reviews: (userId: string) => ['reviews', userId] as const,
 

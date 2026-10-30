@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
   ArrowRightLeft,
@@ -19,7 +19,7 @@ import {
   UserPlus,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -32,6 +32,7 @@ import { itemService, tradeService, userService } from '@/services';
 import { elevation, fonts, maxFontScale, neu } from '@/theme';
 import { errorMessage, firstName } from '@/utils/format';
 import { mapLink } from '@/utils/listing';
+import { proposalReturn } from '@/utils/proposalReturn';
 import { shareItem } from '@/utils/share';
 import { queryKeys } from '@/services/queryKeys';
 
@@ -47,6 +48,9 @@ export default function ItemDetailScreen() {
   const [activeImage, setActiveImage] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
+  const [swapSeed, setSwapSeed] = useState<{ selected: string | null; message: string }>({ selected: null, message: '' });
+  // Set while the user is adding a listing from the proposal; the proposal reopens on return.
+  const pendingProposal = useRef<{ message: string } | null>(null);
   const [following, setFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -66,6 +70,16 @@ export default function ItemDetailScreen() {
       active = false;
     };
   }, [authenticated, ownerId, item?.mine]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const pending = pendingProposal.current;
+      if (!pending) return;
+      pendingProposal.current = null;
+      setSwapSeed({ selected: proposalReturn.take(), message: pending.message });
+      setSwapOpen(true);
+    }, []),
+  );
 
   if (loading && !item) return <LoadingView variant="detail" />;
   if (!item) {
@@ -117,7 +131,10 @@ export default function ItemDetailScreen() {
 
   function primaryAction() {
     if (item!.mine) return router.push('/my-items');
-    requireAuth(() => setSwapOpen(true));
+    requireAuth(() => {
+      setSwapSeed({ selected: null, message: '' });
+      setSwapOpen(true);
+    });
   }
 
   const unavailable = item.status !== 'Active';
@@ -316,9 +333,12 @@ export default function ItemDetailScreen() {
         visible={swapOpen}
         onClose={() => setSwapOpen(false)}
         target={item}
-        onPostItem={() => {
+        initialSelected={swapSeed.selected}
+        initialMessage={swapSeed.message}
+        onPostItem={(message) => {
+          pendingProposal.current = { message };
           setSwapOpen(false);
-          router.push('/post-item');
+          router.push('/post-item?proposal=1');
         }}
         onViewOffers={() => {
           setSwapOpen(false);
