@@ -207,7 +207,7 @@ export default function BrowseScreen() {
                     key={trader.id}
                     trader={trader}
                     variant="card"
-                    width={traderWidth}
+                    style={{ width: traderWidth, height: TILE_HEIGHT }}
                     subtitle={pluralize(trader.listings, 'listing')}
                     onPress={() => router.push(`/traders/${trader.id}`)}
                   />
@@ -306,6 +306,8 @@ export default function BrowseScreen() {
 }
 
 const TRADER_GAP = 10;
+/** Shared by the shortcut tiles and the Active traders cards so both rows line up. */
+const TILE_HEIGHT = 96;
 const rowKey = (row: GridRow) => row.key;
 const RowGap = () => <View style={styles.rowGap} />;
 
@@ -322,10 +324,11 @@ function PrimaryShortcut({ onPress }: { onPress: () => void }) {
         <Plus size={22} color={colors.onPrimary} strokeWidth={2.4} />
       </View>
       <View style={styles.flex}>
-        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.primaryTitle, { color: colors.onPrimary }]}>
+        {/* Single lines that shrink to fit, so no screen size wraps the copy. */}
+        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.primaryTitle, { color: colors.onPrimary }]}>
           Post a trade
         </Text>
-        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.primaryText, { color: colors.onPrimary }]}>
+        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.primaryText, { color: colors.onPrimary }]}>
           List an item in minutes — no cash needed
         </Text>
       </View>
@@ -373,7 +376,7 @@ const styles = StyleSheet.create({
   primaryIcon: { width: 46, height: 46, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', opacity: 0.95 },
   primaryTitle: { fontFamily: fonts.extrabold, fontSize: 17 },
   primaryText: { fontFamily: fonts.medium, fontSize: 12.5, opacity: 0.88 },
-  shortcut: { flex: 1, alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 4 },
+  shortcut: { flex: 1, height: TILE_HEIGHT, alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 16, paddingHorizontal: 4 },
   hRow: { gap: 14, paddingBottom: 6 },
   tradersRow: { gap: TRADER_GAP, paddingTop: 2 },
 });

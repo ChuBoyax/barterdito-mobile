@@ -1,6 +1,6 @@
 import { BadgeCheck, ChevronRight, Star } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { AppText, Avatar, PressableScale } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -14,11 +14,11 @@ type TraderRowProps = {
   variant?: 'card' | 'row';
   /** Replaces the rating line, e.g. with a location or listing count. */
   subtitle?: string;
-  /** Card width override, e.g. to fit an exact number of cards across the screen. */
-  width?: number;
+  /** Card size overrides, e.g. to match neighbouring tiles. */
+  style?: StyleProp<ViewStyle>;
 };
 
-export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, width }: TraderRowProps) {
+export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, style }: TraderRowProps) {
   const { colors } = useTheme();
   if (variant === 'card') {
     return (
@@ -27,27 +27,26 @@ export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, w
         accessibilityLabel={`View ${trader.name}`}
         onPress={onPress}
         scaleTo={0.96}
-        style={[styles.card, { backgroundColor: colors.surface }, width ? { width } : null, elevation(1, colors)]}>
-        <Avatar initials={trader.initials} color={trader.color} imageUrl={trader.avatarUrl} size="medium" online />
-        <View style={styles.nameRow}>
-          <AppText variant="small" color="ink" weight="bold" numberOfLines={1} style={styles.shrink}>
-            {trader.name}
-          </AppText>
-          <BadgeCheck size={12} color={colors.blue} fill={colors.blueSoft} />
-        </View>
-        <View style={[styles.rating, { backgroundColor: colors.surface2 }]}>
+        style={[styles.card, { backgroundColor: colors.surface }, elevation(1, colors), style]}>
+        <Avatar initials={trader.initials} color={trader.color} imageUrl={trader.avatarUrl} size="small" online />
+        <View style={styles.cardText}>
+          <View style={styles.nameRow}>
+            <AppText variant="caption" color="ink" weight="bold" numberOfLines={1} style={styles.shrink}>
+              {trader.name}
+            </AppText>
+            <BadgeCheck size={11} color={colors.blue} fill={colors.blueSoft} />
+          </View>
           {subtitle !== undefined ? (
-            <AppText variant="caption" numberOfLines={1}>
+            <AppText variant="caption" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               {subtitle}
             </AppText>
           ) : (
-            <>
+            <View style={styles.nameRow}>
               <Star size={10} color={colors.yellow} fill={colors.yellow} />
-              <AppText variant="caption" color="ink" weight="bold">
-                {trader.rating}
+              <AppText variant="caption" numberOfLines={1}>
+                {trader.rating} · {trader.trades} trades
               </AppText>
-              <AppText variant="caption">· {trader.trades} trades</AppText>
-            </>
+            </View>
           )}
         </View>
       </PressableScale>
@@ -82,10 +81,10 @@ export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, w
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
-  card: { width: 104, alignItems: 'center', gap: 6, borderRadius: 18, paddingHorizontal: 8, paddingTop: 12, paddingBottom: 10 },
+  card: { width: 104, alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 16, paddingHorizontal: 8, paddingVertical: 10 },
+  cardText: { alignItems: 'center', maxWidth: '100%' },
   shrink: { flexShrink: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '100%', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   body: { flex: 1, gap: 2 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });

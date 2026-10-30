@@ -10,7 +10,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { queryClient, useAuth, useTheme, useToast } from '@/providers';
 import { itemService, messageService, userService } from '@/services';
-import { errorMessage, firstName as getFirstName, pluralize } from '@/utils/format';
+import { errorMessage, firstName as getFirstName } from '@/utils/format';
 import { shareTrader } from '@/utils/share';
 import { queryKeys } from '@/services/queryKeys';
 
@@ -102,7 +102,8 @@ export default function TraderProfileScreen() {
                 ● Public trader
               </AppText>
               <View style={styles.row}>
-                <AppText variant="h1" style={styles.shrink}>
+                {/* One line always: long names shrink to fit instead of wrapping. */}
+                <AppText variant="h1" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5} style={styles.shrink}>
                   {trader.fullName}
                 </AppText>
                 {trader.emailVerified ? <BadgeCheck size={18} color={colors.blue} fill={colors.blueSoft} accessibilityLabel="Verified email" /> : null}
@@ -126,12 +127,6 @@ export default function TraderProfileScreen() {
               { label: 'Following', value: trader.followingCount },
             ]}
           />
-          <AppText variant="caption">
-            {pluralize(trader.completedTradeCount, 'verified completed trade')} ·{' '}
-            {trader.reviewCount && trader.averageRating !== null
-              ? `${trader.averageRating}/5 from ${pluralize(trader.reviewCount, 'review')}`
-              : 'No trade reviews yet'}
-          </AppText>
           {!isMe ? (
             <View style={styles.actions}>
               <Button

@@ -12,19 +12,21 @@ type GlassProps = {
   strong?: boolean;
   bordered?: boolean;
   blur?: boolean;
+  /** Drops the raised shadow, e.g. for buttons floating over a photo. */
+  noShadow?: boolean;
 };
 
 
 const canBlur = Platform.OS === 'ios';
 
-export function Glass({ children, style, intensity = 40, strong, bordered = false, blur = false }: GlassProps) {
+export function Glass({ children, style, intensity = 40, strong, bordered = false, blur = false, noShadow = false }: GlassProps) {
   const { colors, dark } = useTheme();
   const blurred = blur && canBlur;
   const fill = strong || !blurred ? colors.surface : colors.glass;
   const flat = StyleSheet.flatten(style) ?? {};
   const layerRadius = { borderRadius: flat.borderRadius };
   return (
-    <View style={[styles.wrap, { backgroundColor: blurred ? undefined : fill }, neu(colors, 2), bordered && { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: colors.glassBorder }, style]}>
+    <View style={[styles.wrap, { backgroundColor: blurred ? undefined : fill }, !noShadow && neu(colors, 2), bordered && { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: colors.glassBorder }, style]}>
       {blurred ? (
         <>
           <BlurView intensity={intensity} tint={dark ? 'dark' : 'light'} style={[styles.layer, layerRadius]} />

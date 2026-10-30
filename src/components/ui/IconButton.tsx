@@ -39,7 +39,7 @@ export function IconButton({
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={label} hitSlop={6} onPress={onPress} scaleTo={0.9} style={style}>
       {tone === 'glass' ? (
-        <Glass style={[styles.center, shape]}>{icon}</Glass>
+        <Glass noShadow style={[styles.center, shape]}>{icon}</Glass>
       ) : (
         <View
           style={[
