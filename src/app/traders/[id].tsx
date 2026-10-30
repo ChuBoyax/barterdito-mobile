@@ -7,6 +7,7 @@ import { ItemGrid, ReportSheet, StatGrid } from '@/components/marketplace';
 import { ProfileReviews } from '@/components/trades';
 import { AppText, Avatar, Button, Card, EmptyState, IconButton, LoadingView, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { queryClient, useAuth, useTheme, useToast } from '@/providers';
 import { itemService, messageService, userService } from '@/services';
 import { errorMessage, firstName as getFirstName, pluralize } from '@/utils/format';
@@ -21,6 +22,7 @@ export default function TraderProfileScreen() {
   const { data: trader, loading, error, refreshing, reload, setData } = useAsync(queryKeys.profile(id), () => userService.getProfile(id));
   const { data: listings = [], loading: listingsLoading, reload: reloadListings } = useAsync(queryKeys.traderItems(id), () => itemService.getItemsByTrader(id));
   const [reportOpen, setReportOpen] = useState(false);
+  const reportMounted = useMountOnOpen(reportOpen);
   const [opening, setOpening] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
 
@@ -171,15 +173,17 @@ export default function TraderProfileScreen() {
           </PressableScale>
         ) : null}
 
-        <ReportSheet
-          visible={reportOpen}
-          title="Report this trader"
-          onClose={() => setReportOpen(false)}
-          onSubmit={async (reason) => {
-            await userService.reportUser(trader.id, reason);
-            showToast('Report submitted. Thanks for keeping Barterdito safe.');
-          }}
-        />
+        {reportMounted ? (
+          <ReportSheet
+            visible={reportOpen}
+            title="Report this trader"
+            onClose={() => setReportOpen(false)}
+            onSubmit={async (reason) => {
+              await userService.reportUser(trader.id, reason);
+              showToast('Report submitted. Thanks for keeping Barterdito safe.');
+            }}
+          />
+        ) : null}
       </Screen>
     </>
   );
