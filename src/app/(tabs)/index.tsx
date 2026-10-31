@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ArrowUpRight, CalendarDays, Map, Plus, RotateCcw, Search, SlidersHorizontal, Trophy, X, type LucideIcon } from 'lucide-react-native';
+import { ArrowUpRight, CalendarDays, Globe, Map, MapPin, Plus, RotateCcw, Search, SlidersHorizontal, Trophy, X, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -11,17 +11,18 @@ import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
+import { NEARBY_RADIUS_KM } from '@/services/itemService';
 import { avatarPalette, elevation, fonts, neu, tone as getTone, type Tone, maxFontScale } from '@/theme';
 import type { ItemFilters, Trader } from '@/types/models';
-import { firstName, pluralize } from '@/utils/format';
+import { firstName } from '@/utils/format';
+import { shortLocation } from '@/utils/location';
 import { openItem } from '@/utils/navigation';
 
 const defaultFilters: ItemFilters = {
   category: 'All',
   search: '',
   condition: 'Any condition',
-  location: 'Any location',
-  sort: 'Newest first',
+  sort: 'Nearest first',
 };
 
 function greeting() {
@@ -40,41 +41,24 @@ export default function BrowseScreen() {
   // Exactly three trader cards fit across; the rest scroll in three at a time.
   const traderWidth = Math.floor((innerWidth - TRADER_GAP * 2) / 3);
   const { user, requireAuth } = useAuth();
-  const { items, loading, loadingMore, error, hasMore, refresh, loadMore } = useMarketplace();
+  const { items, featuredTraders, loading, loadingMore, error, hasMore, refresh, loadMore, area, profileArea, setArea } = useMarketplace();
   const [filters, setFilters] = useState(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersMounted = useMountOnOpen(filtersOpen);
   const [refreshing, setRefreshing] = useState(false);
 
   const visibleItems = useMemo(() => itemService.filterItems(items, filters), [items, filters]);
-  const locations = useMemo(() => [...new Set(items.map((item) => item.location))].sort(), [items]);
   const hotItems = useMemo(() => items.filter((item) => item.hot), [items]);
-  const filtersActive = filters.condition !== defaultFilters.condition || filters.location !== defaultFilters.location || filters.sort !== defaultFilters.sort;
+  // The profile area is the default, so only another place (or "Any location") counts as a filter.
+  const areaChanged = (area?.id ?? null) !== (profileArea?.id ?? null);
+  const filtersActive = filters.condition !== defaultFilters.condition || filters.sort !== defaultFilters.sort || areaChanged;
   const browsing = filters.search.trim() !== '' || filters.category !== defaultFilters.category || filtersActive;
 
-  // Owners of the loaded listings; ratings are not tracked yet, so show their listing count.
-  const traders = useMemo<(Trader & { listings: number })[]>(() => {
-    const byOwner = new globalThis.Map<string, Trader & { listings: number }>();
-    items.forEach((item, index) => {
-      if (!item.userId || item.mine || item.status === 'Traded') return;
-      const known = byOwner.get(item.userId);
-      if (known) {
-        known.listings += 1;
-        return;
-      }
-      byOwner.set(item.userId, {
-        id: item.userId,
-        name: item.owner,
-        initials: item.ownerAvatar,
-        avatarUrl: item.ownerAvatarUrl,
-        rating: item.rating,
-        trades: item.trades,
-        color: avatarPalette[index % avatarPalette.length],
-        listings: 1,
-      });
-    });
-    return [...byOwner.values()].sort((a, b) => b.listings - a.listings).slice(0, 6);
-  }, [items]);
+  // Ranked by the backend (completed trades, then verified ratings) for the browsing area.
+  const traders = useMemo<Trader[]>(
+    () => featuredTraders.map((trader, index) => ({ ...trader, color: avatarPalette[index % avatarPalette.length] })),
+    [featuredTraders],
+  );
 
   async function onRefresh() {
     setRefreshing(true);
@@ -83,7 +67,11 @@ export default function BrowseScreen() {
   }
 
   const update = (next: Partial<ItemFilters>) => setFilters((current) => ({ ...current, ...next }));
-  const clearAll = () => setFilters(defaultFilters);
+  const clearAll = () => {
+    setFilters(defaultFilters);
+    setArea(profileArea);
+  };
+  const addLocation = () => requireAuth(() => router.push('/settings?edit=profile'));
 
   const resultsLabel = loading ? 'Searching…' : `${visibleItems.length} ${visibleItems.length === 1 ? 'result' : 'results'}`;
 
@@ -165,6 +153,17 @@ export default function BrowseScreen() {
       <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.chips}>
         <ChipRow inset={gutter} options={itemService.getCategories()} value={filters.category} onChange={(category) => update({ category })} />
       </Animated.View>
+      <View style={[pad, styles.areaRow]}>
+        {area ? <MapPin size={14} color={colors.orange} strokeWidth={2.3} /> : <Globe size={14} color={colors.muted} strokeWidth={2.3} />}
+        <AppText variant="caption" numberOfLines={1} style={styles.flex}>
+          {area ? `Within ${NEARBY_RADIUS_KM} km of ${shortLocation(area.label)}` : 'Showing items from all locations'}
+        </AppText>
+        <Pressable accessibilityRole="button" onPress={profileArea || area ? () => setFiltersOpen(true) : addLocation} hitSlop={8}>
+          <AppText variant="caption" color="orange" weight="bold">
+            {profileArea || area ? 'Change' : 'Add your location'}
+          </AppText>
+        </Pressable>
+      </View>
       {browsing ? (
         <Animated.View entering={FadeIn.duration(250)} style={pad}>
           <View style={styles.resultsHeader}>
@@ -197,18 +196,18 @@ export default function BrowseScreen() {
           {traders.length ? (
             <View>
               <View style={pad}>
-                <SectionHeading eyebrow="Community" title="Active traders" />
+                <SectionHeading eyebrow="Community" title="Featured traders" action="Leaderboard" onAction={() => router.push('/leaderboard')} />
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[...hRow, styles.tradersRow]}
                 decelerationRate="fast"
                 snapToInterval={(traderWidth + TRADER_GAP) * 3}>
-                {traders.map((trader) => (
+                {traders.map((trader, index) => (
                   <TraderRow
                     key={trader.id}
                     trader={trader}
                     variant="card"
+                    rank={index + 1}
                     style={{ width: traderWidth, height: TILE_HEIGHT }}
-                    subtitle={pluralize(trader.listings, 'listing')}
                     onPress={() => router.push(`/traders/${trader.id}`)}
                   />
                 ))}
@@ -248,6 +247,15 @@ export default function BrowseScreen() {
         />
       ) : error ? (
         <EmptyState icon={RotateCcw} title="Could not load listings" text={error} action="Try again" actionIcon={RotateCcw} onAction={() => void onRefresh()} />
+      ) : area ? (
+        <EmptyState
+          icon={MapPin}
+          title={`Nothing within ${NEARBY_RADIUS_KM} km yet`}
+          text={`No one near ${shortLocation(area.label)} has listed an item. Browse every location, or post the first one in your area.`}
+          action="Show all locations"
+          actionIcon={Globe}
+          onAction={() => setArea(null)}
+        />
       ) : (
         <EmptyState
           icon={Plus}
@@ -296,9 +304,11 @@ export default function BrowseScreen() {
           visible={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           filters={filters}
-          locations={locations}
           conditions={itemService.getConditions()}
           onChange={update}
+          area={area}
+          profileArea={profileArea}
+          onAreaChange={setArea}
         />
       ) : null}
     </View>
@@ -368,6 +378,7 @@ const styles = StyleSheet.create({
   clearButton: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   filterButton: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   chips: { marginTop: -12 },
+  areaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -12 },
   resultsHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   resetButton: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   quick: { gap: 12 },

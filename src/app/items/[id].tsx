@@ -9,18 +9,18 @@ import {
   Flag,
   Heart,
   MapPin,
-  MapPinned,
   Package,
   Share2,
   ShieldCheck,
   Sparkles,
+  Star,
   Tag,
   UserCheck,
   UserPlus,
   type LucideIcon,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ItemStatusBadge, ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
@@ -32,7 +32,6 @@ import { queryClient, useAuth, useMarketplace, useTheme, useToast } from '@/prov
 import { itemService, tradeService, userService } from '@/services';
 import { elevation, fonts, maxFontScale, neu } from '@/theme';
 import { errorMessage, firstName } from '@/utils/format';
-import { mapLink } from '@/utils/listing';
 import { openItem } from '@/utils/navigation';
 import { proposalReturn } from '@/utils/proposalReturn';
 import { shareItem } from '@/utils/share';
@@ -142,7 +141,6 @@ export default function ItemDetailScreen() {
   }
 
   const unavailable = item.status !== 'Active';
-  const pinned = item.latitude != null && item.longitude != null;
   const primaryLabel = item.mine ? 'Manage your listing' : traded ? 'Already traded' : unavailable ? 'In negotiation' : 'Propose a swap';
 
   return (
@@ -194,32 +192,21 @@ export default function ItemDetailScreen() {
             <Fact label="Posted" value={item.age} />
           </View>
 
-          {/* Full width so long barangay/city labels never get cut off. */}
-          <PressableScale
-            accessibilityRole={pinned ? 'link' : undefined}
-            accessibilityLabel={pinned ? `Meetup area ${item.location}. Open pickup pin in OpenStreetMap` : `Meetup area ${item.location}`}
-            disabled={!pinned}
-            onPress={() => pinned && void Linking.openURL(mapLink(item.latitude!, item.longitude!))}
-            scaleTo={0.98}
+          {/* The owner's profile area; exact meetups are agreed privately in the trade chat. */}
+          <View
+            accessible
+            accessibilityLabel={`Trader area ${item.location || 'not added'}`}
             style={[styles.place, { backgroundColor: colors.surface }, elevation(1, colors)]}>
             <View style={[styles.placeIcon, { backgroundColor: colors.background }, neu(colors, 1, true)]}>
               <MapPin size={18} color={colors.orange} strokeWidth={2.3} />
             </View>
             <View style={styles.flex}>
-              <AppText variant="caption">Meetup area</AppText>
+              <AppText variant="caption">Trader area</AppText>
               <AppText variant="h3" numberOfLines={3}>
-                {item.location}
+                {item.location || 'Trader location not added'}
               </AppText>
             </View>
-            {pinned ? (
-              <View style={[styles.mapChip, { backgroundColor: colors.background }, neu(colors, 1)]}>
-                <MapPinned size={14} color={colors.blue} />
-                <AppText variant="caption" color="blue" weight="bold">
-                  Map
-                </AppText>
-              </View>
-            ) : null}
-          </PressableScale>
+          </View>
 
           {item.tags?.length ? (
             <View style={styles.badges}>
@@ -255,6 +242,12 @@ export default function ItemDetailScreen() {
               <View style={styles.inline}>
                 <AppText variant="h2">{item.owner}</AppText>
                 <BadgeCheck size={16} color={colors.blue} fill={colors.blueSoft} />
+              </View>
+              <View style={styles.inline}>
+                <Star size={13} color={colors.yellow} fill={item.rating == null ? 'none' : colors.yellow} />
+                <AppText variant="caption" color="ink" weight="semibold">
+                  {item.rating ?? 'No reviews'} · {item.trades} completed {item.trades === 1 ? 'trade' : 'trades'}
+                </AppText>
               </View>
               <AppText variant="caption">{item.mine ? 'This is your listing' : 'Tap to view profile'}</AppText>
             </View>
@@ -419,7 +412,6 @@ const styles = StyleSheet.create({
   fact: { flex: 1, minWidth: 0, gap: 3, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12 },
   place: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 14 },
   placeIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  mapChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   section: { gap: 8 },
   owner: { flexDirection: 'row', alignItems: 'center', gap: 13, borderWidth: 1, borderRadius: 26, padding: 14 },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 4 },

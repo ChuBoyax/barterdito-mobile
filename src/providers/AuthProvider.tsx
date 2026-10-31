@@ -136,8 +136,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fullName: profile.fullName,
         initials: profile.initials,
         bio: profile.bio,
-        location: profile.location,
         avatarUrl: profile.avatarUrl,
+        // The saved area also drives nearby browsing and every listing's displayed location.
+        location: profile.location,
+        locationLatitude: profile.locationLatitude,
+        locationLongitude: profile.locationLongitude,
+        locationAddress: profile.locationAddress,
+        gpsLatitude: profile.gpsLatitude,
+        gpsLongitude: profile.gpsLongitude,
       });
     },
     [user, apply],

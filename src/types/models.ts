@@ -6,9 +6,10 @@ export type Item = {
   title: string;
   category: string;
   condition: string;
+  /** The owner's public profile area; every listing uses it. */
   location: string;
-  latitude?: number | null;
-  longitude?: number | null;
+  /** Distance from the browsing area, when the feed is filtered by location. */
+  distanceKm?: number | null;
   tags?: string[];
   hearts: number;
   views: number;
@@ -18,7 +19,9 @@ export type Item = {
   owner: string;
   ownerAvatar: string;
   ownerAvatarUrl?: string | null;
-  rating: number;
+  /** Average of verified reviews; null until the owner has one. */
+  rating: number | null;
+  reviewCount?: number;
   trades: number;
   wanted: string;
   description: string;
@@ -28,25 +31,51 @@ export type Item = {
   createdAt?: string;
 };
 
-export type User = {
+/** Structured profile address (backend `location_address`); names are canonical once saved. */
+export type LocationAddress = {
+  countryCode: string;
+  country: string;
+  regionCode: string;
+  region: string;
+  provinceCode: string;
+  province: string;
+  municipalityCode: string;
+  municipality: string;
+  barangayCode: string;
+  barangay: string;
+  postalCode: string;
+};
+
+/**
+ * Where a trader is. `latitude`/`longitude` are the public area centre used for nearby
+ * browsing; the GPS pair is the device reading, returned only to the account owner.
+ */
+export type ProfileArea = {
+  location: string;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  locationAddress: LocationAddress | null;
+  gpsLatitude: number | null;
+  gpsLongitude: number | null;
+};
+
+export type User = ProfileArea & {
   id: string;
   fullName: string;
   initials: string;
   email: string;
   bio: string;
-  location: string;
   joined: string;
   createdAt?: string;
   emailVerified?: boolean;
   avatarUrl?: string | null;
 };
 
-export type Profile = {
+export type Profile = ProfileArea & {
   id: string;
   fullName: string;
   initials: string;
   bio: string;
-  location: string;
   avatarUrl: string | null;
   createdAt: string;
   joined: string;
@@ -76,7 +105,9 @@ export type Trader = {
   id: string;
   name: string;
   initials: string;
-  rating: number;
+  /** Average of verified reviews; null shows "No reviews". */
+  rating: number | null;
+  reviewCount?: number;
   trades: number;
   color?: string;
   avatarUrl?: string | null;
@@ -129,13 +160,30 @@ export type Campaign = {
   goal: number;
 };
 
+/** One trader's points this week (backend `/leaderboard`). */
 export type LeaderboardEntry = {
+  id: string;
   name: string;
   initials: string;
+  avatarUrl: string | null;
+  /** Null when the trader has no points yet this week. */
+  rank: number | null;
   points: number;
   trades: number;
-  rank: number;
-  isYou?: boolean;
+  reviewCount: number;
+  rating: number | null;
+};
+
+/** A page of the weekly ranking. Later pages and the personal rank reuse `asOf` so scores stay consistent. */
+export type LeaderboardPage = {
+  entries: LeaderboardEntry[];
+  podium: LeaderboardEntry[];
+  total: number;
+  weekStart: string;
+  weekEnd: string;
+  asOf: string;
+  pointsPerTrade: number;
+  pointsPerReviewStar: number;
 };
 
 export type AnalyticsMetric = {
@@ -183,9 +231,6 @@ export type ItemDraft = {
   category: string;
   condition: string;
   lookingFor: string;
-  location: string;
-  latitude: number | null;
-  longitude: number | null;
   tags: string;
   status: ItemStatus;
   photos: string[];
@@ -198,10 +243,21 @@ export type DisputeInput = {
   evidence: string[];
 };
 
+/** Location is not a filter here: the feed itself is loaded for the chosen area. */
 export type ItemFilters = {
   category: string;
   search: string;
   condition: string;
-  location: string;
-  sort: 'Newest first' | 'Most hearts' | 'Most viewed';
+  sort: 'Nearest first' | 'Newest first' | 'Most hearts' | 'Most viewed';
+};
+
+/** A place to browse around: a Photon suggestion, or the signed-in trader's profile area. */
+export type Place = { id: string; label: string; latitude: number; longitude: number };
+
+/** One row of the backend's offline address catalogue (`/locations/*`). */
+export type LocationOption = {
+  code: string;
+  name: string;
+  postalFormat?: string;
+  postalRegex?: string;
 };

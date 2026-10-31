@@ -7,6 +7,14 @@ import { AppText, Glass, PhotoScrim, PressableScale, Skeleton } from '@/componen
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, maxFontScale, neu } from '@/theme';
 import type { Item } from '@/types/models';
+import { distanceLabel, shortLocation } from '@/utils/location';
+
+/** Distance first on narrow cards, so a long area name never hides it. */
+export function placeLine(item: Item) {
+  const place = shortLocation(item.location) || 'Location not added';
+  const distance = distanceLabel(item.distanceKm);
+  return distance ? `${distance} · ${place}` : place;
+}
 
 type ItemCardProps = {
   item: Item;
@@ -47,7 +55,7 @@ export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: o
           <View style={styles.inline}>
             <MapPin size={11} color={colors.onPhoto} strokeWidth={2.4} />
             <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoText, { color: colors.onPhoto }]} numberOfLines={1}>
-              {item.location}
+              {placeLine(item)}
             </Text>
           </View>
           <View style={styles.inlineEnd}>

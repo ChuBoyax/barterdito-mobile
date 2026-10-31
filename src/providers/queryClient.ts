@@ -30,7 +30,8 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   maxAge: CACHE_MAX_AGE,
   // A new app version discards caches shaped by older code.
   buster: Constants.expoConfig?.version ?? '1',
-  dehydrateOptions: { shouldDehydrateQuery: (query: Query) => query.state.status === 'success' },
+  // Queries can opt out with `meta: { persist: false }` (e.g. large, static address lists).
+  dehydrateOptions: { shouldDehydrateQuery: (query: Query) => query.state.status === 'success' && query.meta?.persist !== false },
 };
 
 AppState.addEventListener('change', (status) => {

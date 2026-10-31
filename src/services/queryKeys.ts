@@ -20,6 +20,11 @@ export const queryKeys = {
   conversations: (filter?: 'all' | 'completed') => (filter ? (['conversations', filter] as const) : (['conversations'] as const)),
   reviews: (userId: string) => ['reviews', userId] as const,
 
+  /** Address catalogue lists; `path` is one of `locationPaths`. */
+  locations: (path: string) => ['locations', path] as const,
+
+  leaderboard: ['leaderboard'] as const,
+
   notifications: ['notifications'] as const,
   notificationList: ['notifications', 'list'] as const,
   notificationCounts: ['notifications', 'counts'] as const,

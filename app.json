@@ -39,7 +39,13 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Barterdito uses your location to fill in your profile area so nearby traders can find your items."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -7,7 +7,8 @@ import { useTheme } from '@/providers/ThemeProvider';
 import type { ItemDraft } from '@/types/models';
 
 
-export function ListingPreview({ draft }: { draft: ItemDraft }) {
+/** `location` is the trader's profile area, which every listing shows. */
+export function ListingPreview({ draft, location }: { draft: ItemDraft; location?: string }) {
   const { colors } = useTheme();
   return (
     <View style={styles.wrap}>
@@ -35,7 +36,9 @@ export function ListingPreview({ draft }: { draft: ItemDraft }) {
       </View>
       <View style={styles.row}>
         <MapPin size={14} color={colors.muted} />
-        <AppText variant="caption">{draft.location || 'Your city'}</AppText>
+        <AppText variant="caption" style={styles.flex}>
+          {location || 'Location not added in your profile'}
+        </AppText>
       </View>
     </View>
   );

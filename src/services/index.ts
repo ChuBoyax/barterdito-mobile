@@ -4,6 +4,7 @@ export { ApiError, API_URL, SITE_URL } from './api';
 export { ServiceError } from './client';
 export { communityService } from './communityService';
 export { itemService } from './itemService';
+export { locationService } from './locationService';
 export { messageService } from './messageService';
 export { notificationService } from './notificationService';
 export { paymentService } from './paymentService';
