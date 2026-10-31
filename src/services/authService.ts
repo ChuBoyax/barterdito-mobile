@@ -1,16 +1,16 @@
 import type { User } from '@/types/models';
 import { initialsOf } from '@/utils/format';
 import { ApiError, apiRequest, authenticatedRequest, errorDetail, isUnauthorized, mediaUrl, refreshSession } from './api';
+import { toArea, type AreaRow } from './locationService';
 
 export type SignInInput = { email: string; password: string };
 export type SignUpInput = SignInInput & { fullName: string };
 
-export type ApiUser = {
+export type ApiUser = AreaRow & {
   id: string;
   email: string;
   full_name: string;
   bio?: string;
-  location?: string;
   avatar_url?: string | null;
   email_verified: boolean;
   created_at: string;
@@ -30,7 +30,7 @@ export function toUser(user: ApiUser): User {
     fullName: user.full_name,
     initials: initialsOf(user.full_name) || 'BD',
     bio: user.bio ?? '',
-    location: user.location ?? '',
+    ...toArea(user),
     avatarUrl: mediaUrl(user.avatar_url),
     emailVerified: user.email_verified,
     createdAt: user.created_at,

@@ -1,10 +1,10 @@
 import { BadgeCheck, ChevronRight, Star } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { AppText, Avatar, PressableScale } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { elevation } from '@/theme';
+import { elevation, fonts, maxFontScale } from '@/theme';
 import type { Trader } from '@/types/models';
 
 type TraderRowProps = {
@@ -16,9 +16,16 @@ type TraderRowProps = {
   subtitle?: string;
   /** Card size overrides, e.g. to match neighbouring tiles. */
   style?: StyleProp<ViewStyle>;
+  /** Position in a ranked list (Featured traders), shown on the avatar. */
+  rank?: number;
 };
 
-export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, style }: TraderRowProps) {
+/** "4.5 · 3 trades", or "No reviews · 0 trades" before a trader's first verified review. */
+function stats(trader: Trader) {
+  return `${trader.rating ?? 'No reviews'} · ${trader.trades} ${trader.trades === 1 ? 'trade' : 'trades'}`;
+}
+
+export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, style, rank }: TraderRowProps) {
   const { colors } = useTheme();
   if (variant === 'card') {
     return (
@@ -28,7 +35,14 @@ export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, s
         onPress={onPress}
         scaleTo={0.96}
         style={[styles.card, { backgroundColor: colors.surface }, elevation(1, colors), style]}>
-        <Avatar initials={trader.initials} color={trader.color} imageUrl={trader.avatarUrl} size="small" online />
+        <View>
+          <Avatar initials={trader.initials} color={trader.color} imageUrl={trader.avatarUrl} size="small" online={rank === undefined} />
+          {rank !== undefined ? (
+            <View accessibilityLabel={`Rank ${rank}`} style={[styles.rank, { backgroundColor: colors.orange, borderColor: colors.surface }]}>
+              <Text maxFontSizeMultiplier={maxFontScale} style={[styles.rankText, { color: colors.onPrimary }]}>{rank}</Text>
+            </View>
+          ) : null}
+        </View>
         <View style={styles.cardText}>
           <View style={styles.nameRow}>
             <AppText variant="caption" color="ink" weight="bold" numberOfLines={1} style={styles.shrink}>
@@ -42,9 +56,9 @@ export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, s
             </AppText>
           ) : (
             <View style={styles.nameRow}>
-              <Star size={10} color={colors.yellow} fill={colors.yellow} />
-              <AppText variant="caption" numberOfLines={1}>
-                {trader.rating} · {trader.trades} trades
+              <Star size={10} color={colors.yellow} fill={trader.rating == null ? 'none' : colors.yellow} />
+              <AppText variant="caption" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.shrink}>
+                {stats(trader)}
               </AppText>
             </View>
           )}
@@ -67,10 +81,8 @@ export function TraderRow({ trader, onPress, right, variant = 'row', subtitle, s
           ) : null
         ) : (
           <View style={styles.meta}>
-            <Star size={12} color={colors.yellow} fill={colors.yellow} />
-            <AppText variant="caption">
-              {trader.rating} · {trader.trades} trades
-            </AppText>
+            <Star size={12} color={colors.yellow} fill={trader.rating == null ? 'none' : colors.yellow} />
+            <AppText variant="caption">{stats(trader)}</AppText>
           </View>
         )}
       </View>
@@ -87,4 +99,6 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' },
   body: { flex: 1, gap: 2 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rank: { position: 'absolute', right: -5, bottom: -3, minWidth: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  rankText: { fontFamily: fonts.extrabold, fontSize: 10 },
 });

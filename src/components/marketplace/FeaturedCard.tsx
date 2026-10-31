@@ -7,6 +7,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, maxFontScale } from '@/theme';
 import type { Item } from '@/types/models';
+import { placeLine } from './ItemCard';
 
 const gridGap = 14;
 
@@ -32,7 +33,7 @@ export function FeaturedCard({ item, onPress }: { item: Item; onPress: () => voi
         </Text>
         <View style={styles.row}>
           <MapPin size={12} color={colors.onPhoto} />
-          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.meta, { color: colors.onPhoto }]}>{item.location}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.meta, { color: colors.onPhoto }]} numberOfLines={1}>{placeLine(item)}</Text>
         </View>
         <View style={[styles.wants, { backgroundColor: colors.glass }]}>
           <ArrowRightLeft size={12} color={colors.orange} strokeWidth={2.4} />
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
   body: { padding: 12, gap: 5 },
   title: { fontFamily: fonts.extrabold, fontSize: 16, lineHeight: 20, letterSpacing: -0.3 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  meta: { fontFamily: fonts.medium, fontSize: 11.5, opacity: 0.9 },
+  meta: { flexShrink: 1, fontFamily: fonts.medium, fontSize: 11.5, opacity: 0.9 },
   wants: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginTop: 2 },
   wantsText: { flex: 1, fontFamily: fonts.semibold, fontSize: 11 },
 });

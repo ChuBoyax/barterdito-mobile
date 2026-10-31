@@ -1,5 +1,5 @@
 import { categories, conditions } from '@/constants/listing';
-import type { Item, ItemDraft, ItemFilters, ItemStatus } from '@/types/models';
+import type { Item, ItemDraft, ItemFilters, ItemStatus, Place, Trader } from '@/types/models';
 import { initialsOf } from '@/utils/format';
 import { isLocalPhoto, photoDataUrl } from '@/utils/photos';
 import { readJson, storageKeys, writeJson } from '@/utils/storage';
@@ -16,9 +16,9 @@ type PostRow = {
   category: string;
   condition: string;
   looking_for: string;
+  /** The owner's profile area (listings no longer have their own). */
   location: string;
-  latitude?: number | null;
-  longitude?: number | null;
+  distance_km?: number | null;
   tags?: string[];
   status: ApiStatus;
   view_count: number;
@@ -27,14 +27,38 @@ type PostRow = {
   image_urls: string[];
 };
 
-type OwnerRow = { id: string; full_name: string; display_name: string; avatar_url: string | null; completed_trades_count: number };
-type PageResponse = { configured?: boolean; posts: PostRow[]; profiles: OwnerRow[]; total: number; total_views: number; total_hearts: number };
+type OwnerRow = {
+  id: string;
+  full_name: string;
+  display_name: string;
+  avatar_url: string | null;
+  completed_trades_count: number;
+  review_count?: number;
+  average_rating?: number | null;
+};
+type PageResponse = {
+  configured?: boolean;
+  posts: PostRow[];
+  profiles: OwnerRow[];
+  /** Backend-ranked top traders for the browsing area; empty on owner pages. */
+  featured_traders?: OwnerRow[];
+  total: number;
+  total_views: number;
+  total_hearts: number;
+};
 type ItemResponse = { post: PostRow; profile: OwnerRow };
 
-export type ItemsPage = { items: Item[]; total: number; totalViews: number; totalHearts: number };
-export type Place = { id: string; label: string; latitude: number; longitude: number };
+export type ItemsPage = { items: Item[]; featuredTraders: Trader[]; total: number; totalViews: number; totalHearts: number };
+
+/**
+ * Which listings the browse feed loads: around a place (within NEARBY_RADIUS_KM), around the
+ * signed-in trader's saved GPS (`nearMe`, so precise coordinates never go in a URL), or everywhere.
+ */
+export type FeedScope = { area: Place | null; nearMe: boolean };
 
 export const PAGE_SIZE = 50;
+/** Same radius as the website's nearby browsing. */
+export const NEARBY_RADIUS_KM = 50;
 
 const toApiStatus: Record<ItemStatus, ApiStatus> = { Active: 'active', 'In Negotiation': 'in_negotiation', Traded: 'traded' };
 const fromApiStatus: Record<ApiStatus, ItemStatus> = { active: 'Active', in_negotiation: 'In Negotiation', traded: 'Traded' };
@@ -56,8 +80,25 @@ export function timeAgo(value: string) {
   return new Date(value).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 }
 
+function ownerName(owner: OwnerRow | undefined) {
+  return owner?.display_name || owner?.full_name || 'Barterdito trader';
+}
+
+function toTrader(owner: OwnerRow): Trader {
+  const name = ownerName(owner);
+  return {
+    id: owner.id,
+    name,
+    initials: initialsOf(name) || 'BD',
+    avatarUrl: mediaUrl(owner.avatar_url),
+    rating: owner.average_rating ?? null,
+    reviewCount: owner.review_count ?? 0,
+    trades: owner.completed_trades_count,
+  };
+}
+
 function toItem(post: PostRow, owner: OwnerRow | undefined): Item {
-  const name = owner?.display_name || owner?.full_name || 'Barterdito trader';
+  const name = ownerName(owner);
   const images = (post.image_urls ?? []).map((path) => mediaUrl(path)).filter((url): url is string => Boolean(url));
   return {
     id: post.id,
@@ -66,8 +107,7 @@ function toItem(post: PostRow, owner: OwnerRow | undefined): Item {
     category: post.category,
     condition: post.condition,
     location: post.location,
-    latitude: post.latitude ?? null,
-    longitude: post.longitude ?? null,
+    distanceKm: post.distance_km ?? null,
     tags: post.tags ?? [],
     hearts: post.heart_count,
     views: post.view_count,
@@ -77,7 +117,8 @@ function toItem(post: PostRow, owner: OwnerRow | undefined): Item {
     owner: name,
     ownerAvatar: initialsOf(name) || 'BD',
     ownerAvatarUrl: mediaUrl(owner?.avatar_url),
-    rating: 0,
+    rating: owner?.average_rating ?? null,
+    reviewCount: owner?.review_count ?? 0,
     trades: owner?.completed_trades_count ?? 0,
     wanted: post.looking_for,
     description: post.description,
@@ -95,6 +136,7 @@ function toPage(result: PageResponse): ItemsPage {
   const owners = new Map(result.profiles.map((owner) => [owner.id, owner]));
   return {
     items: result.posts.map((post) => toItem(post, owners.get(post.user_id))),
+    featuredTraders: (result.featured_traders ?? []).slice(0, 5).map(toTrader),
     total: result.total,
     totalViews: result.total_views,
     totalHearts: result.total_hearts,
@@ -120,18 +162,15 @@ function splitTags(tags: string): string[] {
   return [...new Set(tags.split(',').map((tag) => tag.trim()).filter(Boolean))].slice(0, 10);
 }
 
+/** No location fields: the backend gives every listing its owner's profile area. */
 async function toListingWrite(draft: ItemDraft) {
   const images = await Promise.all(draft.photos.map((uri) => (isLocalPhoto(uri) ? photoDataUrl(uri) : Promise.resolve(storedMediaPath(uri)))));
-  const pinned = draft.latitude !== null && draft.longitude !== null;
   return {
     title: draft.title.trim(),
     description: draft.description.trim(),
     category: draft.category,
     condition: draft.condition,
     looking_for: draft.lookingFor.trim(),
-    location: draft.location.trim(),
-    latitude: pinned ? draft.latitude : null,
-    longitude: pinned ? draft.longitude : null,
     tags: splitTags(draft.tags),
     status: toApiStatus[draft.status] ?? 'active',
     images,
@@ -163,8 +202,13 @@ export const itemService = {
     return conditions;
   },
 
-  async getItems(offset = 0): Promise<ItemsPage> {
-    return toPage(await apiRequest<PageResponse>(`/marketplace/items?${pageQuery(offset)}`));
+  /** Browse feed; nearby pages come back nearest first, with `distanceKm` on each item. */
+  async getItems(offset = 0, { area, nearMe }: FeedScope = { area: null, nearMe: false }): Promise<ItemsPage> {
+    if (nearMe) {
+      return toPage(await authenticatedRequest(() => apiRequest<PageResponse>(`/marketplace/nearby?${pageQuery(offset)}`)));
+    }
+    const near = area ? `&latitude=${area.latitude}&longitude=${area.longitude}&radius_km=${NEARBY_RADIUS_KM}` : '';
+    return toPage(await apiRequest<PageResponse>(`/marketplace/items?${pageQuery(offset)}${near}`));
   },
 
   async getItem(id: string): Promise<Item> {
@@ -198,8 +242,11 @@ export const itemService = {
             .includes(query),
       )
       .filter((item) => filters.condition === 'Any condition' || item.condition === filters.condition)
-      .filter((item) => filters.location === 'Any location' || item.location === filters.location)
       .sort((a, b) => {
+        // Distances exist only in a nearby feed; otherwise "Nearest first" falls back to newest.
+        if (filters.sort === 'Nearest first' && a.distanceKm != null && b.distanceKm != null && a.distanceKm !== b.distanceKm) {
+          return a.distanceKm - b.distanceKm;
+        }
         if (filters.sort === 'Most hearts') return b.hearts - a.hearts;
         if (filters.sort === 'Most viewed') return b.views - a.views;
         return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
@@ -232,9 +279,6 @@ export const itemService = {
         category: item.category,
         condition: item.condition,
         lookingFor: item.wanted,
-        location: item.location,
-        latitude: item.latitude ?? null,
-        longitude: item.longitude ?? null,
         tags: (item.tags ?? []).join(', '),
         status,
         photos: item.imageUrls?.length ? item.imageUrls : [item.image],
@@ -247,9 +291,9 @@ export const itemService = {
     await authenticatedRequest(() => apiRequest(`/marketplace/items/${encodeURIComponent(id)}`, { method: 'DELETE' }));
   },
 
-  /** Place suggestions for the pickup location (Photon via the backend, sign-in required). */
+  /** Place suggestions for browsing another area (Photon via the backend; no sign-in needed). */
   searchPlaces(query: string): Promise<Place[]> {
-    return authenticatedRequest(() => apiRequest<Place[]>(`/marketplace/places?q=${encodeURIComponent(query.trim())}`));
+    return apiRequest<Place[]>(`/marketplace/places?q=${encodeURIComponent(query.trim())}`, { timeout: 15_000 });
   },
 
   /** Reports are a preview on the website as well; nothing is stored yet. */

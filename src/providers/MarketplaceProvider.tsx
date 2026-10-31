@@ -1,19 +1,26 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { itemService } from '@/services';
-import { timeAgo } from '@/services/itemService';
+import { timeAgo, type FeedScope } from '@/services/itemService';
 import { readJson, storageKeys, writeJson } from '@/utils/storage';
-import type { Item } from '@/types/models';
+import type { Item, Place, Trader, User } from '@/types/models';
 import { errorMessage } from '@/utils/format';
 import { useAuth } from './AuthProvider';
 import { useToast } from './ToastProvider';
 
 type MarketplaceContextValue = {
   items: Item[];
+  /** Up to five traders the backend ranks for the current area. */
+  featuredTraders: Trader[];
   loading: boolean;
   loadingMore: boolean;
   error: string | null;
   hasMore: boolean;
+  /** Area the feed is loaded for (within NEARBY_RADIUS_KM); null means every location. */
+  area: Place | null;
+  /** The signed-in trader's saved profile area, when it has coordinates. */
+  profileArea: Place | null;
+  setArea: (place: Place | null) => void;
   savedIds: string[];
   heartedIds: string[];
   refresh: () => Promise<void>;
@@ -24,81 +31,118 @@ type MarketplaceContextValue = {
   removeItem: (id: string) => void;
 };
 
-type FeedSnapshot = { items: Item[]; total: number };
+/** Listings loaded for one feed scope (`key`). */
+type Feed = { key: string; items: Item[]; featured: Trader[]; fetched: number; total: number };
 
 const MarketplaceContext = createContext<MarketplaceContextValue | null>(null);
 
 type MarketplaceActions = Pick<MarketplaceContextValue, 'refresh' | 'toggleSaved' | 'toggleHeart' | 'upsertItem' | 'removeItem'>;
 const MarketplaceActionsContext = createContext<MarketplaceActions | null>(null);
 const noIds: string[] = [];
+const noTraders: Trader[] = [];
+
+/** Like the website: the saved area centre, or the saved GPS pair when there is no centre. */
+function profileAreaOf(user: User | null): Place | null {
+  if (!user?.location) return null;
+  const centre = user.locationLatitude != null && user.locationLongitude != null;
+  const gps = user.gpsLatitude != null && user.gpsLongitude != null;
+  if (!centre && !gps) return null;
+  return {
+    id: `profile-${user.id}`,
+    label: user.location,
+    latitude: centre ? user.locationLatitude! : user.gpsLatitude!,
+    longitude: centre ? user.locationLongitude! : user.gpsLongitude!,
+  };
+}
+
+function upsertInto(items: Item[], item: Item) {
+  return items.some((entry) => entry.id === item.id) ? items.map((entry) => (entry.id === item.id ? item : entry)) : [item, ...items];
+}
 
 export function MarketplaceProvider({ children }: { children: ReactNode }) {
   const { user, requireAuth } = useAuth();
   const userId = user?.id ?? null;
   const showToast = useToast();
-  const [loaded, setLoaded] = useState<Item[]>([]);
-  const [total, setTotal] = useState(0);
-  // How many listings came from the server; the next page starts here.
-  const [fetched, setFetched] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [feed, setFeed] = useState<Feed | null>(null);
+  // The last feed saved on this device, shown instantly while its scope loads.
+  const [snapshot, setSnapshot] = useState<Feed | null>(null);
+  const [error, setError] = useState<{ key: string; message: string } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [heartedIds, setHeartedIds] = useState<string[]>([]);
   // Local heart adjustments; the backend has no heart endpoint yet (same as the website).
   const [heartDelta, setHeartDelta] = useState<Record<string, number>>({});
+  // A place chosen in Filters; it belongs to the account that chose it.
+  const [selection, setSelection] = useState<{ userId: string | null; place: Place | null } | null>(null);
   const request = useRef(0);
-  // True once the network answered, so a late cache read never replaces fresh data.
-  const settled = useRef(false);
 
-  // Instant first paint: show the last saved first page while the network request runs.
+  // Browse defaults to the profile area; any other choice lasts until the account changes.
+  const profileArea = useMemo(
+    () => profileAreaOf(user),
+    // Only the area fields matter; a name or photo change must not reload the feed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [userId, user?.location, user?.locationLatitude, user?.locationLongitude, user?.gpsLatitude, user?.gpsLongitude],
+  );
+  const selected = selection && selection.userId === userId ? selection.place : profileArea;
+  const area = selected && profileArea && selected.id === profileArea.id ? profileArea : selected;
+  // Near the profile area with saved GPS: the backend uses the private coordinates itself.
+  const nearMe = Boolean(area && area === profileArea && user?.gpsLatitude != null && user?.gpsLongitude != null);
+  const scope = useMemo<FeedScope>(() => ({ area, nearMe }), [area, nearMe]);
+  const scopeKey = nearMe ? `near:${user?.gpsLatitude}:${user?.gpsLongitude}` : area ? `area:${area.latitude}:${area.longitude}` : 'all';
+
   useEffect(() => {
-    void readJson<FeedSnapshot>(storageKeys.feed).then((snapshot) => {
-      if (!snapshot?.items.length || settled.current) return;
-      setLoaded(snapshot.items.map((item) => (item.createdAt ? { ...item, age: timeAgo(item.createdAt) } : item)));
-      setFetched(snapshot.items.length);
-      setTotal(snapshot.total);
-      setLoading(false);
+    void readJson<Feed>(storageKeys.feed).then((saved) => {
+      if (!saved?.items?.length || typeof saved.key !== 'string') return;
+      setSnapshot({ ...saved, featured: saved.featured ?? [], items: saved.items.map((item) => (item.createdAt ? { ...item, age: timeAgo(item.createdAt) } : item)) });
     });
   }, []);
 
   const refresh = useCallback(async () => {
     const current = ++request.current;
+    const key = scopeKey;
     try {
-      const page = await itemService.getItems(0);
+      const page = await itemService.getItems(0, scope);
       if (current !== request.current) return;
-      settled.current = true;
-      setLoaded(page.items);
-      setFetched(page.items.length);
-      setTotal(page.total);
+      const next: Feed = { key, items: page.items, featured: page.featuredTraders, fetched: page.items.length, total: page.total };
+      setFeed(next);
       setError(null);
-      void writeJson(storageKeys.feed, { items: page.items, total: page.total } satisfies FeedSnapshot);
+      void writeJson(storageKeys.feed, next);
     } catch (caught) {
       if (current !== request.current) return;
       const message = errorMessage(caught, 'Could not load listings');
-      setError(message);
+      setError({ key, message });
       showToast(message);
-    } finally {
-      if (current === request.current) setLoading(false);
     }
-  }, [showToast]);
+  }, [scope, scopeKey, showToast]);
+
+  // Fresh data for this scope wins; until it arrives, a saved snapshot of the same scope shows.
+  const live = feed?.key === scopeKey ? feed : null;
+  const source = live ?? (snapshot?.key === scopeKey ? snapshot : null);
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || fetched >= total) return;
+    if (loadingMore || !live || live.fetched >= live.total) return;
+    const { key, fetched } = live;
     setLoadingMore(true);
     try {
-      const page = await itemService.getItems(fetched);
-      setLoaded((current) => [...current, ...page.items.filter((item) => !current.some((entry) => entry.id === item.id))]);
-      setFetched((count) => count + page.items.length);
-      setTotal(page.total);
+      const page = await itemService.getItems(fetched, scope);
+      setFeed((current) =>
+        current?.key === key
+          ? {
+              ...current,
+              items: [...current.items, ...page.items.filter((item) => !current.items.some((entry) => entry.id === item.id))],
+              fetched: current.fetched + page.items.length,
+              total: page.total,
+            }
+          : current,
+      );
     } catch (caught) {
       showToast(errorMessage(caught, 'Could not load more listings'));
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, fetched, total, showToast]);
+  }, [loadingMore, live, scope, showToast]);
 
-  // Reload whenever the account changes so "mine" flags match the viewer.
+  // Reload whenever the account or the browsing area changes ("mine" flags follow the viewer).
   useEffect(() => {
     void refresh();
   }, [refresh, userId]);
@@ -160,18 +204,21 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   );
 
   const upsertItem = useCallback((item: Item) => {
-    setLoaded((current) =>
-      current.some((entry) => entry.id === item.id) ? current.map((entry) => (entry.id === item.id ? item : entry)) : [item, ...current],
-    );
+    setFeed((current) => current && { ...current, items: upsertInto(current.items, item) });
+    setSnapshot((current) => current && { ...current, items: upsertInto(current.items, item) });
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    setLoaded((current) => current.filter((entry) => entry.id !== id));
+    setFeed((current) => current && { ...current, items: current.items.filter((entry) => entry.id !== id) });
+    setSnapshot((current) => current && { ...current, items: current.items.filter((entry) => entry.id !== id) });
   }, []);
 
+  const setArea = useCallback((place: Place | null) => setSelection({ userId, place }), [userId]);
+
+  const loaded = source?.items;
   const items = useMemo(
     () =>
-      loaded.map((item) => {
+      (loaded ?? []).map((item) => {
         const delta = heartDelta[item.id] ?? 0;
         const mine = Boolean(userId) && item.userId === userId;
         return delta || mine !== Boolean(item.mine) ? { ...item, mine, hearts: Math.max(0, item.hearts + delta) } : item;
@@ -179,13 +226,19 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
     [loaded, heartDelta, userId],
   );
 
+  const scopeError = error?.key === scopeKey ? error.message : null;
+
   const value = useMemo(
     () => ({
       items,
-      loading,
+      featuredTraders: source?.featured ?? noTraders,
+      loading: !source && !scopeError,
       loadingMore,
-      error,
-      hasMore: fetched < total,
+      error: scopeError,
+      hasMore: Boolean(live && live.fetched < live.total),
+      area,
+      profileArea,
+      setArea,
       savedIds: userId ? savedIds : noIds,
       heartedIds: userId ? heartedIds : noIds,
       refresh,
@@ -195,7 +248,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
       upsertItem,
       removeItem,
     }),
-    [items, loading, loadingMore, error, fetched, total, userId, savedIds, heartedIds, refresh, loadMore, toggleSaved, toggleHeart, upsertItem, removeItem],
+    [items, source, live, scopeError, loadingMore, area, profileArea, setArea, userId, savedIds, heartedIds, refresh, loadMore, toggleSaved, toggleHeart, upsertItem, removeItem],
   );
 
   // Stable callbacks only: screens that just trigger updates do not re-render when the feed changes.

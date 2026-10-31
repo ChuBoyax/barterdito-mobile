@@ -8,7 +8,7 @@ import { AppText, Badge, PressableScale, Screen, TextField } from '@/components/
 import { useMarketplace, useTheme } from '@/providers';
 import { neu } from '@/theme';
 import type { Item } from '@/types/models';
-import { displayLocation } from '@/utils/listing';
+import { placeLine } from '@/components/marketplace';
 import { pluralize } from '@/utils/format';
 import { openItem } from '@/utils/navigation';
 
@@ -161,7 +161,7 @@ function Callout({ item }: { item: Item }) {
           <View style={styles.meta}>
             <MapPin size={12} color={colors.muted} />
             <AppText variant="caption" numberOfLines={1} style={styles.flex}>
-              {displayLocation(item.location)}
+              {placeLine(item)}
             </AppText>
           </View>
         </View>
@@ -193,7 +193,7 @@ function NearbyRow({ item, first, active }: { item: Item; first: boolean; active
         <View style={styles.meta}>
           <MapPin size={12} color={colors.muted} />
           <AppText variant="caption" numberOfLines={1} style={styles.flex}>
-            {displayLocation(item.location)}
+            {placeLine(item)}
           </AppText>
         </View>
         <Badge label={item.condition} tone={active ? 'orange' : 'neutral'} />

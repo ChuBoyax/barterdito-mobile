@@ -19,6 +19,7 @@ export { PressableScale } from './PressableScale';
 export { Screen } from './Screen';
 export { SectionHeading } from './SectionHeading';
 export { SegmentedControl, type Segment } from './SegmentedControl';
+export { SearchSelect, type SearchOption } from './SearchSelect';
 export { SelectField } from './SelectField';
 export { Stars } from './Stars';
 export { StatRow, type StatItem } from './StatRow';

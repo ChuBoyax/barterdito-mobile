@@ -1,10 +1,10 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowRight, Check, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react-native';
+import { ArrowRight, Check, MapPin, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { RequireAuth } from '@/components/layout';
-import { ListingPreview, LocationField, PhotoGrid, StepIndicator } from '@/components/listing';
+import { ListingPreview, PhotoGrid, StepIndicator } from '@/components/listing';
 import { AppText, Badge, Button, Card, InfoNote, Screen, SelectField, TextField } from '@/components/ui';
 import { itemStatuses } from '@/constants/status';
 import { useImagePicker } from '@/hooks/useImagePicker';
@@ -257,14 +257,22 @@ function PostItemForm() {
               maxLength={1000}
               error={errors.lookingFor}
             />
-            <LocationField
-              value={draft.location}
-              pin={draft.latitude !== null && draft.longitude !== null ? { latitude: draft.latitude, longitude: draft.longitude } : null}
-              error={errors.location}
-              onChange={(location, pin) =>
-                setDraft((current) => ({ ...current, location, latitude: pin?.latitude ?? null, longitude: pin?.longitude ?? null }))
-              }
-            />
+            {/* Listings have no location of their own: the backend uses the trader's profile area. */}
+            <View style={[styles.area, { backgroundColor: colors.background }]}>
+              <MapPin size={18} color={colors.orange} />
+              <View style={styles.flex}>
+                <AppText variant="h3">Trader location</AppText>
+                <AppText variant="small" color={user?.location ? 'ink' : 'muted'}>
+                  {user?.location || 'Add your city or barangay in your profile to help nearby traders find your items.'}
+                </AppText>
+                <AppText variant="caption">All your items use your profile area.</AppText>
+                <Pressable accessibilityRole="button" onPress={() => router.push('/settings?edit=profile')} hitSlop={8} style={styles.areaLink}>
+                  <AppText variant="caption" color="orange" weight="bold">
+                    {user?.location ? 'Change in profile' : 'Add in profile'}
+                  </AppText>
+                </Pressable>
+              </View>
+            </View>
             <TextField
               label="Tags"
               value={draft.tags}
@@ -277,11 +285,11 @@ function PostItemForm() {
             {edit ? (
               <SelectField label="Listing status" value={draft.status} options={itemStatuses} onChange={(value) => update('status', value as ItemStatus)} />
             ) : null}
-            <InfoNote icon={ShieldCheck} title="Only the area is public" text="Your pickup area and optional map pin are public. Pick a public place, not your home address." />
+            <InfoNote icon={ShieldCheck} title="Agree on the meetup in chat" text="After a proposal is accepted, choose a public place together in your trade conversation." />
           </>
         ) : null}
 
-        {step === LAST_STEP ? <ListingPreview draft={draft} /> : null}
+        {step === LAST_STEP ? <ListingPreview draft={draft} location={user?.location} /> : null}
 
         <View style={styles.actions}>
           {edit ? (
@@ -311,5 +319,7 @@ const styles = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   pair: { flexDirection: 'row', gap: 10 },
   inlineAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  area: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 16, padding: 14 },
+  areaLink: { alignSelf: 'flex-start', marginTop: 6 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
 });
