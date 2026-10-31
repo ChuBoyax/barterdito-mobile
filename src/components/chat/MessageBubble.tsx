@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { Check, CheckCheck } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
@@ -8,9 +9,13 @@ import type { ChatMessage } from '@/types/models';
 type MessageBubbleProps = {
   message: ChatMessage;
   onLongPress?: () => void;
+  /** Delivery state of your own private message: saved by the server, or read by the other trader. */
+  status?: 'sending' | 'sent' | 'read';
 };
 
-export function MessageBubble({ message, onLongPress }: MessageBubbleProps) {
+const statusLabels = { sending: 'Sending…', sent: 'Sent', read: 'Read' } as const;
+
+export function MessageBubble({ message, onLongPress, status }: MessageBubbleProps) {
   const { colors } = useTheme();
   const mine = message.mine;
   const content = (
@@ -28,6 +33,12 @@ export function MessageBubble({ message, onLongPress }: MessageBubbleProps) {
       )}
       <View style={styles.meta}>
         <Text maxFontSizeMultiplier={maxFontScale} style={[styles.time, { color: colors.muted }]}>{message.time}</Text>
+        {status ? (
+          <View style={styles.status} accessibilityLabel={statusLabels[status]}>
+            {status === 'read' ? <CheckCheck size={12} color={colors.blue} /> : status === 'sent' ? <Check size={12} color={colors.muted} /> : null}
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.time, { color: status === 'read' ? colors.blue : colors.muted }]}>{statusLabels[status]}</Text>
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -44,4 +55,5 @@ const styles = StyleSheet.create({
   text: { fontFamily: fonts.medium, fontSize: 14.5, lineHeight: 21 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6 },
   time: { fontFamily: fonts.medium, fontSize: 10.5 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 4 },
 });

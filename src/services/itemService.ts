@@ -18,6 +18,8 @@ type PostRow = {
   looking_for: string;
   /** The owner's profile area (listings no longer have their own). */
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   distance_km?: number | null;
   tags?: string[];
   status: ApiStatus;
@@ -49,6 +51,12 @@ type PageResponse = {
 type ItemResponse = { post: PostRow; profile: OwnerRow };
 
 export type ItemsPage = { items: Item[]; featuredTraders: Trader[]; total: number; totalViews: number; totalHearts: number };
+
+/** Nearby Map page: other traders' listings around the viewer's saved location (centre stays private). */
+export type NearbyMapPage = ItemsPage & { center: { latitude: number; longitude: number }; location: string; radiusKm: number };
+
+/** Distances offered on the Nearby Map (the backend accepts 1–100 km). */
+export const MAP_RADII = [5, 10, 25, 50, 100] as const;
 
 /**
  * Which listings the browse feed loads: around a place (within NEARBY_RADIUS_KM), around the
@@ -107,6 +115,8 @@ function toItem(post: PostRow, owner: OwnerRow | undefined): Item {
     category: post.category,
     condition: post.condition,
     location: post.location,
+    latitude: post.latitude ?? null,
+    longitude: post.longitude ?? null,
     distanceKm: post.distance_km ?? null,
     tags: post.tags ?? [],
     hearts: post.heart_count,
@@ -209,6 +219,19 @@ export const itemService = {
     }
     const near = area ? `&latitude=${area.latitude}&longitude=${area.longitude}&radius_km=${NEARBY_RADIUS_KM}` : '';
     return toPage(await apiRequest<PageResponse>(`/marketplace/items?${pageQuery(offset)}${near}`));
+  },
+
+  /**
+   * Nearby Map (sign-in and a saved profile location required; 422 otherwise). Excludes your own
+   * listings and traded items; `query` matches title, category, wanted items or the owner's area.
+   */
+  async getNearbyMap(radiusKm: number, query: string, offset = 0): Promise<NearbyMapPage> {
+    const result = await authenticatedRequest(() =>
+      apiRequest<PageResponse & { center: { latitude: number; longitude: number }; location: string; radius_km: number }>(
+        `/marketplace/nearby-map?radius_km=${radiusKm}&q=${encodeURIComponent(query.trim())}&${pageQuery(offset)}`,
+      ),
+    );
+    return { ...toPage(result), center: result.center, location: result.location, radiusKm: result.radius_km };
   },
 
   async getItem(id: string): Promise<Item> {

@@ -19,6 +19,7 @@ export const queryKeys = {
     direction ? (status ? (['offers', direction, status] as const) : (['offers', direction] as const)) : (['offers'] as const),
   conversations: (filter?: 'all' | 'completed') => (filter ? (['conversations', filter] as const) : (['conversations'] as const)),
   reviews: (userId: string) => ['reviews', userId] as const,
+  directConversations: ['directConversations'] as const,
 
   /** Address catalogue lists; `path` is one of `locationPaths`. */
   locations: (path: string) => ['locations', path] as const,

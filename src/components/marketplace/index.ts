@@ -8,7 +8,6 @@ export { PlaceSearch } from './PlaceSearch';
 export { ItemGrid, ItemGridRow, useGridRows, useInteractionSets, type GridRow } from './ItemGrid';
 export { ReportSheet } from './ReportSheet';
 export { StatGrid, type Stat } from './StatGrid';
-export { ThreadRow } from './ThreadRow';
 export { TraderRow } from './TraderRow';
 export { ProposeSwapSheet } from './ProposeSwapSheet';
 export { ItemStatusBadge } from './StatusBadge';

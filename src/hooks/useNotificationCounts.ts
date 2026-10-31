@@ -14,6 +14,7 @@ async function loadCounts(): Promise<NotificationCounts> {
   if (previous && (previous.latestId !== next.latestId || previous.unreadMessageCount !== next.unreadMessageCount)) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.notificationList });
     void queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations });
   }
   return next;
 }
@@ -37,6 +38,8 @@ export function setNotificationCounts(counts: NotificationCounts) {
     unreadCount: counts.unreadCount,
     unreadMessageCount: counts.unreadMessageCount,
     unreadConversationCount: counts.unreadConversationCount,
+    unreadDirectMessageCount: counts.unreadDirectMessageCount,
+    unreadTradeMessageCount: counts.unreadTradeMessageCount,
     latestId: counts.latestId,
   });
 }
