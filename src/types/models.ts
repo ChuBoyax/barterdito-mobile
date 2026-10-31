@@ -8,6 +8,9 @@ export type Item = {
   condition: string;
   /** The owner's public profile area; every listing uses it. */
   location: string;
+  /** Approximate centre of the owner's profile area (never a home or meetup pin). */
+  latitude?: number | null;
+  longitude?: number | null;
   /** Distance from the browsing area, when the feed is filtered by location. */
   distanceKm?: number | null;
   tags?: string[];
@@ -112,16 +115,6 @@ export type Trader = {
   color?: string;
   avatarUrl?: string | null;
   location?: string;
-};
-
-export type Thread = {
-  id: string;
-  name: string;
-  initials: string;
-  item?: string;
-  preview: string;
-  time: string;
-  unread: number;
 };
 
 export type ChatMessage = {

@@ -9,7 +9,7 @@ import { AppText, Avatar, Button, Card, EmptyState, IconButton, LoadingView, Pre
 import { useAsync } from '@/hooks/useAsync';
 import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { queryClient, useAuth, useTheme, useToast } from '@/providers';
-import { itemService, messageService, userService } from '@/services';
+import { directMessageService, itemService, userService } from '@/services';
 import { errorMessage, firstName as getFirstName } from '@/utils/format';
 import { shareTrader } from '@/utils/share';
 import { queryKeys } from '@/services/queryKeys';
@@ -68,10 +68,11 @@ export default function TraderProfileScreen() {
     requireAuth(async () => {
       setOpening(true);
       try {
-        const threadId = await messageService.openDirectThread(trader!.fullName, trader!.initials);
-        router.push(`/direct-messages/${threadId}`);
-      } catch {
-        showToast('Could not open the chat. Please try again.');
+        // Opens the one private conversation with this trader, creating it the first time.
+        const conversation = await directMessageService.start(trader!.id);
+        router.push(`/direct-messages/${conversation.id}`);
+      } catch (caught) {
+        showToast(errorMessage(caught, 'Could not open a private conversation.'));
       } finally {
         setOpening(false);
       }

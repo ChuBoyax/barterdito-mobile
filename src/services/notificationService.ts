@@ -17,12 +17,22 @@ export type NotificationCounts = {
   unreadCount: number;
   unreadMessageCount: number;
   unreadConversationCount: number;
+  /** Split of unreadMessageCount between private messages and trade chats (for the Inbox tabs). */
+  unreadDirectMessageCount: number;
+  unreadTradeMessageCount: number;
   latestId: number;
 };
 
 export type NotificationsPage = NotificationCounts & { notifications: AppNotification[]; hasMore: boolean; nextBeforeId: number | null };
 
-type CountsRow = { unread_count: number; unread_message_count: number; unread_conversation_count: number; latest_id: number };
+type CountsRow = {
+  unread_count: number;
+  unread_message_count: number;
+  unread_conversation_count: number;
+  unread_direct_message_count?: number;
+  unread_trade_message_count?: number;
+  latest_id: number;
+};
 type NotificationRow = {
   id: number;
   offer_id: string;
@@ -38,6 +48,8 @@ const toCounts = (row: CountsRow): NotificationCounts => ({
   unreadCount: row.unread_count,
   unreadMessageCount: row.unread_message_count,
   unreadConversationCount: row.unread_conversation_count,
+  unreadDirectMessageCount: row.unread_direct_message_count ?? 0,
+  unreadTradeMessageCount: row.unread_trade_message_count ?? row.unread_message_count,
   latestId: row.latest_id,
 });
 
