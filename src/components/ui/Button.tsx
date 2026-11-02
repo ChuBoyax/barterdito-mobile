@@ -70,7 +70,7 @@ export function Button({
         style,
       ]}>
       {loading ? <ActivityIndicator size="small" color={palette.fg} /> : Icon ? <Icon size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
-      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={1}>
+      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={2}>
         {label}
       </Text>
       {IconRight ? <IconRight size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
@@ -80,10 +80,11 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999 },
-  regular: { height: 52, paddingHorizontal: 22 },
-  compact: { height: 40, paddingHorizontal: 16 },
+  // minHeight, not height: larger phone text wraps to a second line and the button grows with it.
+  regular: { minHeight: 52, paddingHorizontal: 22, paddingVertical: 8 },
+  compact: { minHeight: 40, paddingHorizontal: 16, paddingVertical: 6 },
   full: { alignSelf: 'stretch' },
   inactive: { opacity: 0.5 },
-  label: { fontFamily: fonts.bold, fontSize: 14 },
+  label: { fontFamily: fonts.bold, fontSize: 14, flexShrink: 1, textAlign: 'center' },
   labelCompact: { fontSize: 12.5 },
 });
