@@ -8,6 +8,8 @@ import { BottomSheet } from './BottomSheet';
 
 type SelectFieldProps = {
   label?: string;
+  /** Marks the label with a red asterisk; validation stays with the caller. */
+  required?: boolean;
   value: string;
   options: string[];
   onChange: (value: string) => void;
@@ -16,12 +18,17 @@ type SelectFieldProps = {
 };
 
 
-export function SelectField({ label, value, options, onChange, placeholder = 'Select…', error }: SelectFieldProps) {
+export function SelectField({ label, required, value, options, onChange, placeholder = 'Select…', error }: SelectFieldProps) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   return (
     <View style={styles.wrap}>
-      {label ? <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: colors.ink }]}>{label}</Text> : null}
+      {label ? (
+        <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: colors.ink }]}>
+          {label}
+          {required ? <Text style={{ color: colors.red }}> *</Text> : null}
+        </Text>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label ?? placeholder}

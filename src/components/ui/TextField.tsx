@@ -7,6 +7,8 @@ import { fonts, maxFontScale, neu } from '@/theme';
 
 type TextFieldProps = TextInputProps & {
   label?: string;
+  /** Marks the label with a red asterisk; validation stays with the caller. */
+  required?: boolean;
   hint?: string;
   error?: string;
   icon?: LucideIcon;
@@ -16,7 +18,7 @@ type TextFieldProps = TextInputProps & {
 };
 
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, hint, error, icon: Icon, right, labelAction, showCount, multiline, style, value, maxLength, onFocus, onBlur, ...rest },
+  { label, required, hint, error, icon: Icon, right, labelAction, showCount, multiline, style, value, maxLength, onFocus, onBlur, ...rest },
   ref,
 ) {
   const { colors } = useTheme();
@@ -26,7 +28,10 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     <View style={styles.wrap}>
       {label ? (
         <View style={styles.labelRow}>
-          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: colors.ink }]}>{label}</Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: colors.ink }]}>
+            {label}
+            {required ? <Text style={{ color: colors.red }}> *</Text> : null}
+          </Text>
           {labelAction}
         </View>
       ) : null}
