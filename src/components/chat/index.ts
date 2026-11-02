@@ -1,3 +1,4 @@
+export { ChatFrame } from './ChatFrame';
 export { DirectThreadRow } from './DirectThreadRow';
 export { MessageBubble } from './MessageBubble';
 export { MessageComposer } from './MessageComposer';

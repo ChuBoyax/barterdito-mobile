@@ -2,9 +2,9 @@ import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ChevronRight, Package } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, Alert, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Alert, AppState, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { MessageBubble, MessageComposer } from '@/components/chat';
+import { ChatFrame, MessageBubble, MessageComposer } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
 import { shortDate } from '@/components/trades';
 import { AppText, Avatar, Badge, Button, LoadingView } from '@/components/ui';
@@ -233,10 +233,7 @@ function TradeChat() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
+    <ChatFrame>
       {/* The other trader replaces the generic "Trade Chat" title: one header row instead of two. */}
       <Stack.Screen
         options={{
@@ -330,7 +327,7 @@ function TradeChat() {
           Read-only
         </AppText>
       )}
-    </KeyboardAvoidingView>
+    </ChatFrame>
   );
 }
 
@@ -352,7 +349,7 @@ const styles = StyleSheet.create({
   thumbs: { flexDirection: 'row' },
   thumb: { width: 34, height: 34, borderRadius: 10, borderWidth: 2, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   overlap: { marginLeft: -10 },
-  list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
+  list: { flexGrow: 1, width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
   system: { alignSelf: 'center', maxWidth: '85%', paddingVertical: 2 },
   error: { paddingHorizontal: 16 },
   readonly: { padding: 16 },
