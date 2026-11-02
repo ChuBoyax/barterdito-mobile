@@ -46,6 +46,8 @@ export default function ItemDetailScreen() {
   const showToast = useToast();
   const { items, savedIds, heartedIds, toggleSaved, toggleHeart } = useMarketplace();
   const { data: fetched, loading, error } = useAsync(queryKeys.item(id), () => itemService.getItem(id));
+  // Hearts are local and this item comes from its own request, so the feed's count update never reaches it.
+  const [initiallyHearted] = useState(() => heartedIds.includes(id));
   const [activeImage, setActiveImage] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
@@ -174,7 +176,7 @@ export default function ItemDetailScreen() {
           <AppText variant="hero">{item.title}</AppText>
           <View style={styles.metaRow}>
             <Meta icon={Eye} label={`${item.views} views`} />
-            <Meta icon={Heart} label={`${item.hearts} likes`} />
+            <Meta icon={Heart} label={`${Math.max(0, item.hearts + (hearted ? 1 : 0) - (initiallyHearted ? 1 : 0))} likes`} />
           </View>
 
           <View style={[styles.wants, { backgroundColor: colors.orangeSoft, borderColor: colors.orange }]}>

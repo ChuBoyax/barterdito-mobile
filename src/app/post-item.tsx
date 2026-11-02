@@ -1,5 +1,5 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowRight, Check, MapPin, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react-native';
+import { ArrowRight, Check, ChevronDown, ChevronUp, MapPin, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -52,6 +52,7 @@ function PostItemForm() {
   const [publishing, setPublishing] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
   const original = useRef<string | null>(null);
 
   const errors = showErrors ? validateDraft(draft) : {};
@@ -266,9 +267,19 @@ function PostItemForm() {
               <MapPin size={18} color={colors.orange} />
               <View style={styles.flex}>
                 <AppText variant="h3">Trader location</AppText>
-                <AppText variant="small" color={user?.location ? 'ink' : 'muted'}>
-                  {user?.location || 'Add your city or barangay in your profile to help nearby traders find your items.'}
-                </AppText>
+                {/* Full addresses run long: two lines until tapped, like the website. */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: addressOpen }}
+                  accessibilityHint={addressOpen ? 'Shows less of the address' : 'Shows the complete address'}
+                  disabled={!user?.location}
+                  onPress={() => setAddressOpen((open) => !open)}
+                  style={styles.address}>
+                  <AppText variant="small" color={user?.location ? 'ink' : 'muted'} numberOfLines={user?.location && !addressOpen ? 2 : undefined} style={styles.flex}>
+                    {user?.location || 'Add your city or barangay in your profile to help nearby traders find your items.'}
+                  </AppText>
+                  {user?.location ? addressOpen ? <ChevronUp size={14} color={colors.muted} /> : <ChevronDown size={14} color={colors.muted} /> : null}
+                </Pressable>
                 <AppText variant="caption">All your items use your profile area.</AppText>
                 <Pressable accessibilityRole="button" onPress={() => router.push('/settings?edit=profile')} hitSlop={8} style={styles.areaLink}>
                   <AppText variant="caption" color="orange" weight="bold">
@@ -322,5 +333,6 @@ const styles = StyleSheet.create({
   inlineAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   area: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 16, padding: 14 },
   areaLink: { alignSelf: 'flex-start', marginTop: 6 },
+  address: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
 });
