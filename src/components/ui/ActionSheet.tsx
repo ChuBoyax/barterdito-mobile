@@ -91,5 +91,5 @@ const styles = StyleSheet.create({
   options: { paddingBottom: 10 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, paddingHorizontal: 8, paddingVertical: 10 },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 6, marginHorizontal: 8 },
-  cancel: { height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  cancel: { minHeight: 50, paddingVertical: 8, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 });

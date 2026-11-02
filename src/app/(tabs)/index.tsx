@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   actions: { flexDirection: 'row', gap: 8 },
   searchBlock: { marginTop: 4 },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, height: 54, paddingLeft: 16, paddingRight: 6 },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, minHeight: 54, paddingLeft: 16, paddingRight: 6 },
   searchInput: { flex: 1, fontFamily: fonts.medium, fontSize: 15, paddingVertical: 10 },
   clearButton: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   filterButton: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

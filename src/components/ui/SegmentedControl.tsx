@@ -57,8 +57,8 @@ export function SegmentedControl<T extends string>({ segments, value, onChange }
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', borderRadius: 999, padding: 5 },
   indicator: { position: 'absolute', top: 5, bottom: 5, left: 5, borderRadius: 999 },
-  segment: { flex: 1, height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  label: { fontFamily: fonts.bold, fontSize: 13 },
+  segment: { flex: 1, minHeight: 40, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  label: { fontFamily: fonts.bold, fontSize: 13, flexShrink: 1, textAlign: 'center' },
   count: { minWidth: 20, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1, alignItems: 'center' },
   countText: { fontFamily: fonts.extrabold, fontSize: 10 },
 });

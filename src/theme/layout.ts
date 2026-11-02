@@ -9,4 +9,5 @@ export const maxContentWidth = {
   wide: 960,
 } as const;
 
-export const maxFontScale = 1.3;
+/** How far text follows the phone's font-size setting. Layouts use minHeight and wrapping, so they grow with it. */
+export const maxFontScale = 1.5;
