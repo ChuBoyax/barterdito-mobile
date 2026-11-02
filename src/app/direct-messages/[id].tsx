@@ -72,27 +72,36 @@ function DirectChat() {
   const newestId = messages.at(-1)?.id;
   const newestRef = useRef<number | undefined>(undefined);
   newestRef.current = newestId;
-  const acknowledged = useRef(0);
+  const acknowledged = useRef({ through: 0, reminder: null as string | null });
+  // The reminder token seen on screen: only that one is cleared when the latest messages are read.
+  const reminder = thread?.unreadReminderId ?? null;
+  const reminderRef = useRef(reminder);
+  reminderRef.current = reminder;
 
   // Acknowledge only what is on screen: the newest message, while scrolled to the bottom.
   const markRead = useCallback(() => {
     const newest = newestRef.current;
-    if (!newest || newest <= acknowledged.current || !followLatest.current || AppState.currentState !== 'active') return;
-    acknowledged.current = newest;
+    const token = reminderRef.current;
+    const done = acknowledged.current;
+    if (!newest || !followLatest.current || AppState.currentState !== 'active') return;
+    if (newest <= done.through && (!token || token === done.reminder)) return;
+    acknowledged.current = { through: Math.max(newest, done.through), reminder: token };
     directMessageService
-      .markRead(id, newest)
-      .then(() => {
+      .markRead(id, newest, token)
+      .then((remaining) => {
+        // A newer reminder made on another device survives this acknowledgement.
+        setThread((current) => (current && current.unreadReminderId === token ? { ...current, unreadReminderId: remaining, isUnread: remaining !== null } : current));
         void queryClient.invalidateQueries({ queryKey: queryKeys.notificationCounts });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
       })
       .catch(() => {
-        acknowledged.current = 0;
+        acknowledged.current = done;
       });
   }, [id]);
 
   useEffect(() => {
     if (loaded) markRead();
-  }, [loaded, newestId, markRead]);
+  }, [loaded, newestId, reminder, markRead]);
   useEffect(() => {
     if (!followLatest.current) return;
     const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
@@ -132,7 +141,7 @@ function DirectChat() {
       setMessages((old) => merge(old, [sent]));
       pending.current = null;
       setDraft('');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
     } catch (caught) {
       setError(errorMessage(caught, 'Message could not be sent. Try again.'));
     } finally {
