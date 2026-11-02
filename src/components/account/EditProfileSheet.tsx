@@ -77,9 +77,10 @@ export function EditProfileSheet({ visible, onClose }: EditProfileSheetProps) {
     setNameError(undefined);
     setAreaError(undefined);
     cancelLocate();
-    // Reset only when the sheet opens; `cancelLocate` is recreated every render.
+    // Reset only when the sheet opens: session checks replace the `user` object (for example on
+    // returning from the photo picker) and must not wipe edits. `cancelLocate` is recreated every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, user]);
+  }, [visible, user?.id]);
 
   const draft = area ?? (user ? savedArea(user) : null);
   const changed =

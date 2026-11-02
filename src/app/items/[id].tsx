@@ -102,7 +102,7 @@ export default function ItemDetailScreen() {
   const gallery = item.imageUrls?.length ? item.imageUrls : [item.image];
   const saved = savedIds.includes(item.id);
   const hearted = heartedIds.includes(item.id);
-  const more = items.filter((other) => other.userId === item.userId && other.id !== item.id);
+  const more = items.filter((other) => other.userId === item.userId && other.id !== item.id && other.status !== 'Traded');
   const heroHeight = Math.round(Math.min(width * 0.9, height * 0.46));
   const sideInset = Math.max(14, (width - contentWidth) / 2 + 14);
   const traded = item.status === 'Traded';

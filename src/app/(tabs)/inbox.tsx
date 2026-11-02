@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowRightLeft, ChevronRight, MessageCircle, MessageSquare, Plus, RotateCcw, Search } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DirectThreadRow, NewMessageSheet } from '@/components/chat';
@@ -42,6 +42,14 @@ function InboxContent() {
   const composeMounted = useMountOnOpen(composing);
   const counts = useNotificationCounts();
   const direct = tab === 'messages';
+
+  // This tab stays mounted, so a later `/inbox?tab=…` link arrives as a param change. Clearing it lets the same link work again.
+  useEffect(() => {
+    if (!params.tab) return;
+    setTab(params.tab === 'offers' || params.tab === 'completed' ? params.tab : 'messages');
+    setSearch('');
+    router.setParams({ tab: undefined });
+  }, [params.tab]);
 
   const pms = usePagedQuery(queryKeys.directConversations, (offset) => directMessageService.getConversations(offset), selectDirect);
   const trades = usePagedQuery(

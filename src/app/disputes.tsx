@@ -33,6 +33,13 @@ function DisputeContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  async function addEvidence() {
+    const remaining = 5 - evidence.length;
+    if (remaining <= 0) return showToast('Up to 5 photos');
+    const uris = await pickImages(remaining);
+    setEvidence((current) => [...current, ...uris].slice(0, 5));
+  }
+
   async function submit() {
     if (!trade) return showToast('Select a completed trade');
     if (details.trim().length < 20) return showToast('Describe what happened (at least 20 characters)');
@@ -79,7 +86,7 @@ function DisputeContent() {
           placeholder="Include dates, agreements, and what resolution you are requesting…"
         />
         <Pressable
-          onPress={() => void pickImages(5 - evidence.length).then((uris) => setEvidence((current) => [...current, ...uris].slice(0, 5)))}
+          onPress={() => void addEvidence()}
           style={[styles.upload, { borderColor: colors.line, backgroundColor: colors.surface2 }]}>
           <ImagePlus size={22} color={colors.orange} />
           <View style={styles.flex}>

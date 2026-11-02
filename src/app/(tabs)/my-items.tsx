@@ -112,7 +112,6 @@ function MyItemsContent() {
       open && { label: 'Edit listing', icon: Edit3, description: 'Update photos, details, status, or what you want', onPress: () => router.push(`/post-item?edit=${item.id}`) },
       { label: 'Share', icon: Share2, description: 'Send the link to friends', onPress: () => void shareItem(item) },
       open && { label: 'Mark as traded', icon: CheckCircle2, description: 'Remove it from the marketplace', onPress: () => void changeStatus(item, 'Traded') },
-      !open && { label: 'Mark as active', icon: RotateCcw, description: 'List it in the marketplace again', onPress: () => void changeStatus(item, 'Active') },
       { label: 'Delete listing', icon: Trash2, description: 'Permanently delete it and its photos', destructive: true, onPress: () => void remove(item) },
     ];
     return options.filter((option): option is ActionSheetOption => Boolean(option));

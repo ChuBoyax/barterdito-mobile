@@ -48,7 +48,7 @@ export default function BrowseScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const visibleItems = useMemo(() => itemService.filterItems(items, filters), [items, filters]);
-  const hotItems = useMemo(() => items.filter((item) => item.hot), [items]);
+  const hotItems = useMemo(() => items.filter((item) => item.hot && item.status !== 'Traded'), [items]);
   // The profile area is the default, so only another place (or "Any location") counts as a filter.
   const areaChanged = (area?.id ?? null) !== (profileArea?.id ?? null);
   const filtersActive = filters.condition !== defaultFilters.condition || filters.sort !== defaultFilters.sort || areaChanged;

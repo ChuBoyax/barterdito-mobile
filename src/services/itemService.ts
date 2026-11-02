@@ -174,7 +174,9 @@ function splitTags(tags: string): string[] {
 
 /** No location fields: the backend gives every listing its owner's profile area. */
 async function toListingWrite(draft: ItemDraft) {
-  const images = await Promise.all(draft.photos.map((uri) => (isLocalPhoto(uri) ? photoDataUrl(uri) : Promise.resolve(storedMediaPath(uri)))));
+  // One at a time: decoding several full-size photos at once can run low-end phones out of memory.
+  const images: string[] = [];
+  for (const uri of draft.photos) images.push(isLocalPhoto(uri) ? await photoDataUrl(uri) : storedMediaPath(uri));
   return {
     title: draft.title.trim(),
     description: draft.description.trim(),

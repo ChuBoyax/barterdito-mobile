@@ -78,7 +78,12 @@ function PostItemForm() {
           original.current = JSON.stringify(loaded);
           setDraft(loaded);
         })
-        .catch((error) => showToast(errorMessage(error, 'Could not load this listing')));
+        .catch((error) => {
+          showToast(errorMessage(error, 'Could not load this listing'));
+          // Staying on a blank form could overwrite the listing with whatever gets typed in.
+          if (router.canGoBack()) router.back();
+          else router.replace('/my-items');
+        });
       return;
     }
     void readJson<ItemDraft>(draftKey).then((saved) => {

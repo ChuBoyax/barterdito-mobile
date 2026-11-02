@@ -8,6 +8,7 @@ export const storageKeys = {
   postDraft: 'barterdito-post-draft',
   interactions: 'barterdito-interactions',
   feed: 'barterdito-feed',
+  photoAccess: 'barterdito-photo-access',
 } as const;
 
 export async function readJson<T>(key: string): Promise<T | null> {
