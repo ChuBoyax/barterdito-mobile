@@ -6,12 +6,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { RequireAuth } from '@/components/layout';
 import { ListingPreview, PhotoGrid, StepIndicator } from '@/components/listing';
 import { AppText, Badge, Button, Card, InfoNote, Screen, SelectField, TextField } from '@/components/ui';
-import { itemStatuses } from '@/constants/status';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { queryClient, useAuth, useMarketplaceActions, useTheme, useToast } from '@/providers';
 import { aiService, itemService } from '@/services';
-import type { ItemDraft, ItemStatus } from '@/types/models';
+import type { ItemDraft } from '@/types/models';
 import { errorMessage } from '@/utils/format';
 import { emptyDraft, firstInvalidStep, itemToDraft, MAX_DESCRIPTION_LENGTH, MAX_PHOTOS, validateDraft, withCover } from '@/utils/listing';
 import { proposalReturn } from '@/utils/proposalReturn';
@@ -287,9 +286,6 @@ function PostItemForm() {
               hint="Separate with commas. Up to 10 tags."
               error={errors.tags}
             />
-            {edit ? (
-              <SelectField label="Listing status" value={draft.status} options={itemStatuses} onChange={(value) => update('status', value as ItemStatus)} />
-            ) : null}
             <InfoNote icon={ShieldCheck} title="Agree on the meetup in chat" text="After a proposal is accepted, choose a public place together in your trade conversation." />
           </>
         ) : null}
