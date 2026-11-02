@@ -13,10 +13,21 @@ export type ApiUser = AreaRow & {
   bio?: string;
   avatar_url?: string | null;
   email_verified: boolean;
+  two_factor_enabled?: boolean;
+  has_password?: boolean;
   created_at: string;
 };
 
 type Message = { message: string };
+
+/** The password was accepted, but no session exists until the emailed code is confirmed. */
+export type TwoFactorChallenge = { twoFactorRequired: true; challengeToken: string; expiresIn: number };
+
+function isTwoFactorChallenge(value: unknown): value is { two_factor_required: true; challenge_token: string; expires_in: number } {
+  if (typeof value !== 'object' || value === null) return false;
+  const challenge = value as Record<string, unknown>;
+  return challenge.two_factor_required === true && typeof challenge.challenge_token === 'string';
+}
 
 export function joinedLabel(createdAt: string): string {
   const date = new Date(createdAt);
@@ -33,6 +44,8 @@ export function toUser(user: ApiUser): User {
     ...toArea(user),
     avatarUrl: mediaUrl(user.avatar_url),
     emailVerified: user.email_verified,
+    twoFactorEnabled: user.two_factor_enabled ?? false,
+    hasPassword: user.has_password ?? false,
     createdAt: user.created_at,
     joined: joinedLabel(user.created_at),
   };
@@ -82,8 +95,26 @@ async function signedIn(result: unknown): Promise<User> {
 }
 
 export const authService = {
-  async signIn({ email, password }: SignInInput): Promise<User> {
-    return signedIn(await send('login', { email: email.trim().toLowerCase(), password }));
+  /** Accounts with two-factor login get a challenge instead of a session; finish with verifyLogin. */
+  async signIn({ email, password }: SignInInput): Promise<User | TwoFactorChallenge> {
+    const result = await send<unknown>('login', { email: email.trim().toLowerCase(), password });
+    if (isTwoFactorChallenge(result)) {
+      return { twoFactorRequired: true, challengeToken: result.challenge_token, expiresIn: result.expires_in };
+    }
+    return signedIn(result);
+  },
+
+  async verifyLogin(challengeToken: string, code: string): Promise<User> {
+    return signedIn(await send('verify-login', { challenge_token: challengeToken, code }));
+  },
+
+  async resendLoginCode(challengeToken: string): Promise<void> {
+    await send<Message>('resend-login-code', { challenge_token: challengeToken });
+  },
+
+  /** Turns the emailed login code on or off; the backend confirms the current password. */
+  async setTwoFactor(enabled: boolean, currentPassword: string): Promise<void> {
+    await authenticatedRequest(() => send<Message>(enabled ? 'enable-two-factor' : 'disable-two-factor', { current_password: currentPassword }));
   },
 
   /** Starts a pending registration; the account is created by verifyEmail. */

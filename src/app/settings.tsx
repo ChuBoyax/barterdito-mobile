@@ -104,6 +104,7 @@ export default function SettingsScreen() {
       </Section>
 
       {authenticated ? <ChangePassword /> : null}
+      {authenticated && user?.hasPassword ? <TwoFactorLogin /> : null}
 
       {authenticated ? (
         <Section title="Notifications" footer={allOff ? 'All notifications are off' : undefined}>
@@ -249,6 +250,73 @@ function ChangePassword() {
           <Button label="Update" variant="secondary" compact loading={busy} disabled={!current || !next} style={styles.grow} onPress={() => void submit()} />
         </View>
       </View>
+    </Section>
+  );
+}
+
+/** Emailed code at password sign-in; on by default, and changing it confirms the current password. */
+function TwoFactorLogin() {
+  const { user, refreshUser } = useAuth();
+  const showToast = useToast();
+  const enabled = Boolean(user?.twoFactorEnabled);
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  function close() {
+    setOpen(false);
+    setPassword('');
+    setError('');
+  }
+
+  async function submit() {
+    if (!password) return setError('Enter your current password.');
+    setError('');
+    setBusy(true);
+    try {
+      await authService.setTwoFactor(!enabled, password);
+      await refreshUser();
+      showToast(enabled ? 'Two-factor login is off.' : 'Two-factor login is on.');
+      close();
+    } catch (caught) {
+      setError(errorMessage(caught, 'Could not update two-factor login.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const description = enabled
+    ? 'We email you a six-digit code each time you sign in with your password.'
+    : 'Turn this on to also require a six-digit code from your email when you sign in.';
+
+  return (
+    <Section title="Two-factor login">
+      {open ? (
+        <View style={styles.password}>
+          <AppText variant="caption">{description}</AppText>
+          <TextField
+            label="Current password"
+            icon={Lock}
+            placeholder="Enter your current password"
+            value={password}
+            onChangeText={(value) => {
+              setPassword(value);
+              setError('');
+            }}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete="current-password"
+            error={error || undefined}
+          />
+          <View style={styles.actions}>
+            <Button label="Cancel" variant="ghost" compact style={styles.grow} onPress={close} />
+            <Button label={enabled ? 'Turn off' : 'Turn on'} variant="secondary" compact loading={busy} disabled={!password} style={styles.grow} onPress={() => void submit()} />
+          </View>
+        </View>
+      ) : (
+        <ListRow icon={ShieldCheck} iconTone="neutral" title="Email login code" subtitle={description} value={enabled ? 'On' : 'Off'} onPress={() => setOpen(true)} />
+      )}
     </Section>
   );
 }

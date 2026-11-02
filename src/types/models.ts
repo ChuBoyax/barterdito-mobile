@@ -71,6 +71,10 @@ export type User = ProfileArea & {
   joined: string;
   createdAt?: string;
   emailVerified?: boolean;
+  /** An emailed code is required at password sign-in. */
+  twoFactorEnabled?: boolean;
+  /** False for Google-only accounts, which cannot use two-factor login. */
+  hasPassword?: boolean;
   avatarUrl?: string | null;
 };
 
