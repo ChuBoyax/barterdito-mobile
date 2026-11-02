@@ -76,7 +76,7 @@ function ProfileContent() {
                 {meta}
               </AppText>
             ) : null}
-            {profile?.reviewCount && profile.averageRating !== null ? (
+            {profile && profile.reviewCount > 0 && profile.averageRating !== null ? (
               <View style={styles.row}>
                 <Star size={13} color={colors.yellow} fill={colors.yellow} />
                 <AppText variant="caption" color="ink" weight="bold">

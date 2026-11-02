@@ -45,6 +45,13 @@
         {
           "locationWhenInUsePermission": "Barterdito uses your location to fill in your profile area so nearby traders can find your items."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Barterdito uses your photos so you can add them to your listings, profile, and dispute evidence.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

@@ -50,6 +50,14 @@ function OffersContent() {
   const query = usePagedQuery(key, (offset) => tradeService.getOffers(tab, offset, statusFilter), selectOffers);
   const counts = query.firstPage;
 
+  // This tab stays mounted, so a later `/offers?tab=…` link arrives as a param change. Clearing it lets the same link work again.
+  useEffect(() => {
+    if (!params.tab) return;
+    setTab(params.tab === 'sent' ? 'sent' : 'received');
+    setStatusFilter('all');
+    router.setParams({ tab: undefined });
+  }, [params.tab]);
+
   // A notification link (`?tab=…&offer=…`) opens the tab and filter that offer currently belongs to.
   useEffect(() => {
     const offerId = params.offer;
