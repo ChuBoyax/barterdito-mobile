@@ -1,9 +1,18 @@
-import type { DirectConversation, DirectMessage, DirectMessagesPage, DirectPerson, DirectPresence } from '@/types/directMessages';
+import type { DirectConversation, DirectConversationsPage, DirectMessage, DirectMessagesPage, DirectPerson, DirectPresence, DirectView } from '@/types/directMessages';
 import { initialsOf } from '@/utils/format';
 import { apiRequest, authenticatedRequest, mediaUrl } from './api';
 
 type PersonRow = { id: string; full_name: string; avatar_url: string | null };
-type ConversationRow = { id: string; other: PersonRow; updated_at: string; last_message: string | null; unread_count: number; can_message: boolean };
+type ConversationRow = {
+  id: string;
+  other: PersonRow;
+  updated_at: string;
+  last_message: string | null;
+  unread_count: number;
+  can_message: boolean;
+  is_unread?: boolean;
+  unread_reminder_id?: string | null;
+};
 type MessageRow = { id: number; sender_id: string; client_id: string; body: string; created_at: string };
 type PresenceRow = { other_is_typing: boolean; typing_expires_at: string | null; other_last_read_message_id: number; server_time: string };
 
@@ -23,6 +32,8 @@ function toConversation(row: ConversationRow): DirectConversation {
     lastMessage: row.last_message,
     unreadCount: row.unread_count,
     canMessage: row.can_message,
+    isUnread: row.is_unread ?? row.unread_count > 0,
+    unreadReminderId: row.unread_reminder_id ?? null,
   };
 }
 
@@ -32,9 +43,21 @@ function toMessage(row: MessageRow): DirectMessage {
 
 /** Private messages between two traders (sign-in required), like the website's Inbox › Messages. */
 export const directMessageService = {
-  async getConversations(offset = 0): Promise<{ conversations: DirectConversation[]; total: number }> {
-    const page = await get<{ conversations: ConversationRow[]; total: number }>(`/direct-messages?limit=50&offset=${offset}`);
-    return { conversations: page.conversations.map(toConversation), total: page.total };
+  /** The Unread view is filtered by the backend before paging, so `total` and the page agree. */
+  async getConversations(offset = 0, view: DirectView = 'all'): Promise<DirectConversationsPage> {
+    const page = await get<{ conversations: ConversationRow[]; total: number; all_total?: number; unread_total?: number; view?: DirectView }>(
+      `/direct-messages?view=${view}&limit=50&offset=${offset}`,
+    );
+    // An older backend ignores `view` and would show everything under "Unread".
+    if (view === 'unread' && (page.view !== 'unread' || typeof page.unread_total !== 'number')) {
+      throw new Error('Unread filtering is unavailable. Update the backend and try again.');
+    }
+    return {
+      conversations: page.conversations.map(toConversation),
+      total: page.total,
+      allTotal: page.all_total ?? page.total,
+      unreadTotal: page.unread_total ?? 0,
+    };
   },
 
   async searchPeople(query: string): Promise<DirectPerson[]> {
@@ -61,8 +84,21 @@ export const directMessageService = {
     return toMessage(await post<MessageRow>(`${path(id)}/messages`, { body, client_id: clientId }));
   },
 
-  async markRead(id: string, throughMessageId: number): Promise<void> {
-    await post(`${path(id)}/read`, { through_message_id: throughMessageId });
+  /**
+   * Acknowledges messages up to `throughMessageId`. Pass the reminder token you observed so only
+   * that reminder is cleared; a newer one made on another device is kept. Returns the remaining token.
+   */
+  async markRead(id: string, throughMessageId: number, unreadReminderId?: string | null): Promise<string | null> {
+    const result = await post<{ unread_reminder_id?: string | null }>(`${path(id)}/read`, {
+      through_message_id: throughMessageId,
+      ...(unreadReminderId ? { unread_reminder_id: unreadReminderId } : {}),
+    });
+    return result.unread_reminder_id ?? null;
+  },
+
+  /** Your private reminder; the other trader's read receipt and the message counts are untouched. */
+  async setMarkedUnread(id: string, markedUnread: boolean): Promise<DirectConversation> {
+    return toConversation(await post<ConversationRow>(`${path(id)}/unread`, { marked_unread: markedUnread }));
   },
 
   async getPresence(id: string): Promise<DirectPresence> {

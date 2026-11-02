@@ -14,7 +14,7 @@ async function loadCounts(): Promise<NotificationCounts> {
   if (previous && (previous.latestId !== next.latestId || previous.unreadMessageCount !== next.unreadMessageCount)) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.notificationList });
     void queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
   }
   return next;
 }

@@ -10,6 +10,21 @@ export type DirectConversation = {
   unreadCount: number;
   /** False once the other account is disabled; history stays readable. */
   canMessage: boolean;
+  /** Unread incoming messages, or a personal "mark as unread" reminder. */
+  isUnread: boolean;
+  /** Your private reminder token; null when none. It never changes the other trader's read receipt. */
+  unreadReminderId: string | null;
+};
+
+/** "unread" lists conversations with incoming unread messages or your reminder, filtered before paging. */
+export type DirectView = 'all' | 'unread';
+
+export type DirectConversationsPage = {
+  conversations: DirectConversation[];
+  /** Conversations in the selected view. */
+  total: number;
+  allTotal: number;
+  unreadTotal: number;
 };
 
 export type DirectMessage = { id: number; senderId: string; clientId: string; body: string; createdAt: string };
