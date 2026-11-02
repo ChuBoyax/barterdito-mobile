@@ -22,6 +22,8 @@ type MarketplaceContextValue = {
   profileArea: Place | null;
   setArea: (place: Place | null) => void;
   savedIds: string[];
+  /** When each saved item was saved (ISO time); items saved before this was recorded have none. */
+  savedAt: Record<string, string>;
   heartedIds: string[];
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
@@ -39,6 +41,7 @@ const MarketplaceContext = createContext<MarketplaceContextValue | null>(null);
 type MarketplaceActions = Pick<MarketplaceContextValue, 'refresh' | 'toggleSaved' | 'toggleHeart' | 'upsertItem' | 'removeItem'>;
 const MarketplaceActionsContext = createContext<MarketplaceActions | null>(null);
 const noIds: string[] = [];
+const noSavedAt: Record<string, string> = {};
 const noTraders: Trader[] = [];
 
 /** Like the website: the saved area centre, or the saved GPS pair when there is no centre. */
@@ -69,6 +72,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<{ key: string; message: string } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [savedAt, setSavedAt] = useState<Record<string, string>>({});
   const [heartedIds, setHeartedIds] = useState<string[]>([]);
   // Local heart adjustments; the backend has no heart endpoint yet (same as the website).
   const [heartDelta, setHeartDelta] = useState<Record<string, number>>({});
@@ -149,6 +153,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setSavedIds([]);
+    setSavedAt({});
     setHeartedIds([]);
     setHeartDelta({});
     if (!userId) return;
@@ -156,6 +161,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
     void itemService.getInteractions(userId).then((result) => {
       if (!active) return;
       setSavedIds(result.savedIds);
+      setSavedAt(result.savedAt);
       setHeartedIds(result.heartedIds);
     });
     return () => {
@@ -164,27 +170,34 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   }, [userId]);
 
   const persist = useCallback(
-    (nextSaved: string[], nextHearted: string[]) => {
-      if (userId) void itemService.setInteractions(userId, { savedIds: nextSaved, heartedIds: nextHearted });
+    (nextSaved: string[], nextHearted: string[], nextSavedAt: Record<string, string>) => {
+      if (userId) void itemService.setInteractions(userId, { savedIds: nextSaved, heartedIds: nextHearted, savedAt: nextSavedAt });
     },
     [userId],
   );
 
   const savedRef = useRef(savedIds);
+  const savedAtRef = useRef(savedAt);
   const heartedRef = useRef(heartedIds);
   useEffect(() => {
     savedRef.current = savedIds;
+    savedAtRef.current = savedAt;
     heartedRef.current = heartedIds;
-  }, [savedIds, heartedIds]);
+  }, [savedIds, savedAt, heartedIds]);
 
   const toggleSaved = useCallback(
     (id: string) =>
       requireAuth(() => {
         const wasSaved = savedRef.current.includes(id);
         const next = wasSaved ? savedRef.current.filter((entry) => entry !== id) : [...savedRef.current, id];
+        const nextSavedAt = { ...savedAtRef.current };
+        if (wasSaved) delete nextSavedAt[id];
+        else nextSavedAt[id] = new Date().toISOString();
         savedRef.current = next;
+        savedAtRef.current = nextSavedAt;
         setSavedIds(next);
-        persist(next, heartedRef.current);
+        setSavedAt(nextSavedAt);
+        persist(next, heartedRef.current, nextSavedAt);
       }),
     [requireAuth, persist],
   );
@@ -197,7 +210,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
         heartedRef.current = next;
         setHeartedIds(next);
         setHeartDelta((current) => ({ ...current, [id]: (current[id] ?? 0) + (wasHearted ? -1 : 1) }));
-        persist(savedRef.current, next);
+        persist(savedRef.current, next, savedAtRef.current);
         showToast(wasHearted ? 'Heart removed' : 'You hearted this item');
       }),
     [requireAuth, persist, showToast],
@@ -240,6 +253,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
       profileArea,
       setArea,
       savedIds: userId ? savedIds : noIds,
+      savedAt: userId ? savedAt : noSavedAt,
       heartedIds: userId ? heartedIds : noIds,
       refresh,
       loadMore,
@@ -248,7 +262,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
       upsertItem,
       removeItem,
     }),
-    [items, source, live, scopeError, loadingMore, area, profileArea, setArea, userId, savedIds, heartedIds, refresh, loadMore, toggleSaved, toggleHeart, upsertItem, removeItem],
+    [items, source, live, scopeError, loadingMore, area, profileArea, setArea, userId, savedIds, savedAt, heartedIds, refresh, loadMore, toggleSaved, toggleHeart, upsertItem, removeItem],
   );
 
   // Stable callbacks only: screens that just trigger updates do not re-render when the feed changes.

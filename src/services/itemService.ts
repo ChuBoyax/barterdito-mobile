@@ -202,7 +202,7 @@ async function save(draft: ItemDraft, id?: string): Promise<Item> {
 }
 
 /** Saves and hearts are device-local on the website too (no backend endpoint yet). */
-type Interactions = { savedIds: string[]; heartedIds: string[] };
+type Interactions = { savedIds: string[]; heartedIds: string[]; savedAt: Record<string, string> };
 const interactionsKey = (userId: string) => `${storageKeys.interactions}:${userId}`;
 
 export const itemService = {
@@ -280,7 +280,7 @@ export const itemService = {
 
   async getInteractions(userId: string): Promise<Interactions> {
     const saved = await readJson<Interactions>(interactionsKey(userId));
-    return { savedIds: saved?.savedIds ?? [], heartedIds: saved?.heartedIds ?? [] };
+    return { savedIds: saved?.savedIds ?? [], heartedIds: saved?.heartedIds ?? [], savedAt: saved?.savedAt ?? {} };
   },
 
   async setInteractions(userId: string, interactions: Interactions): Promise<void> {

@@ -20,13 +20,15 @@ type ItemCardProps = {
   item: Item;
   saved: boolean;
   hearted?: boolean;
+  /** Replaces the listing's posted age, e.g. "Saved 2h ago" on the wishlist. */
+  ageLabel?: string;
   onOpen: (item: Item) => void;
   onSave: (id: string) => void;
   onHeart: (id: string) => void;
 };
 
 
-export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: openItem, onSave: saveItem, onHeart: heartItem }: ItemCardProps) {
+export const ItemCard = memo(function ItemCard({ item, saved, hearted, ageLabel, onOpen: openItem, onSave: saveItem, onHeart: heartItem }: ItemCardProps) {
   const { colors } = useTheme();
   const onOpen = () => openItem(item);
   const onSave = () => saveItem(item.id);
@@ -82,7 +84,7 @@ export const ItemCard = memo(function ItemCard({ item, saved, hearted, onOpen: o
           </AppText>
         </View>
         <AppText variant="caption" numberOfLines={1}>
-          {item.condition} · {item.age}
+          {item.condition} · {ageLabel ?? item.age}
         </AppText>
       </View>
     </View>
