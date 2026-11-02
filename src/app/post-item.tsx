@@ -11,6 +11,7 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { queryClient, useAuth, useMarketplaceActions, useTheme, useToast } from '@/providers';
 import { aiService, itemService } from '@/services';
 import type { ItemDraft } from '@/types/models';
+import { confirmAction } from '@/utils/confirm';
 import { errorMessage } from '@/utils/format';
 import { emptyDraft, firstInvalidStep, itemToDraft, MAX_DESCRIPTION_LENGTH, MAX_PHOTOS, validateDraft, withCover } from '@/utils/listing';
 import { proposalReturn } from '@/utils/proposalReturn';
@@ -54,6 +55,7 @@ function PostItemForm() {
   const [showErrors, setShowErrors] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const original = useRef<string | null>(null);
+  const lastGenerated = useRef('');
 
   const errors = showErrors ? validateDraft(draft) : {};
   const dirty = edit !== undefined && original.current !== null && original.current !== JSON.stringify(draft);
@@ -112,14 +114,24 @@ function PostItemForm() {
   }
 
   async function generateDescription() {
+    // The result replaces the whole description. Ask first unless it is the text this button just wrote.
+    if (draft.description.trim() && draft.description !== lastGenerated.current) {
+      const replace = await confirmAction({
+        title: 'Replace your description?',
+        message: 'Write with AI will replace the current text with new wording.',
+        confirmLabel: 'Replace',
+      });
+      if (!replace) return;
+    }
     setGenerating(true);
     try {
       const description = await aiService.generateDescription({
         title: draft.title,
         category: draft.category,
         condition: draft.condition,
-        notes: draft.description,
+        previous: draft.description,
       });
+      lastGenerated.current = description;
       update('description', description);
       showToast('AI description added — review it before publishing');
     } catch (error) {
