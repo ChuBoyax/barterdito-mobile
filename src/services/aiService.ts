@@ -25,6 +25,7 @@ export const aiService = {
   async getRecommendations(items: Item[], savedIds: string[]): Promise<Item[]> {
     const savedCategories = new Set(items.filter((item) => savedIds.includes(item.id)).map((item) => item.category));
     const score = (item: Item) => item.hearts + item.views / 20 + (savedCategories.has(item.category) ? 50 : 0);
-    return delay([...items].filter((item) => !item.mine).sort((a, b) => score(b) - score(a)).slice(0, 12), 500);
+    // Your own listings and finished trades are not trade ideas.
+    return delay(items.filter((item) => !item.mine && item.status !== 'Traded').sort((a, b) => score(b) - score(a)).slice(0, 12), 500);
   },
 };

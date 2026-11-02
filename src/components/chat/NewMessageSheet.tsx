@@ -65,7 +65,6 @@ export function NewMessageSheet({ visible, onClose }: { visible: boolean; onClos
         placeholder="Type a trader’s name"
         maxLength={120}
         autoCorrect={false}
-        autoFocus
       />
       {text.length < 2 ? <AppText variant="caption">Enter at least two characters.</AppText> : null}
       {searching ? <AppText variant="caption">Finding traders…</AppText> : null}
