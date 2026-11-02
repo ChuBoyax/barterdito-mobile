@@ -24,7 +24,7 @@ import {
   validateNewPassword,
 } from '@/utils/validation';
 
-type Mode = 'login' | 'signup' | 'verify' | 'forgot' | 'reset';
+type Mode = 'login' | 'signup' | 'verify' | 'two-factor' | 'forgot' | 'reset';
 type Field = 'fullName' | 'email' | 'code' | 'password' | 'confirm';
 type FieldErrors = Partial<Record<Field, string>>;
 
@@ -33,6 +33,7 @@ const modeFields: Record<Mode, Field[]> = {
   login: ['email', 'password'],
   signup: ['fullName', 'email', 'password', 'confirm'],
   verify: ['code'],
+  'two-factor': ['code'],
   forgot: ['email'],
   reset: ['code', 'password'],
 };
@@ -41,6 +42,7 @@ const headings: Record<Mode, [string, string]> = {
   login: ['Welcome back,\n', 'ka-barter.'],
   signup: ['Join the\n', 'swap club.'],
   verify: ['Check your\n', 'email.'],
+  'two-factor': ['Enter your\n', 'login code.'],
   forgot: ['Forgot your\n', 'password?'],
   reset: ['Choose a new\n', 'password.'],
 };
@@ -49,6 +51,7 @@ const submitLabels: Record<Mode, string> = {
   login: 'Sign in',
   signup: 'Create account',
   verify: 'Verify email',
+  'two-factor': 'Verify and sign in',
   forgot: 'Send reset code',
   reset: 'Reset password',
 };
@@ -57,7 +60,7 @@ export default function LoginScreen() {
   const params = useLocalSearchParams<{ mode?: Mode }>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { signIn, register, verifyEmail } = useAuth();
+  const { signIn, verifyLogin, register, verifyEmail } = useAuth();
   const showToast = useToast();
   const [mode, setMode] = useState<Mode>(params.mode === 'signup' ? 'signup' : 'login');
   const [fullName, setFullName] = useState('');
@@ -66,6 +69,8 @@ export default function LoginScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [code, setCode] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
+  // Two-factor login: proves the password was accepted while the emailed code is entered.
+  const [challengeToken, setChallengeToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
@@ -81,7 +86,7 @@ export default function LoginScreen() {
   };
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
-  const usesCode = mode === 'verify' || mode === 'reset';
+  const usesCode = mode === 'verify' || mode === 'two-factor' || mode === 'reset';
   const fields = modeFields[mode];
   const newPassword = mode === 'signup' || mode === 'reset';
 
@@ -124,6 +129,7 @@ export default function LoginScreen() {
 
   function changeMode(next: Mode) {
     setMode(next);
+    if (next !== 'two-factor') setChallengeToken('');
     setServerError('');
     setTouched({});
     setAttempted(false);
@@ -164,8 +170,20 @@ export default function LoginScreen() {
         showToast('Password updated. Sign in with your new password.');
         return;
       }
-      const user = mode === 'verify' ? await verifyEmail(address, code.trim()) : await signIn({ email: address, password });
-      showToast(mode === 'verify' ? `Welcome to Barterdito, ${firstName(user.fullName)}!` : `Welcome back, ${firstName(user.fullName)}!`);
+      if (mode === 'login') {
+        const result = await signIn({ email: address, password });
+        if ('twoFactorRequired' in result) {
+          setChallengeToken(result.challengeToken);
+          setPendingEmail(address);
+          changeMode('two-factor');
+          return;
+        }
+        showToast(`Welcome back, ${firstName(result.fullName)}!`);
+        close();
+        return;
+      }
+      const user = mode === 'two-factor' ? await verifyLogin(challengeToken, code.trim()) : await verifyEmail(address, code.trim());
+      showToast(mode === 'two-factor' ? `Welcome back, ${firstName(user.fullName)}!` : `Welcome to Barterdito, ${firstName(user.fullName)}!`);
       close();
     } catch (caught) {
       setServerError(errorMessage(caught, 'Authentication failed.'));
@@ -179,7 +197,8 @@ export default function LoginScreen() {
     setServerError('');
     setSubmitting(true);
     try {
-      if (mode === 'verify') await authService.resendVerification(pendingEmail);
+      if (mode === 'two-factor') await authService.resendLoginCode(challengeToken);
+      else if (mode === 'verify') await authService.resendVerification(pendingEmail);
       else await authService.resendPasswordReset(pendingEmail);
       showToast('A new code has been sent.');
     } catch (caught) {
@@ -192,7 +211,7 @@ export default function LoginScreen() {
   const lead =
     mode === 'signup'
       ? 'Create an account and give useful things a second story.'
-      : mode === 'verify'
+      : mode === 'verify' || mode === 'two-factor'
         ? `Enter the six-digit code sent to ${pendingEmail}.`
         : mode === 'forgot'
           ? 'We’ll email you a code to reset your password.'
@@ -282,6 +301,7 @@ export default function LoginScreen() {
                   autoComplete="one-time-code"
                   textContentType="oneTimeCode"
                   maxLength={6}
+                  autoFocus={mode === 'two-factor'}
                 />
               ) : (
                 <TextField
@@ -353,7 +373,7 @@ export default function LoginScreen() {
               ) : null}
               <Button
                 label={submitLabels[mode]}
-                icon={mode === 'signup' ? UserPlus : mode === 'verify' ? MailCheck : mode === 'login' ? LogIn : KeyRound}
+                icon={mode === 'signup' ? UserPlus : mode === 'verify' ? MailCheck : mode === 'login' || mode === 'two-factor' ? LogIn : KeyRound}
                 loading={submitting}
                 onPress={() => void submit()}
               />

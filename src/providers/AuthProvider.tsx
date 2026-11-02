@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 
 import { authService, userService } from '@/services';
 import { isUnauthorized, onSessionExpired } from '@/services/api';
-import type { SignInInput, SignUpInput } from '@/services/authService';
+import type { SignInInput, SignUpInput, TwoFactorChallenge } from '@/services/authService';
 import { setViewer } from '@/services/itemService';
 import type { ProfileWrite } from '@/services/userService';
 import type { User } from '@/types/models';
@@ -16,7 +16,8 @@ type AuthContextValue = {
   user: User | null;
   authenticated: boolean;
   ready: boolean;
-  signIn: (input: SignInInput) => Promise<User>;
+  signIn: (input: SignInInput) => Promise<User | TwoFactorChallenge>;
+  verifyLogin: (challengeToken: string, code: string) => Promise<User>;
   register: (input: SignUpInput) => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<User>;
   signOut: () => Promise<void>;
@@ -101,7 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(
     async (input: SignInInput) => {
       revision.current++;
-      return apply(await authService.signIn(input));
+      const result = await authService.signIn(input);
+      return 'twoFactorRequired' in result ? result : apply(result);
+    },
+    [apply],
+  );
+
+  const verifyLogin = useCallback(
+    async (challengeToken: string, code: string) => {
+      revision.current++;
+      return apply(await authService.verifyLogin(challengeToken, code));
     },
     [apply],
   );
@@ -166,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authenticated: Boolean(user),
       ready,
       signIn,
+      verifyLogin,
       register,
       verifyEmail,
       signOut,
@@ -174,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshUser: check,
       requireAuth,
     }),
-    [user, ready, signIn, register, verifyEmail, signOut, forgetSession, updateProfile, check, requireAuth],
+    [user, ready, signIn, verifyLogin, register, verifyEmail, signOut, forgetSession, updateProfile, check, requireAuth],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
