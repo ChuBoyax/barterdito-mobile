@@ -1,12 +1,14 @@
 import { useQueries } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Bookmark, Compass } from 'lucide-react-native';
+import { useCallback, useState } from 'react';
 
 import { RequireAuth } from '@/components/layout';
 import { ItemGrid } from '@/components/marketplace';
 import { EmptyState, Screen } from '@/components/ui';
 import { useMarketplace } from '@/providers';
 import { itemService } from '@/services';
+import { timeAgo } from '@/services/itemService';
 import { queryKeys } from '@/services/queryKeys';
 import type { Item } from '@/types/models';
 
@@ -18,8 +20,17 @@ export default function WishlistScreen() {
   );
 }
 
+/** Items saved before save times were recorded have no time to show. */
+function savedLabel(at: string | undefined, now: number) {
+  if (!at) return 'Saved';
+  return now - new Date(at).getTime() < 60_000 ? 'Saved just now' : `Saved ${timeAgo(at)}`;
+}
+
 function WishlistContent() {
-  const { items, savedIds } = useMarketplace();
+  const { items, savedIds, savedAt } = useMarketplace();
+  // Refreshes the labels on returning to this screen, which stays mounted behind others.
+  const [now, setNow] = useState(() => Date.now());
+  useFocusEffect(useCallback(() => setNow(Date.now()), []));
   // The feed only holds the browsing area; load saved items from elsewhere one by one.
   const missing = savedIds.filter((id) => !items.some((item) => item.id === id));
   const others = useQueries({
@@ -34,7 +45,7 @@ function WishlistContent() {
   return (
     <Screen>
       {saved.length || loading ? (
-        <ItemGrid items={saved} loading={loading && !saved.length} />
+        <ItemGrid items={saved} loading={loading && !saved.length} ageLabel={(item) => savedLabel(savedAt[item.id], now)} />
       ) : (
         <EmptyState
           icon={Bookmark}

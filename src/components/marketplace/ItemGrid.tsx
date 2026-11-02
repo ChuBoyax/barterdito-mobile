@@ -39,15 +39,16 @@ type ItemGridRowProps = {
   hearted: Set<string>;
   onSave: (id: string) => void;
   onHeart: (id: string) => void;
+  ageLabel?: (item: Item) => string;
 };
 
-export const ItemGridRow = memo(function ItemGridRow({ row, columns, saved, hearted, onSave, onHeart }: ItemGridRowProps) {
+export const ItemGridRow = memo(function ItemGridRow({ row, columns, saved, hearted, onSave, onHeart, ageLabel }: ItemGridRowProps) {
   return (
     <View style={styles.row}>
       {row.cells.map((item, index) => (
         <View key={item?.id ?? `skeleton-${index}`} style={styles.cell}>
           {item ? (
-            <ItemCard item={item} saved={saved.has(item.id)} hearted={hearted.has(item.id)} onOpen={openItem} onSave={onSave} onHeart={onHeart} />
+            <ItemCard item={item} saved={saved.has(item.id)} hearted={hearted.has(item.id)} ageLabel={ageLabel?.(item)} onOpen={openItem} onSave={onSave} onHeart={onHeart} />
           ) : (
             <ItemCardSkeleton />
           )}
@@ -64,10 +65,11 @@ type ItemGridProps = {
   items: Item[];
   loading?: boolean;
   columns?: number;
+  ageLabel?: (item: Item) => string;
 };
 
 /** Plain grid for short lists inside a scrolling screen. Long feeds use a FlatList with ItemGridRow. */
-export function ItemGrid({ items, loading, columns: columnsOverride }: ItemGridProps) {
+export function ItemGrid({ items, loading, columns: columnsOverride, ageLabel }: ItemGridProps) {
   const { columns: responsiveColumns } = useResponsive();
   const columns = columnsOverride ?? responsiveColumns;
   const rows = useGridRows(items, loading, columns);
@@ -76,7 +78,7 @@ export function ItemGrid({ items, loading, columns: columnsOverride }: ItemGridP
   return (
     <View style={styles.grid}>
       {rows.map((row) => (
-        <ItemGridRow key={row.key} row={row} columns={columns} saved={saved} hearted={hearted} onSave={toggleSaved} onHeart={toggleHeart} />
+        <ItemGridRow key={row.key} row={row} columns={columns} saved={saved} hearted={hearted} onSave={toggleSaved} onHeart={toggleHeart} ageLabel={ageLabel} />
       ))}
     </View>
   );
