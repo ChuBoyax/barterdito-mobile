@@ -1,8 +1,8 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { MessageBubble, MessageComposer } from '@/components/chat';
+import { ChatFrame, MessageBubble, MessageComposer } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
 import { shortDate } from '@/components/trades';
 import { AppText, Avatar, Button, LoadingView } from '@/components/ui';
@@ -165,10 +165,7 @@ function DirectChat() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
+    <ChatFrame>
       <Stack.Screen
         options={{
           headerTitle: () => (
@@ -203,9 +200,15 @@ function DirectChat() {
         }}>
         {hasMore ? <Button label="Earlier messages" variant="ghost" compact loading={olderBusy} onPress={() => void older()} /> : null}
         {loaded && !messages.length ? (
-          <AppText variant="caption" align="center">
-            No messages yet. Say hello to {other.fullName}.
-          </AppText>
+          <View style={styles.empty}>
+            <Avatar initials={other.initials} imageUrl={other.avatarUrl} size="large" />
+            <AppText variant="h3" align="center">
+              Say hello to {other.fullName}
+            </AppText>
+            <AppText variant="small" align="center">
+              Your private conversation starts here.
+            </AppText>
+          </View>
         ) : null}
         {messages.map((message) => {
           const mine = message.senderId === userId;
@@ -254,7 +257,7 @@ function DirectChat() {
           This trader is no longer available for new messages. Your conversation history is still here.
         </AppText>
       )}
-    </KeyboardAvoidingView>
+    </ChatFrame>
   );
 }
 
@@ -263,7 +266,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   name: { maxWidth: 200 },
-  list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
+  list: { flexGrow: 1, width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 24 },
   typing: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
   note: { paddingHorizontal: 16 },
   readonly: { padding: 16 },
