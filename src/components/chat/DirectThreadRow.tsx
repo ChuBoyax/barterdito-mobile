@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Mail, MailOpen } from 'lucide-react-native';
+import { MoreHorizontal, Pin } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { shortDate } from '@/components/trades';
@@ -10,24 +10,22 @@ import type { DirectConversation } from '@/types/directMessages';
 
 type DirectThreadRowProps = {
   conversation: DirectConversation;
-  /** Sets or clears your private "unread" reminder; omit to hide the button. */
-  onToggleUnread?: (conversation: DirectConversation) => void;
-  busy?: boolean;
+  /** Opens pin, archive, unread, and block; omit to hide the button. */
+  onOptions?: (conversation: DirectConversation) => void;
 };
 
 /** One private conversation in the Inbox › Messages list. */
-export function DirectThreadRow({ conversation, onToggleUnread, busy }: DirectThreadRowProps) {
+export function DirectThreadRow({ conversation, onOptions }: DirectThreadRowProps) {
   const { colors } = useTheme();
-  const { other, unreadCount, lastMessage, unreadReminderId } = conversation;
+  const { other, unreadCount, lastMessage, unreadReminderId, isPinned } = conversation;
   const unread = conversation.isUnread || unreadCount > 0;
   // Reminders are private; they never show as a message count.
   const reminder = unreadCount === 0 && unreadReminderId !== null;
-  const empty = !lastMessage;
   return (
     <View style={[styles.card, { backgroundColor: colors.surface }, neu(colors, 1)]}>
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel={`Private chat with ${other.fullName}. ${unreadCount ? `${unreadCount} unread. ` : reminder ? 'Marked unread. ' : ''}${lastMessage ?? 'No messages yet'}`}
+        accessibilityLabel={`Private chat with ${other.fullName}. ${isPinned ? 'Pinned. ' : ''}${unreadCount ? `${unreadCount} unread. ` : reminder ? 'Marked unread. ' : ''}${lastMessage ?? 'No messages yet'}`}
         onPress={() => router.push(`/direct-messages/${conversation.id}`)}
         scaleTo={0.98}
         style={styles.open}>
@@ -37,6 +35,7 @@ export function DirectThreadRow({ conversation, onToggleUnread, busy }: DirectTh
             <AppText variant="h3" weight={unread ? 'extrabold' : 'bold'} numberOfLines={1} style={styles.flex}>
               {other.fullName}
             </AppText>
+            {isPinned ? <Pin size={13} color={colors.orange} /> : null}
             <AppText variant="caption" color={unread ? 'orange' : 'muted'} weight={unread ? 'bold' : 'medium'}>
               {shortDate(conversation.updatedAt)}
             </AppText>
@@ -55,15 +54,14 @@ export function DirectThreadRow({ conversation, onToggleUnread, busy }: DirectTh
           </View>
         </View>
       </PressableScale>
-      {onToggleUnread ? (
+      {onOptions ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={unreadReminderId ? `Clear unread reminder for ${other.fullName}` : `Mark conversation with ${other.fullName} as unread`}
-          disabled={busy || empty}
+          accessibilityLabel={`Options for conversation with ${other.fullName}`}
           hitSlop={6}
-          onPress={() => onToggleUnread(conversation)}
-          style={[styles.action, { backgroundColor: colors.background }, (busy || empty) && styles.dimmed]}>
-          {unreadReminderId ? <MailOpen size={17} color={colors.orange} /> : <Mail size={17} color={colors.muted} />}
+          onPress={() => onOptions(conversation)}
+          style={[styles.action, { backgroundColor: colors.background }]}>
+          <MoreHorizontal size={18} color={colors.muted} />
         </Pressable>
       ) : null}
     </View>
@@ -80,5 +78,4 @@ const styles = StyleSheet.create({
   badgeText: { fontFamily: fonts.extrabold, fontSize: 11 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   action: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  dimmed: { opacity: 0.45 },
 });

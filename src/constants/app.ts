@@ -9,5 +9,3 @@ export const links = {
   signup: () => `${SITE_URL}/signup`,
 };
 
-/** Same UI preview switch as the website's NEXT_PUBLIC_SENTINEL_PREVIEW. Not authorization. */
-export const SENTINEL_PREVIEW = process.env.EXPO_PUBLIC_SENTINEL_PREVIEW === 'true';

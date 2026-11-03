@@ -1,4 +1,17 @@
-import type { DirectConversation, DirectConversationsPage, DirectMessage, DirectMessagesPage, DirectPerson, DirectPresence, DirectView } from '@/types/directMessages';
+import type {
+  BlockedPerson,
+  DirectConversation,
+  DirectConversationsPage,
+  DirectMessage,
+  DirectMessagesPage,
+  DirectPerson,
+  DirectPresence,
+  DirectView,
+  MessageReport,
+  MessageReportReason,
+  MessageReportStatus,
+  SharedListing,
+} from '@/types/directMessages';
 import { initialsOf } from '@/utils/format';
 import { apiRequest, authenticatedRequest, mediaUrl } from './api';
 
@@ -12,8 +25,24 @@ type ConversationRow = {
   can_message: boolean;
   is_unread?: boolean;
   unread_reminder_id?: string | null;
+  is_pinned?: boolean;
+  is_archived?: boolean;
+  blocked_by_me?: boolean;
 };
-type MessageRow = { id: number; sender_id: string; client_id: string; body: string; created_at: string };
+type ListingRow = { id: string | null; title: string; condition: string; image_url: string | null; status: SharedListing['status'] };
+type MessageRow = { id: number; sender_id: string; client_id: string; body: string; created_at: string; listing?: ListingRow | null };
+type ReportRow = {
+  id: string;
+  status: MessageReportStatus;
+  created_at: string;
+  reporter: PersonRow;
+  sender: PersonRow;
+  reason: string;
+  details: string;
+  message_body: string;
+  reviewed_at: string | null;
+  review_notes: string;
+};
 type PresenceRow = { other_is_typing: boolean; typing_expires_at: string | null; other_last_read_message_id: number; server_time: string };
 
 const path = (id: string) => `/direct-messages/${encodeURIComponent(id)}`;
@@ -34,29 +63,56 @@ function toConversation(row: ConversationRow): DirectConversation {
     canMessage: row.can_message,
     isUnread: row.is_unread ?? row.unread_count > 0,
     unreadReminderId: row.unread_reminder_id ?? null,
+    isPinned: row.is_pinned ?? false,
+    isArchived: row.is_archived ?? false,
+    blockedByMe: row.blocked_by_me ?? false,
   };
 }
 
 function toMessage(row: MessageRow): DirectMessage {
-  return { id: row.id, senderId: row.sender_id, clientId: row.client_id, body: row.body, createdAt: row.created_at };
+  const listing = row.listing;
+  return {
+    id: row.id,
+    senderId: row.sender_id,
+    clientId: row.client_id,
+    body: row.body,
+    createdAt: row.created_at,
+    listing: listing ? { id: listing.id, title: listing.title, condition: listing.condition, imageUrl: mediaUrl(listing.image_url), status: listing.status } : null,
+  };
+}
+
+function toReport(row: ReportRow): MessageReport {
+  return {
+    id: row.id,
+    status: row.status,
+    createdAt: row.created_at,
+    reporter: toPerson(row.reporter),
+    sender: toPerson(row.sender),
+    reason: row.reason,
+    details: row.details,
+    messageBody: row.message_body,
+    reviewedAt: row.reviewed_at,
+    reviewNotes: row.review_notes,
+  };
 }
 
 /** Private messages between two traders (sign-in required), like the website's Inbox › Messages. */
 export const directMessageService = {
-  /** The Unread view is filtered by the backend before paging, so `total` and the page agree. */
+  /** Views are filtered by the backend before paging, so `total` and the page agree. */
   async getConversations(offset = 0, view: DirectView = 'all'): Promise<DirectConversationsPage> {
-    const page = await get<{ conversations: ConversationRow[]; total: number; all_total?: number; unread_total?: number; view?: DirectView }>(
+    const page = await get<{ conversations: ConversationRow[]; total: number; all_total?: number; unread_total?: number; archived_total?: number; view?: DirectView }>(
       `/direct-messages?view=${view}&limit=50&offset=${offset}`,
     );
-    // An older backend ignores `view` and would show everything under "Unread".
-    if (view === 'unread' && (page.view !== 'unread' || typeof page.unread_total !== 'number')) {
-      throw new Error('Unread filtering is unavailable. Update the backend and try again.');
+    // An older backend ignores `view` and would show everything under this filter.
+    if (view !== 'all' && page.view !== view) {
+      throw new Error('This filter is unavailable. Update the backend and try again.');
     }
     return {
       conversations: page.conversations.map(toConversation),
       total: page.total,
       allTotal: page.all_total ?? page.total,
       unreadTotal: page.unread_total ?? 0,
+      archivedTotal: page.archived_total ?? 0,
     };
   },
 
@@ -84,6 +140,11 @@ export const directMessageService = {
     return toMessage(await post<MessageRow>(`${path(id)}/messages`, { body, client_id: clientId }));
   },
 
+  /** Sends one of your active listings as a card. It never creates a trade proposal. */
+  async shareListing(id: string, listingId: string, clientId: string): Promise<DirectMessage> {
+    return toMessage(await post<MessageRow>(`${path(id)}/listings`, { listing_id: listingId, client_id: clientId }));
+  },
+
   /**
    * Acknowledges messages up to `throughMessageId`. Pass the reminder token you observed so only
    * that reminder is cleared; a newer one made on another device is kept. Returns the remaining token.
@@ -99,6 +160,40 @@ export const directMessageService = {
   /** Your private reminder; the other trader's read receipt and the message counts are untouched. */
   async setMarkedUnread(id: string, markedUnread: boolean): Promise<DirectConversation> {
     return toConversation(await post<ConversationRow>(`${path(id)}/unread`, { marked_unread: markedUnread }));
+  },
+
+  /** Private to you, like archive; neither changes activity time or read receipts. */
+  async setPinned(id: string, pinned: boolean): Promise<DirectConversation> {
+    return toConversation(await post<ConversationRow>(`${path(id)}/pin`, { pinned }));
+  },
+
+  async setArchived(id: string, archived: boolean): Promise<DirectConversation> {
+    return toConversation(await post<ConversationRow>(`${path(id)}/archive`, { archived }));
+  },
+
+  /** Stops new PMs both ways while active; history stays readable and trades are unaffected. */
+  async setBlocked(id: string, blocked: boolean): Promise<DirectConversation> {
+    return toConversation(await post<ConversationRow>(`${path(id)}/block`, { blocked }));
+  },
+
+  async getBlocked(offset = 0): Promise<{ users: BlockedPerson[]; total: number }> {
+    const page = await get<{ users: { user: PersonRow; conversation_id: string; blocked_at: string }[]; total: number }>(`/direct-messages/blocked?limit=50&offset=${offset}`);
+    return { users: page.users.map((row) => ({ user: toPerson(row.user), conversationId: row.conversation_id, blockedAt: row.blocked_at })), total: page.total };
+  },
+
+  /** Only the recipient can report a message; the backend snapshots the evidence and the sender is not told. */
+  async reportMessage(id: string, messageId: number, reason: MessageReportReason, details: string): Promise<void> {
+    await post(`${path(id)}/messages/${messageId}/report`, { reason, details });
+  },
+
+  async getReports(status: MessageReportStatus, offset = 0): Promise<{ reports: MessageReport[]; total: number }> {
+    const page = await get<{ reports: ReportRow[]; total: number }>(`/direct-messages/reports?status=${status}&limit=20&offset=${offset}`);
+    return { reports: page.reports.map(toReport), total: page.total };
+  },
+
+  /** Closes a report only; it does not ban the account or delete the message. */
+  async reviewReport(reportId: string, status: 'resolved' | 'dismissed', notes: string): Promise<void> {
+    await post(`/direct-messages/reports/${encodeURIComponent(reportId)}/review`, { status, notes });
   },
 
   async getPresence(id: string): Promise<DirectPresence> {

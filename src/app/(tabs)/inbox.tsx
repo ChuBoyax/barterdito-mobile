@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowRightLeft, ChevronRight, MessageCircle, MessageSquare, Plus, RotateCcw, Search } from 'lucide-react-native';
+import { Archive, ArrowRightLeft, ChevronRight, MessageCircle, MessageSquare, Plus, RotateCcw, Search } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { DirectThreadRow, NewMessageSheet } from '@/components/chat';
+import { ConversationOptionsSheet, DirectThreadRow, NewMessageSheet } from '@/components/chat';
 import { AppHeader, RequireAuth } from '@/components/layout';
 import { ConversationCard } from '@/components/trades';
 import { AppText, Button, Chip, EmptyState, IconTile, LoadingView, PressableScale, Screen, SegmentedControl, TextField } from '@/components/ui';
@@ -11,7 +11,7 @@ import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useNotificationCounts } from '@/hooks/useNotificationCounts';
 import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { usePolling } from '@/hooks/useTradeConversation';
-import { queryClient, useAuth, useTheme } from '@/providers';
+import { useAuth, useTheme } from '@/providers';
 import { directMessageService, tradeService } from '@/services';
 import { queryKeys } from '@/services/queryKeys';
 import { neu } from '@/theme';
@@ -51,29 +51,20 @@ function InboxContent() {
     router.setParams({ tab: undefined });
   }, [params.tab]);
 
-  // Unread is filtered by the backend before paging, so counts and pages always agree.
+  // Views are filtered by the backend before paging, so counts and pages always agree.
   const [view, setView] = useState<DirectView>('all');
-  const [reminderBusy, setReminderBusy] = useState<string | null>(null);
-  const [reminderError, setReminderError] = useState('');
+  const [optionsFor, setOptionsFor] = useState<DirectConversation | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const pms = usePagedQuery(queryKeys.directConversations(view), (offset) => directMessageService.getConversations(offset, view), selectDirect);
   // Keep the last known totals visible while the other view loads.
-  const totals = useRef({ all: undefined as number | undefined, unread: undefined as number | undefined });
-  if (pms.firstPage) totals.current = { all: pms.firstPage.allTotal, unread: pms.firstPage.unreadTotal };
+  const totals = useRef({ all: undefined as number | undefined, unread: undefined as number | undefined, archived: undefined as number | undefined });
+  if (pms.firstPage) totals.current = { all: pms.firstPage.allTotal, unread: pms.firstPage.unreadTotal, archived: pms.firstPage.archivedTotal };
 
-  async function toggleUnread(conversation: DirectConversation) {
-    if (reminderBusy) return;
-    setReminderBusy(conversation.id);
-    setReminderError('');
-    try {
-      await directMessageService.setMarkedUnread(conversation.id, conversation.unreadReminderId === null);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.notificationCounts });
-    } catch (caught) {
-      setReminderError(errorMessage(caught, 'Could not update the reminder. Try again.'));
-    } finally {
-      setReminderBusy(null);
-    }
+  function chip(value: DirectView, label: string) {
+    const count = totals.current[value];
+    return <Chip label={`${label}${count === undefined ? '' : ` · ${count}`}`} active={view === value} onPress={() => setView(value)} />;
   }
+
   const trades = usePagedQuery(
     queryKeys.conversations(tab === 'completed' ? 'completed' : 'all'),
     (offset) => tradeService.getConversations(tab === 'completed', offset),
@@ -116,19 +107,15 @@ function InboxContent() {
       {direct ? (
         <>
           <View style={styles.filters}>
-            <Chip label={`All${totals.current.all === undefined ? '' : ` · ${totals.current.all}`}`} active={view === 'all'} onPress={() => setView('all')} />
-            <Chip label={`Unread${totals.current.unread === undefined ? '' : ` · ${totals.current.unread}`}`} active={view === 'unread'} onPress={() => setView('unread')} />
+            {chip('all', 'All')}
+            {chip('unread', 'Unread')}
+            {chip('archived', 'Archived')}
           </View>
           <Button label="New message" icon={Plus} variant="secondary" onPress={() => setComposing(true)} />
         </>
       ) : (
         <OffersShortcut />
       )}
-      {direct && reminderError ? (
-        <AppText variant="caption" color="red" weight="semibold">
-          {reminderError}
-        </AppText>
-      ) : null}
       {total ? <TextField icon={Search} value={search} onChangeText={setSearch} placeholder="Search conversations" /> : null}
       {query.isPending ? (
         <LoadingView variant="list" inline />
@@ -141,6 +128,14 @@ function InboxContent() {
               icon={MessageSquare}
               title="No unread messages"
               text="You’re caught up. Switch to All to see your conversations."
+              action="Show all"
+              onAction={() => setView('all')}
+            />
+          ) : view === 'archived' ? (
+            <EmptyState
+              icon={Archive}
+              title="No archived conversations"
+              text="Archived conversations stay here until you restore them or a new message arrives."
               action="Show all"
               onAction={() => setView('all')}
             />
@@ -167,7 +162,16 @@ function InboxContent() {
         <>
           <View style={styles.list}>
             {direct
-              ? visiblePms.map((row) => <DirectThreadRow key={row.id} conversation={row} onToggleUnread={(entry) => void toggleUnread(entry)} busy={reminderBusy !== null} />)
+              ? visiblePms.map((row) => (
+                  <DirectThreadRow
+                    key={row.id}
+                    conversation={row}
+                    onOptions={(entry) => {
+                      setOptionsFor(entry);
+                      setOptionsOpen(true);
+                    }}
+                  />
+                ))
               : <TradeRows rows={visibleTrades} />}
           </View>
           {query.hasNextPage ? (
@@ -178,6 +182,7 @@ function InboxContent() {
         <EmptyState icon={Search} title="No results" text={`No conversations match “${search.trim()}”.`} action="Clear search" onAction={() => setSearch('')} />
       )}
       {composeMounted ? <NewMessageSheet visible={composing} onClose={() => setComposing(false)} /> : null}
+      {optionsFor ? <ConversationOptionsSheet visible={optionsOpen} conversation={optionsFor} showUnread onClose={() => setOptionsOpen(false)} /> : null}
     </Screen>
   );
 }
@@ -210,7 +215,7 @@ function OffersShortcut() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  filters: { flexDirection: 'row', gap: 8 },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   shortcut: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 12 },
   chevron: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   list: { gap: 12 },

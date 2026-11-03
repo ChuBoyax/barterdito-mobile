@@ -1,13 +1,18 @@
-import { CalendarDays, CheckCircle2, Flag, HandHeart, Lock, Package, ShieldCheck, Users } from 'lucide-react-native';
+import { Lock } from 'lucide-react-native';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AccountsPanel, HistoryPanel, ReportsPanel, RolesPanel } from '@/components/admin';
 import { RequireAuth } from '@/components/layout';
-import { StatGrid } from '@/components/marketplace';
-import { AppText, Card, EmptyState, ListRow, LoadingView, Screen, SectionHeading } from '@/components/ui';
-import { SENTINEL_PREVIEW } from '@/constants/app';
-import { useAsync } from '@/hooks/useAsync';
-import { useTheme, useToast } from '@/providers';
-import { communityService } from '@/services';
+import { AppText, Chip, EmptyState, Screen } from '@/components/ui';
+import { usePolling } from '@/hooks/useTradeConversation';
+import { useAuth } from '@/providers';
+import { canOpenAdministration, hasPermission } from '@/utils/permissions';
+
+/** A removed role should take effect here without needing to sign in again. */
+const PERMISSION_REFRESH_MS = 30_000;
+
+type Panel = 'reports' | 'accounts' | 'roles' | 'history';
 
 export default function AdminScreen() {
   return (
@@ -18,57 +23,49 @@ export default function AdminScreen() {
 }
 
 function AdminContent() {
-  const { colors } = useTheme();
-  const showToast = useToast();
-  // Presentation switch only, like the website's NEXT_PUBLIC_SENTINEL_PREVIEW; there are no server roles yet.
-  const allowed = SENTINEL_PREVIEW;
-  const { data: summary, loading } = useAsync(['communityService.getAdminSummary'], () => communityService.getAdminSummary());
+  const { user, refreshUser } = useAuth();
+  const [chosen, setChosen] = useState<Panel | null>(null);
 
-  if (!allowed) {
+  usePolling(() => void refreshUser(), PERMISSION_REFRESH_MS);
+
+  if (!canOpenAdministration(user)) {
     return (
       <Screen>
-        <EmptyState
-          icon={Lock}
-          title="Sentinel access only"
-          text="Your account must have the sentinel role. This check must also be enforced by database RLS and server routes."
-        />
+        <EmptyState icon={Lock} title="Staff access only" text="Your account does not have permission to open Administration." />
       </Screen>
     );
   }
-  if (loading || !summary) return <LoadingView variant="stats" />;
+
+  const canReview = hasPermission(user, 'message_reports.review');
+  const canManageUsers = hasPermission(user, 'users.roles.manage');
+  const panels: { value: Panel; label: string; allowed: boolean }[] = [
+    { value: 'reports', label: 'Message reports', allowed: canReview || hasPermission(user, 'message_reports.read') },
+    { value: 'accounts', label: 'Accounts', allowed: hasPermission(user, 'users.read') },
+    { value: 'roles', label: 'Roles', allowed: hasPermission(user, 'roles.manage') },
+    { value: 'history', label: 'Access history', allowed: hasPermission(user, 'audit.read') },
+  ];
+  const allowed = panels.filter((panel) => panel.allowed);
+  // Permissions can change while this is open, so fall back to a panel that is still allowed.
+  const panel = allowed.find((entry) => entry.value === chosen)?.value ?? allowed[0]?.value;
 
   return (
     <Screen>
-      <View style={[styles.warning, { backgroundColor: colors.orangeSoft }]}>
-        <ShieldCheck size={22} color={colors.orange} />
-        <View style={styles.flex}>
-          <AppText variant="h3">Sentinel access</AppText>
-          <AppText variant="caption">Actions are logged and require server-side role verification.</AppText>
+      <AppText variant="small">Every action here is checked by the server and recorded.</AppText>
+      {allowed.length > 1 ? (
+        <View style={styles.tabs}>
+          {allowed.map((entry) => (
+            <Chip key={entry.value} label={entry.label} active={panel === entry.value} onPress={() => setChosen(entry.value)} />
+          ))}
         </View>
-      </View>
-      <StatGrid
-        stats={[
-          { label: 'Users', value: summary.users, icon: Users },
-          { label: 'Active posts', value: summary.activePosts, icon: Package },
-          { label: 'Open reports', value: summary.openReports, icon: Flag },
-          { label: 'Completed trades', value: summary.completedTrades, icon: CheckCircle2 },
-        ]}
-      />
-      <Card>
-        <SectionHeading eyebrow="Moderation" title="Flagged content" />
-        <EmptyState icon={ShieldCheck} title="Moderation queue is clear" text="New user and item reports will appear here." />
-      </Card>
-      <Card>
-        <SectionHeading eyebrow="Tools" title="Management" />
-        <ListRow icon={CalendarDays} title="Create trade event" subtitle="Publish a verified community meetup" onPress={() => showToast('Event editor opened')} />
-        <ListRow icon={HandHeart} title="Manage campaigns" subtitle="Review goals and campaign status" onPress={() => showToast('Campaign editor opened')} />
-        <ListRow icon={Users} title="User management" subtitle="Review, ban, or restore accounts" onPress={() => showToast('User management opened')} />
-      </Card>
+      ) : null}
+      {panel === 'reports' ? <ReportsPanel canReview={canReview} /> : null}
+      {panel === 'accounts' ? <AccountsPanel canManage={canManageUsers} /> : null}
+      {panel === 'roles' ? <RolesPanel /> : null}
+      {panel === 'history' ? <HistoryPanel /> : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  warning: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, padding: 14 },
-  flex: { flex: 1 },
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

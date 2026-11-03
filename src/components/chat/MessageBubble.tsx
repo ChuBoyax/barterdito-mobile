@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { Check, CheckCheck } from 'lucide-react-native';
+import { Check, CheckCheck, Flag } from 'lucide-react-native';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/providers/ThemeProvider';
@@ -11,17 +12,20 @@ type MessageBubbleProps = {
   onLongPress?: () => void;
   /** Delivery state of your own private message: saved by the server, or read by the other trader. */
   status?: 'sending' | 'sent' | 'read';
+  /** Shown in place of the text, such as a shared listing card. */
+  attachment?: ReactNode;
+  onReport?: () => void;
 };
 
 const statusLabels = { sending: 'Sending…', sent: 'Sent', read: 'Read' } as const;
 
-export function MessageBubble({ message, onLongPress, status }: MessageBubbleProps) {
+export function MessageBubble({ message, onLongPress, status, attachment, onReport }: MessageBubbleProps) {
   const { colors } = useTheme();
   const mine = message.mine;
   const content = (
     <>
       {message.image ? <Image source={message.image} style={styles.image} contentFit="cover" /> : null}
-      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.text, { color: mine ? colors.onPrimary : colors.ink }]}>{message.text}</Text>
+      {attachment ?? <Text maxFontSizeMultiplier={maxFontScale} style={[styles.text, { color: mine ? colors.onPrimary : colors.ink }]}>{message.text}</Text>}
     </>
   );
   return (
@@ -38,6 +42,11 @@ export function MessageBubble({ message, onLongPress, status }: MessageBubblePro
             {status === 'read' ? <CheckCheck size={12} color={colors.blue} /> : status === 'sent' ? <Check size={12} color={colors.muted} /> : null}
             <Text maxFontSizeMultiplier={maxFontScale} style={[styles.time, { color: status === 'read' ? colors.blue : colors.muted }]}>{statusLabels[status]}</Text>
           </View>
+        ) : null}
+        {onReport ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Report message" hitSlop={12} onPress={onReport} style={styles.report}>
+            <Flag size={11} color={colors.muted2} />
+          </Pressable>
         ) : null}
       </View>
     </Pressable>
@@ -56,4 +65,5 @@ const styles = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6 },
   time: { fontFamily: fonts.medium, fontSize: 10.5 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 4 },
+  report: { marginLeft: 6 },
 });

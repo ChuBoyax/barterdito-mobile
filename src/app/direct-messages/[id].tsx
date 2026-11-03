@@ -1,11 +1,13 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { MoreHorizontal, PackagePlus } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ChatFrame, MessageBubble, MessageComposer } from '@/components/chat';
+import { ChatFrame, ConversationOptionsSheet, ListingShareSheet, MessageBubble, MessageComposer, ReportMessageSheet, SharedListingCard } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
 import { shortDate } from '@/components/trades';
-import { AppText, Avatar, Button, LoadingView } from '@/components/ui';
+import { AppText, Avatar, Button, IconButton, LoadingView } from '@/components/ui';
+import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useDirectPresence } from '@/hooks/useDirectPresence';
 import { usePolling } from '@/hooks/useTradeConversation';
 import { queryClient, useAuth, useTheme } from '@/providers';
@@ -42,6 +44,10 @@ function DirectChat() {
   const [sending, setSending] = useState<string | null>(null);
   const [olderBusy, setOlderBusy] = useState(false);
   const [error, setError] = useState('');
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const sharingMounted = useMountOnOpen(sharing);
+  const [reporting, setReporting] = useState<DirectMessage | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const pending = useRef<{ body: string; client: string } | null>(null);
   const fetching = useRef(false);
@@ -125,6 +131,8 @@ function DirectChat() {
 
   const userId = user.id;
   const other = thread.other;
+  // A block can start mid-conversation; a typing state from just before it must not linger.
+  const typing = presence.typing && thread.canMessage;
 
   async function send() {
     const text = draft.trim();
@@ -179,12 +187,13 @@ function DirectChat() {
                 <AppText variant="h3" numberOfLines={1} style={styles.name}>
                   {other.fullName}
                 </AppText>
-                <AppText variant="caption" color={presence.typing ? 'green' : 'muted'}>
-                  {presence.typing ? 'typing…' : 'Private message'}
+                <AppText variant="caption" color={typing ? 'green' : 'muted'}>
+                  {typing ? 'typing…' : 'Private message'}
                 </AppText>
               </View>
             </Pressable>
           ),
+          headerRight: () => <IconButton icon={MoreHorizontal} label="Conversation options" tone="plain" onPress={() => setOptionsOpen(true)} />,
         }}
       />
 
@@ -217,13 +226,15 @@ function DirectChat() {
               key={message.id}
               message={{ id: String(message.id), mine, text: message.body, time: shortDate(message.createdAt) }}
               status={mine ? (message.id <= presence.peerRead ? 'read' : 'sent') : undefined}
+              attachment={message.listing ? <SharedListingCard listing={message.listing} /> : undefined}
+              onReport={mine ? undefined : () => setReporting(message)}
             />
           );
         })}
         {sending && !messages.some((entry) => entry.senderId === userId && entry.clientId === pending.current?.client) ? (
           <MessageBubble message={{ id: 'pending', mine: true, text: sending, time: '' }} status="sending" />
         ) : null}
-        {presence.typing ? (
+        {typing ? (
           <View style={[styles.typing, { backgroundColor: colors.surface }]} accessibilityLabel={`${other.fullName} is typing`}>
             <AppText variant="caption" weight="semibold">
               {other.fullName.split(' ')[0]} is typing…
@@ -251,12 +262,32 @@ function DirectChat() {
             presence.activity(Boolean(next.trim()));
           }}
           onSend={() => void send()}
+          onAttach={() => setSharing(true)}
+          attachIcon={PackagePlus}
+          attachLabel="Share a listing"
         />
       ) : (
         <AppText variant="caption" align="center" style={styles.readonly}>
-          This trader is no longer available for new messages. Your conversation history is still here.
+          {thread.blockedByMe
+            ? 'You blocked this user. Unblock them from conversation options or Settings to resume private messaging.'
+            : 'Private messaging is unavailable for this conversation.'}{' '}
+          Your conversation history is still here.
         </AppText>
       )}
+      <ConversationOptionsSheet visible={optionsOpen} conversation={thread} onClose={() => setOptionsOpen(false)} onChanged={setThread} />
+      {sharingMounted ? (
+        <ListingShareSheet
+          visible={sharing}
+          conversationId={id}
+          onClose={() => setSharing(false)}
+          onShared={(shared) => {
+            followLatest.current = true;
+            setMessages((old) => merge(old, [shared]));
+            void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
+          }}
+        />
+      ) : null}
+      {reporting ? <ReportMessageSheet key={reporting.id} conversationId={id} message={reporting} onClose={() => setReporting(null)} /> : null}
     </ChatFrame>
   );
 }

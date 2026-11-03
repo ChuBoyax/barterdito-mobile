@@ -1,5 +1,4 @@
 import type {
-  AdminSummary,
   AnalyticsSummary,
   Campaign,
   Faq,
@@ -73,13 +72,6 @@ export const mockReferral: ReferralSummary = {
   friendsJoined: 8,
   pointsEarned: 350,
   pending: 2,
-};
-
-export const mockAdminSummary: AdminSummary = {
-  users: 24,
-  activePosts: 15,
-  openReports: 0,
-  completedTrades: 10,
 };
 
 export const mockFaqs: Faq[] = [

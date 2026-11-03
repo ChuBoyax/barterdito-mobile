@@ -1,3 +1,4 @@
+export { accessService } from './accessService';
 export { aiService } from './aiService';
 export { authService } from './authService';
 export { ApiError, API_URL, SITE_URL } from './api';
