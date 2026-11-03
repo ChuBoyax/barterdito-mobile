@@ -77,7 +77,6 @@ export function PlaceSearch({ onSelect }: { onSelect: (place: Place) => void }) 
         returnKeyType="search"
       />
       {busy ? <AppText variant="caption">Searching places…</AppText> : null}
-      {searched && !places.length ? <AppText variant="caption">No places found. Try another city or barangay.</AppText> : null}
       {error ? (
         <View style={styles.row}>
           <AppText variant="caption" color="red" style={styles.flex}>
@@ -90,8 +89,13 @@ export function PlaceSearch({ onSelect }: { onSelect: (place: Place) => void }) 
           </Pressable>
         </View>
       ) : null}
-      {places.length ? (
+      {places.length || searched ? (
         <View style={[styles.list, { backgroundColor: colors.surface }, elevation(1, colors)]}>
+          {!places.length ? (
+            <View style={styles.option}>
+              <AppText variant="small">No places found. Try another city or barangay.</AppText>
+            </View>
+          ) : null}
           {places.map((place, index) => (
             <Pressable
               key={place.id}
@@ -103,9 +107,7 @@ export function PlaceSearch({ onSelect }: { onSelect: (place: Place) => void }) 
                 pressed && { backgroundColor: colors.surface2 },
               ]}>
               <MapPinned size={15} color={colors.muted} />
-              <AppText variant="small" color="ink" numberOfLines={2} style={styles.flex}>
-                {place.label}
-              </AppText>
+              <PlaceLabel label={place.label} />
             </Pressable>
           ))}
         </View>
@@ -115,6 +117,25 @@ export function PlaceSearch({ onSelect }: { onSelect: (place: Place) => void }) 
           <MapPin size={11} color={colors.muted2} />
           <AppText variant="caption">Places by Photon / OpenStreetMap</AppText>
         </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** The place in bold, with the region it belongs to underneath. */
+function PlaceLabel({ label }: { label: string }) {
+  const comma = label.indexOf(',');
+  const name = comma < 0 ? label : label.slice(0, comma);
+  const region = comma < 0 ? '' : label.slice(comma + 1).trim();
+  return (
+    <View style={styles.flex}>
+      <AppText variant="small" color="ink" weight="bold" numberOfLines={1}>
+        {name}
+      </AppText>
+      {region ? (
+        <AppText variant="caption" numberOfLines={1}>
+          {region}
+        </AppText>
       ) : null}
     </View>
   );

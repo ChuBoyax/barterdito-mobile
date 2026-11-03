@@ -1,4 +1,4 @@
-import { ImagePlus, Send, X } from 'lucide-react-native';
+import { ImagePlus, Send, X, type LucideIcon } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Keyboard, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,8 @@ type MessageComposerProps = {
   onChange: (value: string) => void;
   onSend: () => void;
   onAttach?: () => void;
+  attachIcon?: LucideIcon;
+  attachLabel?: string;
   editing?: boolean;
   onCancelEdit?: () => void;
 };
@@ -30,7 +32,7 @@ function useKeyboardOpen() {
   return open;
 }
 
-export function MessageComposer({ value, onChange, onSend, onAttach, editing, onCancelEdit }: MessageComposerProps) {
+export function MessageComposer({ value, onChange, onSend, onAttach, attachIcon: AttachIcon = ImagePlus, attachLabel = 'Attach image', editing, onCancelEdit }: MessageComposerProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
@@ -51,8 +53,8 @@ export function MessageComposer({ value, onChange, onSend, onAttach, editing, on
       ) : null}
       <Glass strong intensity={60} style={[styles.bar, elevation(2, colors)]}>
         {onAttach ? (
-          <Pressable accessibilityLabel="Attach image" onPress={onAttach} style={[styles.round, { backgroundColor: colors.surface2 }]}>
-            <ImagePlus size={19} color={colors.ink} strokeWidth={2.1} />
+          <Pressable accessibilityLabel={attachLabel} onPress={onAttach} style={[styles.round, { backgroundColor: colors.surface2 }]}>
+            <AttachIcon size={19} color={colors.ink} strokeWidth={2.1} />
           </Pressable>
         ) : null}
         <TextInput maxFontSizeMultiplier={maxFontScale}

@@ -75,6 +75,9 @@ export type User = ProfileArea & {
   twoFactorEnabled?: boolean;
   /** False for Google-only accounts, which cannot use two-factor login. */
   hasPassword?: boolean;
+  /** Staff access from the database; the backend re-checks it on every request. */
+  roles?: string[];
+  permissions?: string[];
   avatarUrl?: string | null;
 };
 
@@ -202,13 +205,6 @@ export type ReferralSummary = {
   friendsJoined: number;
   pointsEarned: number;
   pending: number;
-};
-
-export type AdminSummary = {
-  users: number;
-  activePosts: number;
-  openReports: number;
-  completedTrades: number;
 };
 
 export type PolicySection = { title: string; body: string };

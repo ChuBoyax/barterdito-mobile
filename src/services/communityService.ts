@@ -1,5 +1,4 @@
 import {
-  mockAdminSummary,
   mockAnalytics,
   mockCampaign,
   mockEvents,
@@ -10,7 +9,6 @@ import {
   mockTerms,
 } from '@/mocks/community';
 import type {
-  AdminSummary,
   AnalyticsSummary,
   Campaign,
   Faq,
@@ -50,11 +48,6 @@ export const communityService = {
 
   async getReferral(): Promise<ReferralSummary> {
     return delay(clone(mockReferral));
-  },
-
- 
-  async getAdminSummary(): Promise<AdminSummary> {
-    return delay(clone(mockAdminSummary));
   },
 
   getFaqs(): Faq[] {

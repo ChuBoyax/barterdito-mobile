@@ -15,6 +15,8 @@ export type ApiUser = AreaRow & {
   email_verified: boolean;
   two_factor_enabled?: boolean;
   has_password?: boolean;
+  roles?: string[];
+  permissions?: string[];
   created_at: string;
 };
 
@@ -46,6 +48,8 @@ export function toUser(user: ApiUser): User {
     emailVerified: user.email_verified,
     twoFactorEnabled: user.two_factor_enabled ?? false,
     hasPassword: user.has_password ?? false,
+    roles: user.roles ?? ['user'],
+    permissions: user.permissions ?? [],
     createdAt: user.created_at,
     joined: joinedLabel(user.created_at),
   };

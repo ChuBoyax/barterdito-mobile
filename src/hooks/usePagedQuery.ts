@@ -6,10 +6,12 @@ type Page = { total: number };
 /**
  * Offset-paginated backend list (`limit`/`offset` + `total`).
  * `select` picks the rows out of each page; the next offset is the number loaded so far.
+ * `persist: false` keeps private lists (staff data, blocks) out of the cache saved on the device.
  */
-export function usePagedQuery<P extends Page, T>(key: QueryKey, load: (offset: number) => Promise<P>, select: (page: P) => T[]) {
+export function usePagedQuery<P extends Page, T>(key: QueryKey, load: (offset: number) => Promise<P>, select: (page: P) => T[], { persist = true } = {}) {
   const query = useInfiniteQuery({
     queryKey: key,
+    meta: { persist },
     queryFn: ({ pageParam }) => load(pageParam),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => {

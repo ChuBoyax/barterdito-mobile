@@ -42,7 +42,7 @@ const headings: Record<Mode, [string, string]> = {
   login: ['Welcome back,\n', 'ka-barter.'],
   signup: ['Join the\n', 'swap club.'],
   verify: ['Check your\n', 'email.'],
-  'two-factor': ['Enter your\n', 'login code.'],
+  'two-factor': ['Verify\n', 'it’s you.'],
   forgot: ['Forgot your\n', 'password?'],
   reset: ['Choose a new\n', 'password.'],
 };
@@ -211,13 +211,15 @@ export default function LoginScreen() {
   const lead =
     mode === 'signup'
       ? 'Create an account and give useful things a second story.'
-      : mode === 'verify' || mode === 'two-factor'
-        ? `Enter the six-digit code sent to ${pendingEmail}.`
-        : mode === 'forgot'
-          ? 'We’ll email you a code to reset your password.'
-          : mode === 'reset'
-            ? `Enter the code sent to ${pendingEmail} and choose a new password.`
-            : 'Sign in to send offers, save finds, and chat with traders.';
+      : mode === 'two-factor'
+        ? `We don’t recognize this device yet. Enter the six-digit code sent to ${pendingEmail}.`
+        : mode === 'verify'
+          ? `Enter the six-digit code sent to ${pendingEmail}.`
+          : mode === 'forgot'
+            ? 'We’ll email you a code to reset your password.'
+            : mode === 'reset'
+              ? `Enter the code sent to ${pendingEmail} and choose a new password.`
+              : 'Sign in to send offers, save finds, and chat with traders.';
 
   const passwordToggle = (
     <Pressable accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} onPress={() => setShowPassword(!showPassword)} hitSlop={8}>

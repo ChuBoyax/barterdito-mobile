@@ -17,6 +17,7 @@ import {
   Megaphone,
   MessageCircle,
   MessageSquare,
+  ShieldBan,
   ShieldCheck,
   UserPlus,
   type LucideIcon,
@@ -27,7 +28,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { EditProfileSheet } from '@/components/account';
 import { PasswordStrength } from '@/components/auth';
 import { AppText, Avatar, Button, Card, ListRow, Screen, SegmentedControl, TextField } from '@/components/ui';
-import { SENTINEL_PREVIEW } from '@/constants/app';
 import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useSignOut } from '@/hooks/useSignOut';
 import { useAuth, useTheme, useToast } from '@/providers';
@@ -35,6 +35,7 @@ import type { ThemeMode } from '@/providers/ThemeProvider';
 import { authService, userService } from '@/services';
 import type { NotificationPrefs } from '@/types/models';
 import { errorMessage } from '@/utils/format';
+import { canOpenAdministration } from '@/utils/permissions';
 import { validateNewPassword } from '@/utils/validation';
 
 const notificationRows: { key: keyof NotificationPrefs; title: string; icon: LucideIcon }[] = [
@@ -125,8 +126,15 @@ export default function SettingsScreen() {
       {authenticated ? (
         <Section title="Trading">
           <ListRow icon={MessageSquare} iconTone="neutral" title="Direct messages" onPress={() => router.push('/direct-messages')} />
+          <ListRow icon={ShieldBan} iconTone="neutral" title="Blocked users" onPress={() => router.push('/blocked-users')} />
           <ListRow icon={Gift} iconTone="neutral" title="Invite friends" onPress={() => router.push('/referral')} />
           <ListRow icon={AlertTriangle} iconTone="neutral" title="Disputes" onPress={() => router.push('/disputes')} />
+        </Section>
+      ) : null}
+
+      {canOpenAdministration(user) ? (
+        <Section title="Staff">
+          <ListRow icon={ShieldCheck} iconTone="neutral" title="Administration" onPress={() => router.push('/admin')} />
         </Section>
       ) : null}
 
@@ -135,9 +143,6 @@ export default function SettingsScreen() {
         <ListRow icon={HandHeart} iconTone="neutral" title="Support Barterdito" onPress={() => router.push('/donate')} />
         <ListRow icon={FileText} iconTone="neutral" title="Terms of service" onPress={() => router.push('/terms')} />
         <ListRow icon={Lock} iconTone="neutral" title="Privacy policy" onPress={() => router.push('/privacy')} />
-        {SENTINEL_PREVIEW ? (
-          <ListRow icon={ShieldCheck} iconTone="neutral" title="Sentinel admin" onPress={() => router.push('/admin')} />
-        ) : null}
       </Section>
 
       {authenticated ? (
@@ -287,8 +292,8 @@ function TwoFactorLogin() {
   }
 
   const description = enabled
-    ? 'We email you a six-digit code each time you sign in with your password.'
-    : 'Turn this on to also require a six-digit code from your email when you sign in.';
+    ? 'We email you a six-digit code the first time you sign in and whenever you use a new device.'
+    : 'Turn this on to require a six-digit code from your email the first time you sign in and on any new device.';
 
   return (
     <Section title="Two-factor login">
