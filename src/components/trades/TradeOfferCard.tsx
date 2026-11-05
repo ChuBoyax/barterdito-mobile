@@ -67,7 +67,7 @@ export const TradeOfferCard = memo(function TradeOfferCard({ offer, userId, onRe
 
       <View style={styles.status}>
         <ProgressIcon size={14} color={colors.muted} />
-        <AppText variant="caption" style={styles.flex}>
+        <AppText variant="caption" numberOfLines={progress.text.length > ONE_LINE_STATUS ? 2 : 1} adjustsFontSizeToFit minimumFontScale={0.6} style={styles.flex}>
           {progress.text}
         </AppText>
       </View>
@@ -96,20 +96,21 @@ export const TradeOfferCard = memo(function TradeOfferCard({ offer, userId, onRe
 
       {offer.status === 'pending' && received ? (
         <View style={styles.actions}>
-          <Button label="Accept" icon={Check} disabled={!offer.available} style={styles.flex} onPress={() => onRespond('accept')} />
-          <Button label="Decline" icon={X} variant="secondary" style={styles.flex} onPress={() => onRespond('decline')} />
+          <Button label="Accept" icon={Check} singleLine disabled={!offer.available} style={styles.action} onPress={() => onRespond('accept')} />
+          <Button label="Decline" icon={X} variant="secondary" singleLine style={styles.action} onPress={() => onRespond('decline')} />
         </View>
       ) : null}
       {offer.status === 'pending' && !received ? <Button label="Withdraw proposal" icon={X} variant="secondary" onPress={() => onRespond('cancel')} /> : null}
       {actionLink || chat ? (
         <View style={styles.actions}>
-          {actionLink ? <Button label={actionLink.label} icon={CircleCheck} style={styles.flex} onPress={() => router.push(actionLink.href)} /> : null}
+          {actionLink ? <Button label={actionLink.label} icon={CircleCheck} singleLine style={styles.action} onPress={() => router.push(actionLink.href)} /> : null}
           {chat ? (
             <Button
               label="Open trade chat"
               icon={MessageCircle}
               variant={nextStepIsChat && !actionLink ? 'primary' : 'secondary'}
-              style={styles.flex}
+              singleLine
+              style={styles.action}
               onPress={() => router.push(`/messages/${offer.id}`)}
             />
           ) : null}
@@ -142,7 +143,7 @@ function OfferItem({ item, label }: { item: OfferListing; label: string }) {
         <View style={[styles.thumb, { backgroundColor: colors.surface2, borderColor: colors.line }]}>
           {item.imageUrl ? <Image source={item.imageUrl} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" /> : <Package size={18} color={colors.muted} />}
         </View>
-        <AppText variant="small" color="ink" weight="semibold" numberOfLines={2} style={styles.flex}>
+        <AppText variant="small" color="ink" weight="semibold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.flex}>
           {item.title}
         </AppText>
       </Pressable>
@@ -156,6 +157,8 @@ function OfferItem({ item, label }: { item: OfferListing; label: string }) {
 }
 
 const THUMB = 48;
+/** Longer status copy would shrink past reading size on one line, so it keeps a second line instead of being cut off. */
+const ONE_LINE_STATUS = 64;
 
 const styles = StyleSheet.create({
   card: { gap: 10, borderRadius: 20, padding: 12 },
@@ -170,5 +173,7 @@ const styles = StyleSheet.create({
   swap: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   message: { gap: 3 },
   actions: { flexDirection: 'row', gap: 8 },
+  // Tighter than a regular button, so two fit side by side with their labels on one line.
+  action: { flex: 1, minWidth: 0, gap: 6, paddingHorizontal: 10 },
   quiet: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
 });

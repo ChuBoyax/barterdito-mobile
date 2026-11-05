@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Platform, type LayoutChangeEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+/** From Android 11 React Native leaves the navigation bar out of the keyboard height it reports. */
+const KEYBOARD_EXCLUDES_NAV_BAR = Platform.OS === 'android' && Platform.Version >= 30;
 
 /**
  * How much bottom padding a full-height frame needs so its content ends above the keyboard.
@@ -11,6 +15,7 @@ import { Keyboard, Platform, type LayoutChangeEvent } from 'react-native';
  * Only heights are compared, so status-bar or navigation-bar offsets never skew it.
  */
 export function useKeyboardLift() {
+  const { bottom: navBar } = useSafeAreaInsets();
   const keyboardHeight = useRef<number | null>(null);
   // Frame height with the keyboard closed, and its latest height.
   const rest = useRef<number | null>(null);
@@ -26,7 +31,7 @@ export function useKeyboardLift() {
 
   useEffect(() => {
     const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (event) => {
-      keyboardHeight.current = event.endCoordinates.height;
+      keyboardHeight.current = event.endCoordinates.height + (KEYBOARD_EXCLUDES_NAV_BAR ? navBar : 0);
       update();
     });
     const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => {
@@ -37,7 +42,7 @@ export function useKeyboardLift() {
       show.remove();
       hide.remove();
     };
-  }, [update]);
+  }, [navBar, update]);
 
   const onLayout = useCallback(
     (event: LayoutChangeEvent) => {

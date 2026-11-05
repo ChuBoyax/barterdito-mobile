@@ -73,7 +73,7 @@ export function Button({
         style,
       ]}>
       {loading ? <ActivityIndicator size="small" color={palette.fg} /> : Icon ? <Icon size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
-      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={singleLine ? 1 : 2} adjustsFontSizeToFit={singleLine} minimumFontScale={0.75}>
+      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={singleLine ? 1 : 2} adjustsFontSizeToFit={singleLine} minimumFontScale={0.6}>
         {label}
       </Text>
       {IconRight ? <IconRight size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
