@@ -15,15 +15,17 @@ type TextFieldProps = TextInputProps & {
   right?: ReactNode;
   labelAction?: ReactNode;
   showCount?: boolean;
+  /** Thin border instead of the pressed-in shadow. */
+  flat?: boolean;
 };
 
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, required, hint, error, icon: Icon, right, labelAction, showCount, multiline, style, value, maxLength, onFocus, onBlur, ...rest },
+  { label, required, hint, error, icon: Icon, right, labelAction, showCount, flat, multiline, style, value, maxLength, onFocus, onBlur, ...rest },
   ref,
 ) {
   const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
-  const borderColor = error ? colors.red : focused ? colors.orange : 'transparent';
+  const borderColor = error ? colors.red : focused ? colors.orange : flat ? colors.line : 'transparent';
   return (
     <View style={styles.wrap}>
       {label ? (
@@ -40,7 +42,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           styles.field,
           multiline && styles.multiline,
           { backgroundColor: colors.background, borderColor },
-          neu(colors, 2, true),
+          !flat && neu(colors, 2, true),
         ]}>
         {Icon ? <Icon size={18} color={focused ? colors.orange : colors.muted} strokeWidth={2.1} /> : null}
         <TextInput maxFontSizeMultiplier={maxFontScale}

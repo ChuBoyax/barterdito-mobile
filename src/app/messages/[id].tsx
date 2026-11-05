@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowDown, ArrowLeftRight, Edit3, Package, Plus, Search, Trash2, X } from 'lucide-react-native';
+import { ArrowDown, ArrowLeftRight, ChevronRight, Edit3, Package, Plus, Search, Trash2, X } from 'lucide-react-native';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ChatAttachments, ChatFrame, MessageBubble, MessageComposer, PrivatePhoto, SharedListingCard } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
@@ -32,6 +32,9 @@ export default function TradeChatScreen() {
 }
 
 const SEARCH_DELAY_MS = 300;
+/** Header width taken by the back arrow, avatar, search and Details; the name gets what is left. */
+const HEADER_RESERVED_WIDTH = 256;
+const NAME_MIN_WIDTH = 80;
 
 const clockTime = (value: string) => new Date(value).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 const dayLabel = (value: string) => new Date(value).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
@@ -53,6 +56,7 @@ function TradeChat() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { width: screenWidth } = useWindowDimensions();
   const state = useTradeConversation(id);
   const [messages, setMessages] = useState<TradeMessage[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -183,6 +187,7 @@ function TradeChat() {
   const status = statusLine(data);
   const typing = presence.typing && active;
   const shown = searching ? (results?.messages ?? []) : messages;
+  const nameStyle = { maxWidth: Math.max(NAME_MIN_WIDTH, screenWidth - HEADER_RESERVED_WIDTH) };
 
   async function send() {
     const text = (editing ? editing.text : draft.text).trim();
@@ -263,10 +268,13 @@ function TradeChat() {
 
   return (
     <ChatFrame>
-      {/* The other trader replaces the generic "Trade Chat" title: one header row instead of two. */}
+      {/* The other trader replaces the generic "Trade Chat" title and sits right beside the back arrow on every device. */}
       <Stack.Screen
         options={{
-          headerTitle: () => (
+          title: '',
+          headerTitleAlign: 'left',
+          headerBackVisible: true,
+          headerLeft: () => (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`View ${other.fullName}'s profile`}
@@ -274,10 +282,10 @@ function TradeChat() {
               style={styles.person}>
               <Avatar initials={other.initials} imageUrl={other.avatarUrl} size="small" />
               <View>
-                <AppText variant="h3" numberOfLines={1} style={styles.name}>
+                <AppText variant="h3" numberOfLines={1} style={nameStyle}>
                   {other.fullName}
                 </AppText>
-                <AppText variant="caption" color={typing ? 'green' : status.color} numberOfLines={1} style={styles.name}>
+                <AppText variant="caption" color={typing ? 'green' : status.color} numberOfLines={1} style={nameStyle}>
                   {typing ? 'typing…' : status.text}
                 </AppText>
               </View>
@@ -312,18 +320,18 @@ function TradeChat() {
         }}
       />
 
-      <View style={[styles.context, { borderBottomColor: colors.line }]}>
-        <ContextItem item={yourItem} label="You offer" />
-        <ArrowLeftRight size={17} color={colors.muted} />
-        <ContextItem item={theirItem} label="You receive" />
-      </View>
-
       {searchOpen ? (
         <View style={styles.search}>
           <TextField icon={Search} value={searchText} onChangeText={setSearchText} placeholder="Search this trade conversation" maxLength={120} autoFocus autoCorrect={false} returnKeyType="search" />
           {searching ? <AppText variant="caption">Search results. New messages stay unread until you close search.</AppText> : null}
         </View>
       ) : null}
+
+      <View style={[styles.context, { borderBottomColor: colors.line }]}>
+        <ContextItem item={yourItem} label="You offer" />
+        <ArrowLeftRight size={17} color={colors.muted} />
+        <ContextItem item={theirItem} label="You receive" />
+      </View>
 
       <View style={styles.flex}>
         <ScrollView
@@ -480,7 +488,7 @@ function TradeChat() {
         onRemove={(message) => void remove(message)}
       />
       {detailsMounted ? (
-        <BottomSheet visible={detailsOpen} onClose={() => setDetailsOpen(false)} title="Exchange details">
+        <BottomSheet visible={detailsOpen} flat onClose={() => setDetailsOpen(false)} title="Exchange details">
           <TradeControls state={state} userId={userId} inChat />
           {state.error ? (
             <AppText variant="caption" color="red" align="center">
@@ -490,6 +498,8 @@ function TradeChat() {
           <Button
             label="Trade status"
             variant="secondary"
+            iconRight={ChevronRight}
+            style={[styles.flatButton, { borderColor: colors.line }]}
             onPress={() => {
               setDetailsOpen(false);
               router.push(`/trade-complete/${id}`);
@@ -537,7 +547,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  name: { maxWidth: 130 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   details: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 12, paddingHorizontal: 9 },
   context: { flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 10 },
@@ -549,7 +558,8 @@ const styles = StyleSheet.create({
   incomingGap: { width: 32 },
   latest: { position: 'absolute', alignSelf: 'center', bottom: 8, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
   count: { paddingHorizontal: 18 },
-  search: { gap: 6, paddingHorizontal: 16, paddingTop: 10 },
+  flatButton: { boxShadow: [], borderWidth: 1 },
+  search: { gap: 6, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 6 },
   list: { flexGrow: 1, width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
   system: { alignSelf: 'center', maxWidth: '85%', paddingVertical: 2 },
   typing: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
