@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Hash, KeyRound, Lock, LogIn, Mail, MailCheck, User, UserPlus, X } from 'lucide-react-native';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -77,13 +77,8 @@ export default function LoginScreen() {
   const [attempted, setAttempted] = useState(false);
   const [serverError, setServerError] = useState('');
 
-  const refs = {
-    fullName: useRef<TextInput>(null),
-    email: useRef<TextInput>(null),
-    code: useRef<TextInput>(null),
-    password: useRef<TextInput>(null),
-    confirm: useRef<TextInput>(null),
-  };
+  // A registry the screen never renders from, filled as fields mount; used only to move focus.
+  const [inputs] = useState(() => new Map<Field, TextInput | null>());
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const usesCode = mode === 'verify' || mode === 'two-factor' || mode === 'reset';
@@ -123,7 +118,7 @@ export default function LoginScreen() {
 
   function focusNext(field: Field) {
     const next = fields[fields.indexOf(field) + 1];
-    if (next) refs[next].current?.focus();
+    if (next) inputs.get(next)?.focus();
     else void submit();
   }
 
@@ -144,7 +139,7 @@ export default function LoginScreen() {
     setServerError('');
     const firstInvalid = fields.find((field) => errors[field]);
     if (firstInvalid) {
-      refs[firstInvalid].current?.focus();
+      inputs.get(firstInvalid)?.focus();
       return;
     }
     const address = normalizeEmail(usesCode ? pendingEmail : email);
@@ -229,7 +224,9 @@ export default function LoginScreen() {
 
   /** Shared props that wire a field into touch tracking and the next-field keyboard chain. */
   const fieldProps = (field: Field) => ({
-    ref: refs[field],
+    ref: (input: TextInput | null) => {
+      inputs.set(field, input);
+    },
     error: visibleError(field),
     onBlur: () => touch(field),
     onSubmitEditing: () => focusNext(field),

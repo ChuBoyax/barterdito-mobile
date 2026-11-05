@@ -123,7 +123,7 @@ const ARROW = 44;
 const styles = StyleSheet.create({
   fill: { width: '100%', height: '100%' },
   frame: { width: '100%', borderRadius: 20 },
-  clip: { ...StyleSheet.absoluteFillObject, borderRadius: 20, overflow: 'hidden' },
+  clip: { ...StyleSheet.absoluteFill, borderRadius: 20, overflow: 'hidden' },
   zoom: { position: 'absolute', top: 12, right: 16, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: PHOTO_GLASS },
   arrow: { position: 'absolute', top: '50%', marginTop: -ARROW / 2, width: ARROW, height: ARROW, borderRadius: ARROW / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: PHOTO_GLASS },
   arrowLeft: { left: 12 },

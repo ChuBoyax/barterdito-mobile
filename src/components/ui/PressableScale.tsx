@@ -12,18 +12,18 @@ type PressableScaleProps = Omit<PressableProps, 'style' | 'children'> & {
 
 export function PressableScale({ style, children, scaleTo = 0.96, onPressIn, onPressOut, disabled, ...rest }: PressableScaleProps) {
   const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
 
   return (
     <AnimatedPressable
       {...rest}
       disabled={disabled}
       onPressIn={(event) => {
-        scale.value = withSpring(scaleTo, { damping: 18, stiffness: 320 });
+        scale.set(withSpring(scaleTo, { damping: 18, stiffness: 320 }));
         onPressIn?.(event);
       }}
       onPressOut={(event) => {
-        scale.value = withSpring(1, { damping: 14, stiffness: 260 });
+        scale.set(withSpring(1, { damping: 14, stiffness: 260 }));
         onPressOut?.(event);
       }}
       style={[style, animatedStyle]}>

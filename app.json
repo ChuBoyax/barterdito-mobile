@@ -41,7 +41,6 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker",
       [
         "expo-location",
         {
@@ -55,7 +54,11 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

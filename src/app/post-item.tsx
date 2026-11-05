@@ -54,11 +54,11 @@ function PostItemForm() {
   const [hydrated, setHydrated] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
-  const original = useRef<string | null>(null);
+  const [original, setOriginal] = useState<string | null>(null);
   const lastGenerated = useRef('');
 
   const errors = showErrors ? validateDraft(draft) : {};
-  const dirty = edit !== undefined && original.current !== null && original.current !== JSON.stringify(draft);
+  const dirty = edit !== undefined && original !== null && original !== JSON.stringify(draft);
   const allowLeave = useUnsavedChangesGuard(dirty, 'Your edits to this listing have not been saved.');
   // Drafts are scoped to the account, like the website's local drafts.
   const draftKey = `${storageKeys.postDraft}:${user?.id ?? 'guest'}`;
@@ -77,7 +77,7 @@ function PostItemForm() {
             return router.back();
           }
           const loaded = itemToDraft(item);
-          original.current = JSON.stringify(loaded);
+          setOriginal(JSON.stringify(loaded));
           setDraft(loaded);
         })
         .catch((error) => {

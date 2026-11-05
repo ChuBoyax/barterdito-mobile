@@ -100,12 +100,15 @@ function DirectChat({ id, focusedMessageId }: { id: string; focusedMessageId?: n
 
   const newestId = messages.at(-1)?.id;
   const newestRef = useRef<number | undefined>(undefined);
-  newestRef.current = newestId;
   const acknowledged = useRef({ through: 0, reminder: null as string | null });
   // The reminder token seen on screen: only that one is cleared when the latest messages are read.
   const reminder = thread?.unreadReminderId ?? null;
   const reminderRef = useRef(reminder);
-  reminderRef.current = reminder;
+  // Declared before the effects that read them, so those always see this render's values.
+  useEffect(() => {
+    newestRef.current = newestId;
+    reminderRef.current = reminder;
+  }, [newestId, reminder]);
 
   // Acknowledge only what is on screen: the newest message, while scrolled to the bottom.
   const markRead = useCallback(() => {
