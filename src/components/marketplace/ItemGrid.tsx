@@ -42,6 +42,15 @@ type ItemGridRowProps = {
   ageLabel?: (item: Item) => string;
 };
 
+function sameRow(previous: ItemGridRowProps, next: ItemGridRowProps) {
+  if (previous.columns !== next.columns || previous.onSave !== next.onSave || previous.onHeart !== next.onHeart || previous.ageLabel !== next.ageLabel) return false;
+  if (previous.row.cells.length !== next.row.cells.length) return false;
+  return next.row.cells.every((item, index) => {
+    if (item !== previous.row.cells[index]) return false;
+    return !item || (previous.saved.has(item.id) === next.saved.has(item.id) && previous.hearted.has(item.id) === next.hearted.has(item.id));
+  });
+}
+
 export const ItemGridRow = memo(function ItemGridRow({ row, columns, saved, hearted, onSave, onHeart, ageLabel }: ItemGridRowProps) {
   return (
     <View style={styles.row}>
@@ -59,7 +68,7 @@ export const ItemGridRow = memo(function ItemGridRow({ row, columns, saved, hear
         : null}
     </View>
   );
-});
+}, sameRow);
 
 type ItemGridProps = {
   items: Item[];

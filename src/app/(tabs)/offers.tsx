@@ -135,8 +135,8 @@ function OffersContent() {
 
   return (
     <Screen
-      refreshing={query.isRefetching}
-      onRefresh={() => void query.refetch()}
+      refreshing={query.refreshing}
+      onRefresh={() => void query.refresh()}
       header={<AppHeader title="Trade Offers" />}>
       <View style={[styles.panel, { backgroundColor: colors.surface }, neu(colors, 2)]}>
         <SegmentedControl<OfferDirection>

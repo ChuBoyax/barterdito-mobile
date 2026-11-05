@@ -45,7 +45,7 @@ function BlockedUsers() {
   if (blocked.isPending) return <LoadingView variant="list" />;
 
   return (
-    <Screen refreshing={blocked.isRefetching && !blocked.isFetchingNextPage} onRefresh={() => void blocked.refetch()}>
+    <Screen refreshing={blocked.refreshing} onRefresh={() => void blocked.refresh()}>
       <AppText variant="small">These users cannot exchange private messages with you. Unblocking does not remove a block they may have set.</AppText>
       {blocked.isError && !blocked.rows.length ? (
         <EmptyState icon={ShieldBan} title="Could not load blocked users" text={errorMessage(blocked.error)} action="Try again" actionIcon={RotateCcw} onAction={() => void blocked.refetch()} />

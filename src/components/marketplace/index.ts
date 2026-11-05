@@ -1,6 +1,7 @@
 export { FeaturedCard, featuredCardWidth } from './FeaturedCard';
 export { FilterSheet } from './FilterSheet';
 export { HeroBanner } from './HeroBanner';
+export { ItemGallery, PHOTO_GLASS } from './ItemGallery';
 export { ItemCard, ItemCardSkeleton, placeLine } from './ItemCard';
 export { PlaceSearch } from './PlaceSearch';
 export { ItemGrid, ItemGridRow, useGridRows, useInteractionSets, type GridRow } from './ItemGrid';

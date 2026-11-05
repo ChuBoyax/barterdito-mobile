@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { CalendarDays, Globe, MapPin, Plus, RotateCcw, Search, Trophy, type LucideIcon } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -47,7 +47,8 @@ export default function BrowseScreen() {
   const filtersMounted = useMountOnOpen(filtersOpen);
   const [refreshing, setRefreshing] = useState(false);
 
-  const visibleItems = useMemo(() => itemService.filterItems(items, filters), [items, filters]);
+  const deferredFilters = useDeferredValue(filters);
+  const visibleItems = useMemo(() => itemService.filterItems(items, deferredFilters), [items, deferredFilters]);
   const hotItems = useMemo(() => items.filter((item) => item.hot && item.status !== 'Traded'), [items]);
   // The profile area is the default, so only another place (or "Any location") counts as a filter.
   const areaChanged = (area?.id ?? null) !== (profileArea?.id ?? null);

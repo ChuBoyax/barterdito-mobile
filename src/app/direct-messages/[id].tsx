@@ -25,6 +25,7 @@ import { queryClient, useAuth, useTheme } from '@/providers';
 import { directMessageService } from '@/services';
 import { queryKeys } from '@/services/queryKeys';
 import type { DirectConversation, DirectMessage } from '@/types/directMessages';
+import { keepIfSame, mergeById } from '@/utils/collections';
 import { errorMessage } from '@/utils/format';
 
 export default function DirectChatScreen() {
@@ -40,10 +41,6 @@ export default function DirectChatScreen() {
 
 const POLL_MS = 3000;
 const MAX_LENGTH = 2000;
-
-function merge(current: DirectMessage[], incoming: DirectMessage[]) {
-  return [...new Map([...current, ...incoming].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.id - b.id);
-}
 
 /** With `focusedMessageId` it shows a saved message from search instead of the latest ones, and marks nothing as read. */
 function DirectChat({ id, focusedMessageId }: { id: string; focusedMessageId?: number }) {
@@ -76,15 +73,16 @@ function DirectChat({ id, focusedMessageId }: { id: string; focusedMessageId?: n
     try {
       if (focusedMessageId !== undefined && loadedOnce.current) {
         // Viewing a saved message: only the conversation's state keeps refreshing, so the view stays still.
-        setThread(await directMessageService.getConversation(id));
+        const latest = await directMessageService.getConversation(id);
+        setThread((current) => keepIfSame(current, latest));
         return;
       }
       const [conversation, page] = await Promise.all([
         directMessageService.getConversation(id),
         focusedMessageId === undefined ? directMessageService.getMessages(id) : directMessageService.getContext(id, focusedMessageId),
       ]);
-      setThread(conversation);
-      setMessages((old) => merge(old, page.messages));
+      setThread((current) => keepIfSame(current, conversation));
+      setMessages((old) => mergeById(old, page.messages));
       setLoaded((wasLoaded) => {
         if (!wasLoaded) setHasMore(page.hasMore);
         return true;
@@ -170,7 +168,7 @@ function DirectChat({ id, focusedMessageId }: { id: string; focusedMessageId?: n
     followLatest.current = true;
     try {
       const sent = await directMessageService.send(id, request.body, request.client);
-      setMessages((old) => merge(old, [sent]));
+      setMessages((old) => mergeById(old, [sent]));
       draft.clear();
       void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
     } catch (caught) {
@@ -183,7 +181,7 @@ function DirectChat({ id, focusedMessageId }: { id: string; focusedMessageId?: n
   /** Photos and listings leave any typed text in place. */
   function attached(sent: DirectMessage) {
     followLatest.current = true;
-    setMessages((old) => merge(old, [sent]));
+    setMessages((old) => mergeById(old, [sent]));
     void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
   }
 
@@ -193,7 +191,7 @@ function DirectChat({ id, focusedMessageId }: { id: string; focusedMessageId?: n
     followLatest.current = false;
     try {
       const page = await directMessageService.getMessages(id, messages[0]!.id);
-      setMessages((old) => merge(old, page.messages));
+      setMessages((old) => mergeById(old, page.messages));
       setHasMore(page.hasMore);
     } catch (caught) {
       setError(errorMessage(caught, 'Could not load older messages.'));

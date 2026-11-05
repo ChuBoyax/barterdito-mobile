@@ -12,6 +12,7 @@ import { queryClient, useMarketplaceActions, useTheme, useToast } from '@/provid
 import { itemService } from '@/services';
 import { neu } from '@/theme';
 import type { Item, ItemStatus } from '@/types/models';
+import { chunk } from '@/utils/collections';
 import { confirmAction } from '@/utils/confirm';
 import { errorMessage, formatNumber } from '@/utils/format';
 import { openItem } from '@/utils/navigation';
@@ -57,7 +58,7 @@ function MyItemsContent() {
     () => items.filter((item) => (tab === 'All' || item.status === tab) && (!needle || [item.title, item.category].join(' ').toLowerCase().includes(needle))),
     [items, tab, needle],
   );
-  const rows = useMemo(() => Array.from({ length: Math.ceil(visible.length / 2) }, (_, index) => visible.slice(index * 2, index * 2 + 2)), [visible]);
+  const rows = useMemo(() => chunk(visible, 2), [visible]);
   const openMenu = useCallback((item: Item) => setMenuItem(item), []);
   const editItem = useCallback((item: Item) => router.push(`/post-item?edit=${item.id}`), []);
   const total = tab === 'All' ? items.length : items.filter((item) => item.status === tab).length;

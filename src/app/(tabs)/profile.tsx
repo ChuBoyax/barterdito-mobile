@@ -15,6 +15,7 @@ import { queryKeys } from '@/services/queryKeys';
 import { profileCompletion } from '@/services/userService';
 import { fonts, maxFontScale, neu } from '@/theme';
 import type { Item, ItemStatus } from '@/types/models';
+import { chunk } from '@/utils/collections';
 import { openItem } from '@/utils/navigation';
 import { shareTrader } from '@/utils/share';
 
@@ -38,7 +39,7 @@ function ProfileContent() {
   const { data: profile, refreshing, reload } = useAsync(queryKeys.myProfile, () => userService.getMyProfile());
   const { data: listings = [], reload: reloadListings } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
   const shown = useMemo(() => listings.filter((item) => (tab === 'Listings' ? item.status !== 'Traded' : item.status === 'Traded')), [listings, tab]);
-  const rows = useMemo(() => Array.from({ length: Math.ceil(shown.length / 2) }, (_, index) => shown.slice(index * 2, index * 2 + 2)), [shown]);
+  const rows = useMemo(() => chunk(shown, 2), [shown]);
 
   if (!user) return null;
 
