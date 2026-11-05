@@ -39,10 +39,10 @@ export const ConversationCard = memo(function ConversationCard({ conversation, u
       <Avatar initials={other.initials} imageUrl={other.avatarUrl} size="large" />
       <View style={styles.body}>
         <View style={styles.line}>
-          <AppText variant="h3" weight="bold" numberOfLines={1} style={styles.flex}>
+          <AppText variant="h3" weight="bold" numberOfLines={1} style={[styles.flex, styles.name]}>
             {other.fullName}
           </AppText>
-          <AppText variant="caption" color={unread ? 'orange' : 'muted'} weight={unread ? 'bold' : 'medium'}>
+          <AppText variant="caption" color={unread ? 'orange' : 'muted'} weight={unread ? 'bold' : 'medium'} style={styles.time}>
             {shortDate(updatedAt)}
           </AppText>
         </View>
@@ -56,7 +56,7 @@ export const ConversationCard = memo(function ConversationCard({ conversation, u
           </Text>
         </View>
         <View style={styles.line}>
-          <AppText variant="small" color={unread ? 'ink' : 'muted'} weight={unread ? 'semibold' : 'medium'} numberOfLines={1} style={styles.flex}>
+          <AppText variant="small" color={unread ? 'ink' : 'muted'} weight={unread ? 'semibold' : 'medium'} numberOfLines={1} style={[styles.flex, styles.preview]}>
             {lastMessage || 'No messages yet'}
           </AppText>
           {unread ? (
@@ -84,6 +84,9 @@ const styles = StyleSheet.create({
   body: { flex: 1, minWidth: 0, gap: 3 },
   line: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   flex: { flex: 1, minWidth: 0 },
+  name: { fontSize: 14, lineHeight: 19 },
+  time: { fontSize: 11 },
+  preview: { fontSize: 13, lineHeight: 18 },
   items: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   itemText: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 11 },
   count: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },

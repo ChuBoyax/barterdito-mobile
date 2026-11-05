@@ -17,6 +17,8 @@ type ButtonProps = {
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
+  /** Keeps the label on one line, shrinking it to fit, so buttons side by side stay level. */
+  singleLine?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -45,6 +47,7 @@ export function Button({
   disabled,
   loading,
   fullWidth,
+  singleLine,
   style,
 }: ButtonProps) {
   const { colors } = useTheme();
@@ -70,7 +73,7 @@ export function Button({
         style,
       ]}>
       {loading ? <ActivityIndicator size="small" color={palette.fg} /> : Icon ? <Icon size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
-      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={2}>
+      <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, compact && styles.labelCompact, { color: palette.fg }]} numberOfLines={singleLine ? 1 : 2} adjustsFontSizeToFit={singleLine} minimumFontScale={0.75}>
         {label}
       </Text>
       {IconRight ? <IconRight size={iconSize} color={palette.fg} strokeWidth={2.2} /> : null}
