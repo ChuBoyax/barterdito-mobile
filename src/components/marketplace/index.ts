@@ -8,4 +8,3 @@ export { ReportSheet } from './ReportSheet';
 export { StatGrid, type Stat } from './StatGrid';
 export { TraderRow } from './TraderRow';
 export { ProposeSwapSheet } from './ProposeSwapSheet';
-export { ItemStatusBadge } from './StatusBadge';
