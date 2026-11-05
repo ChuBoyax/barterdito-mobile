@@ -9,7 +9,17 @@ export const storageKeys = {
   interactions: 'barterdito-interactions',
   feed: 'barterdito-feed',
   photoAccess: 'barterdito-photo-access',
+  messageDrafts: 'barterdito-message-draft:v1:',
 } as const;
+
+export async function removeKeysWithPrefix(prefix: string): Promise<void> {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    await AsyncStorage.multiRemove(keys.filter((key) => key.startsWith(prefix)));
+  } catch {
+
+  }
+}
 
 export async function readJson<T>(key: string): Promise<T | null> {
   try {

@@ -43,7 +43,7 @@ export function SegmentedControl<T extends string>({ segments, value, onChange }
             style={styles.segment}>
             <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: active ? colors.ink : colors.muted }]}>{segment.label}</Text>
             {segment.count !== undefined ? (
-              <View style={[styles.count, { backgroundColor: active ? colors.orange : colors.surface2 }]}>
+              <View style={[styles.count, { backgroundColor: active ? colors.orange : 'transparent' }]}>
                 <Text maxFontSizeMultiplier={maxFontScale} style={[styles.countText, { color: active ? colors.white : colors.muted }]}>{segment.count}</Text>
               </View>
             ) : null}

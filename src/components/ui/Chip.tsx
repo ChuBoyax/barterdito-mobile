@@ -42,7 +42,7 @@ export function ChipRow({ options, value, onChange, inset = 20 }: ChipRowProps) 
 }
 
 const styles = StyleSheet.create({
-  chip: { minHeight: 38, justifyContent: 'center', borderRadius: 999, paddingHorizontal: 16, paddingVertical: 6 },
-  text: { fontFamily: fonts.bold, fontSize: 12.5 },
-  row: { gap: 10, paddingVertical: 10 },
+  chip: { minHeight: 44, justifyContent: 'center', borderRadius: 999, paddingHorizontal: 15, paddingVertical: 6 },
+  text: { fontFamily: fonts.bold, fontSize: 13 },
+  row: { gap: 8, paddingTop: 8, paddingBottom: 12, paddingRight: 4 },
 });

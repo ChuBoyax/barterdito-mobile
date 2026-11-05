@@ -1,6 +1,19 @@
 import type { User } from '@/types/models';
 
-const administrationPermissions = ['message_reports.read', 'message_reports.review', 'users.read', 'users.roles.manage', 'roles.manage', 'audit.read'];
+const administrationPermissions = [
+  'message_reports.read',
+  'message_reports.review',
+  'users.read',
+  'users.roles.manage',
+  'roles.manage',
+  'audit.read',
+  'activity.read',
+  'analytics.read',
+  'monitoring.read',
+  'monitoring.review',
+  'activity.export',
+  'activity.retention.manage',
+];
 
 /** Decides what the app shows only; the backend checks permissions on every request. */
 export function hasPermission(user: User | null | undefined, permission: string) {

@@ -132,34 +132,6 @@ export type ChatMessage = {
   image?: string;
 };
 
-export type TradeEvent = {
-  id: string;
-  title: string;
-  date: string;
-  day: string;
-  month: string;
-  location: string;
-  attending: number;
-  color: string;
-};
-
-export type ForumThread = {
-  id: string;
-  title: string;
-  author: string;
-  replies: number;
-  time: string;
-  pinned?: boolean;
-};
-
-export type Campaign = {
-  id: string;
-  title: string;
-  description: string;
-  raised: number;
-  goal: number;
-};
-
 /** One trader's points this week (backend `/leaderboard`). */
 export type LeaderboardEntry = {
   id: string;
@@ -184,20 +156,6 @@ export type LeaderboardPage = {
   asOf: string;
   pointsPerTrade: number;
   pointsPerReviewStar: number;
-};
-
-export type AnalyticsMetric = {
-  key: 'views' | 'hearts' | 'offers' | 'conversion';
-  label: string;
-  value: string;
-  change: string;
-};
-
-export type AnalyticsSummary = {
-  metrics: AnalyticsMetric[];
-  viewsSeries: number[];
-  seriesLabels: string[];
-  growth: string;
 };
 
 export type ReferralSummary = {

@@ -1,5 +1,3 @@
-export { BarChart } from './BarChart';
-export { EventCard } from './EventCard';
 export { FeaturedCard, featuredCardWidth } from './FeaturedCard';
 export { FilterSheet } from './FilterSheet';
 export { HeroBanner } from './HeroBanner';

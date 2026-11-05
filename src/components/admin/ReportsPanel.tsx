@@ -2,7 +2,7 @@ import { Flag, RotateCcw } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { reportReasons } from '@/components/chat';
+import { PrivatePhoto, reportReasons } from '@/components/chat';
 import { AppText, Badge, Button, Card, Chip, EmptyState, LoadingView, TextField, type BadgeTone } from '@/components/ui';
 import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { useTheme } from '@/providers';
@@ -82,9 +82,13 @@ function ReportCard({ report, canReview, onReviewed }: { report: MessageReport; 
         {report.reporter.fullName} reported {report.sender.fullName} · {when(report.createdAt)}
       </AppText>
       <View style={[styles.quote, { backgroundColor: colors.surface2, borderLeftColor: colors.orange }]}>
-        <AppText variant="small" color="ink">
-          {report.messageBody}
-        </AppText>
+        {report.photo ? (
+          <PrivatePhoto path={directMessageService.reportPhotoPath(report.id)} photo={report.photo} label="Reported photo" />
+        ) : (
+          <AppText variant="small" color="ink">
+            {report.messageBody}
+          </AppText>
+        )}
       </View>
       {report.details ? <AppText variant="small">{report.details}</AppText> : null}
       {report.status === 'open' && canReview ? (

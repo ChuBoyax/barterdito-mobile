@@ -2,7 +2,7 @@ import { Lock } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { AccountsPanel, HistoryPanel, ReportsPanel, RolesPanel } from '@/components/admin';
+import { AccountsPanel, ActivityPanel, AnalyticsPanel, HistoryPanel, MonitoringPanel, ReportsPanel, RolesPanel } from '@/components/admin';
 import { RequireAuth } from '@/components/layout';
 import { AppText, Chip, EmptyState, Screen } from '@/components/ui';
 import { usePolling } from '@/hooks/useTradeConversation';
@@ -12,7 +12,7 @@ import { canOpenAdministration, hasPermission } from '@/utils/permissions';
 /** A removed role should take effect here without needing to sign in again. */
 const PERMISSION_REFRESH_MS = 30_000;
 
-type Panel = 'reports' | 'accounts' | 'roles' | 'history';
+type Panel = 'reports' | 'accounts' | 'roles' | 'history' | 'activity' | 'analytics' | 'monitoring';
 
 export default function AdminScreen() {
   return (
@@ -43,6 +43,9 @@ function AdminContent() {
     { value: 'accounts', label: 'Accounts', allowed: hasPermission(user, 'users.read') },
     { value: 'roles', label: 'Roles', allowed: hasPermission(user, 'roles.manage') },
     { value: 'history', label: 'Access history', allowed: hasPermission(user, 'audit.read') },
+    { value: 'activity', label: 'User activity', allowed: hasPermission(user, 'activity.read') },
+    { value: 'analytics', label: 'Usage analytics', allowed: hasPermission(user, 'analytics.read') },
+    { value: 'monitoring', label: 'Errors & security', allowed: hasPermission(user, 'monitoring.read') },
   ];
   const allowed = panels.filter((panel) => panel.allowed);
   // Permissions can change while this is open, so fall back to a panel that is still allowed.
@@ -62,6 +65,10 @@ function AdminContent() {
       {panel === 'accounts' ? <AccountsPanel canManage={canManageUsers} /> : null}
       {panel === 'roles' ? <RolesPanel /> : null}
       {panel === 'history' ? <HistoryPanel /> : null}
+      {panel === 'activity' ? <ActivityPanel /> : null}
+      {panel === 'analytics' ? <AnalyticsPanel /> : null}
+      {panel === 'monitoring' ? <MonitoringPanel canReview={hasPermission(user, 'monitoring.review')} /> : null}
+      {!panel ? <EmptyState icon={Lock} title="Open this on the website" text="Report exports and retention settings are managed from Administration on the website." /> : null}
     </Screen>
   );
 }

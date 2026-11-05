@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { AlertTriangle, CalendarDays, CheckCircle2, Circle, Square, SquareCheck, Star } from 'lucide-react-native';
+import { AlertTriangle, CalendarDays, CheckCircle2, Circle, MessageCircle, Square, SquareCheck, Star } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -9,12 +9,11 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { tradeService } from '@/services';
 import { neu } from '@/theme';
 import { confirmAction } from '@/utils/confirm';
-import { confirmations } from '@/utils/trades';
-import { MeetupRow } from './Meetup';
+import { confirmations, meetupDate } from '@/utils/trades';
 
 type TradeControlsProps = { state: TradeConversationState; userId: string };
 
-/** Meetup, two-person confirmation and problem reports — the same rules the backend enforces. */
+/** Two-person confirmation and problem reports — the same rules the backend enforces. */
 export function TradeControls({ state, userId }: TradeControlsProps) {
   const { colors } = useTheme();
   const [acknowledged, setAcknowledged] = useState(false);
@@ -47,8 +46,8 @@ export function TradeControls({ state, userId }: TradeControlsProps) {
   }
 
   const { mine, theirs } = confirmations(data, userId);
-  const locked = Boolean(mine || theirs);
-  const agreed = data.meetups.some((entry) => entry.status === 'accepted');
+  // Older trades may have saved meetups; new ones arrange the details in chat.
+  const legacyMeetups = data.meetups.filter((entry) => entry.status === 'accepted' || entry.status === 'pending');
   const openIssues = data.issues.filter((entry) => entry.status === 'open');
   const paused = openIssues.length > 0;
   const myOpenIssue = openIssues.some((entry) => entry.reporterId === userId);
@@ -81,20 +80,19 @@ export function TradeControls({ state, userId }: TradeControlsProps) {
       ) : null}
 
       <Card style={styles.card}>
-        <SectionTitle icon={<CalendarDays size={16} color={colors.orange} />} title="Meetup" badge={agreed ? <Badge label="Agreed" tone="green" /> : null} />
-        {data.meetups.map((meetup) => (
-          <MeetupRow key={meetup.id} meetup={meetup} userId={userId} state={state} locked={locked} paused={paused} />
+        <SectionTitle icon={<CalendarDays size={16} color={colors.orange} />} title="Meetup" />
+        <AppText variant="small">Agree on a time and a public place in your trade chat.</AppText>
+        {legacyMeetups.map((meetup) => (
+          <View key={meetup.id} style={[styles.inset, { backgroundColor: colors.background }, neu(colors, 1, true)]}>
+            <AppText variant="small" color="ink" weight="semibold">
+              {meetupDate(meetup.startsAt)}
+            </AppText>
+            <AppText variant="caption">
+              {meetup.location} · Saved earlier{meetup.status === 'accepted' ? ', agreed' : ''}
+            </AppText>
+          </View>
         ))}
-        {!data.meetups.length ? <AppText variant="small">No meetup yet</AppText> : null}
-        {!locked ? (
-          <Button
-            label={data.meetups.length ? 'Propose another time' : 'Propose meetup'}
-            icon={CalendarDays}
-            variant="secondary"
-            compact
-            onPress={() => router.push(`/meetups/${id}`)}
-          />
-        ) : null}
+        <Button label="Open trade chat" icon={MessageCircle} variant="secondary" compact onPress={() => router.push(`/messages/${id}`)} />
       </Card>
 
       <Card style={styles.card}>
@@ -105,20 +103,18 @@ export function TradeControls({ state, userId }: TradeControlsProps) {
         </View>
         {!mine ? (
           <>
-            {agreed ? (
-              <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acknowledged }} onPress={() => setAcknowledged(!acknowledged)} style={styles.row}>
-                {acknowledged ? <SquareCheck size={20} color={colors.orange} /> : <Square size={20} color={colors.muted} />}
-                <AppText variant="small" color="ink" style={styles.flex}>
-                  I inspected the item and completed the exchange
-                </AppText>
-              </Pressable>
-            ) : null}
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acknowledged }} onPress={() => setAcknowledged(!acknowledged)} style={styles.row}>
+              {acknowledged ? <SquareCheck size={20} color={colors.orange} /> : <Square size={20} color={colors.muted} />}
+              <AppText variant="small" color="ink" style={styles.flex}>
+                I inspected the item and completed the exchange
+              </AppText>
+            </Pressable>
             <Button
-              label={agreed ? 'Confirm exchange' : 'Agree on a meetup first'}
+              label="Confirm exchange"
               icon={CheckCircle2}
               variant="success"
               loading={state.busy}
-              disabled={!agreed || !acknowledged || paused}
+              disabled={!acknowledged || paused}
               onPress={() => void confirm()}
             />
           </>

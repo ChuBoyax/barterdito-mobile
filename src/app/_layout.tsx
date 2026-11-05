@@ -18,7 +18,6 @@ const screenTitles: Record<string, string> = {
   'messages/[id]': 'Trade Chat',
   'direct-messages/index': 'Direct Messages',
   'direct-messages/[id]': 'Private message',
-  'meetups/[id]': 'Schedule Meetup',
   'trade-review/[id]': 'Rate Your Trade',
   'trade-complete/[id]': 'Trade Status',
   'post-item': 'Post an Item',

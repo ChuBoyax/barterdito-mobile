@@ -67,6 +67,75 @@ type RequestOptions = {
   timeout?: number;
 };
 
+// Native only: browsers set Origin themselves, and an extra header would trigger a CORS preflight the backend rejects.
+const nativeHeaders = (): Record<string, string> => (Platform.OS === 'web' ? {} : { 'Cache-Control': 'no-cache', Origin: SITE_URL });
+
+async function failure(response: Response, detail: unknown) {
+  const message =
+    response.status >= 500 && response.status !== 503
+      ? 'The service is temporarily unavailable. Please try again later.'
+      : errorDetail(detail) || 'The request could not be completed.';
+  return new ApiError(message, response.status, detail);
+}
+
+async function readResult<T>(response: Response): Promise<T> {
+  const result: unknown = await response.json().catch(() => null);
+  const detail = result && typeof result === 'object' && 'detail' in result ? result.detail : null;
+  if (!response.ok) throw await failure(response, detail);
+  if (result === null) throw new ApiError('The server returned an invalid response.', response.status);
+  return result as T;
+}
+
+/** Sends a local file as the raw request body, which is how the backend takes private photos. */
+export async function apiUploadFile<T>(path: string, fileUri: string, contentType: string, timeout = 60_000): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  let response: Response;
+  try {
+    const file = await (await fetch(fileUri)).blob();
+    response = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      signal: controller.signal,
+      headers: { Accept: 'application/json', 'Content-Type': contentType, ...nativeHeaders() },
+      body: file,
+    });
+  } catch {
+    throw new ApiError(controller.signal.aborted ? 'The upload took too long. Please try again.' : 'Cannot reach the server. Check your connection and try again.');
+  } finally {
+    clearTimeout(timer);
+  }
+  return readResult<T>(response);
+}
+
+/**
+ * Downloads a sign-in-only image as a data URL. It goes through this client because the
+ * image component has its own network stack, which does not carry the session cookies.
+ */
+export async function apiDataUrl(path: string, timeout = 30_000): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { credentials: 'include', signal: controller.signal, headers: nativeHeaders() });
+  } catch {
+    throw new ApiError(controller.signal.aborted ? 'The photo took too long to load.' : 'Cannot reach the server. Check your connection and try again.');
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.ok) {
+    const result: unknown = await response.json().catch(() => null);
+    throw await failure(response, result && typeof result === 'object' && 'detail' in result ? result.detail : null);
+  }
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new ApiError('This photo could not be opened.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function apiRequest<T>(path: string, { method = 'GET', body, timeout = 20_000 }: RequestOptions = {}): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -78,8 +147,7 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, timeou
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
-        // Native only: browsers set Origin themselves, and an extra header would trigger a CORS preflight the backend rejects.
-        ...(Platform.OS === 'web' ? {} : { 'Cache-Control': 'no-cache', Origin: SITE_URL }),
+        ...nativeHeaders(),
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -91,17 +159,7 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, timeou
   } finally {
     clearTimeout(timer);
   }
-  const result: unknown = await response.json().catch(() => null);
-  const detail = result && typeof result === 'object' && 'detail' in result ? result.detail : null;
-  if (!response.ok) {
-    const message =
-      response.status >= 500 && response.status !== 503
-        ? 'The service is temporarily unavailable. Please try again later.'
-        : errorDetail(detail) || 'The request could not be completed.';
-    throw new ApiError(message, response.status, detail);
-  }
-  if (result === null) throw new ApiError('The server returned an invalid response.', response.status);
-  return result as T;
+  return readResult<T>(response);
 }
 
 export function isUnauthorized(error: unknown): boolean {

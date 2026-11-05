@@ -38,7 +38,7 @@ type ItemGridRowProps = {
   saved: Set<string>;
   hearted: Set<string>;
   onSave: (id: string) => void;
-  onHeart: (id: string) => void;
+  onHeart: (item: Item) => void;
   ageLabel?: (item: Item) => string;
 };
 
@@ -85,7 +85,7 @@ export function ItemGrid({ items, loading, columns: columnsOverride, ageLabel }:
 }
 
 const styles = StyleSheet.create({
-  grid: { gap: 22 },
-  row: { flexDirection: 'row', gap: 16 },
+  grid: { gap: 12 },
+  row: { flexDirection: 'row', gap: 12 },
   cell: { flex: 1 },
 });

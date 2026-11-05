@@ -1,5 +1,15 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
+/** A resized JPEG on disk. Keep the result for retries: the backend matches a retry by its exact bytes. */
+export async function photoFile(uri: string, { maxSide = 1600, quality = 0.82 } = {}): Promise<string> {
+  const original = await ImageManipulator.manipulate(uri).renderAsync();
+  const scale = Math.min(1, maxSide / Math.max(original.width, original.height));
+  const context = ImageManipulator.manipulate(uri);
+  if (scale < 1) context.resize({ width: Math.round(original.width * scale), height: Math.round(original.height * scale) });
+  const rendered = await context.renderAsync();
+  return (await rendered.saveAsync({ format: SaveFormat.JPEG, compress: quality })).uri;
+}
+
 /** Remote photos are already stored by the backend; local picks still need uploading. */
 export function isLocalPhoto(uri: string): boolean {
   return !/^https?:\/\//.test(uri) && !uri.startsWith('data:');

@@ -10,10 +10,11 @@ import type {
   MessageReport,
   MessageReportReason,
   MessageReportStatus,
+  MessageSearchPage,
   SharedListing,
 } from '@/types/directMessages';
 import { initialsOf } from '@/utils/format';
-import { apiRequest, authenticatedRequest, mediaUrl } from './api';
+import { apiRequest, apiUploadFile, authenticatedRequest, mediaUrl } from './api';
 
 type PersonRow = { id: string; full_name: string; avatar_url: string | null };
 type ConversationRow = {
@@ -28,9 +29,19 @@ type ConversationRow = {
   is_pinned?: boolean;
   is_archived?: boolean;
   blocked_by_me?: boolean;
+  is_muted?: boolean;
 };
-type ListingRow = { id: string | null; title: string; condition: string; image_url: string | null; status: SharedListing['status'] };
-type MessageRow = { id: number; sender_id: string; client_id: string; body: string; created_at: string; listing?: ListingRow | null };
+export type SharedListingRow = { id: string | null; title: string; condition: string; image_url: string | null; status: SharedListing['status'] };
+type MessageRow = {
+  id: number;
+  conversation_id?: string;
+  sender_id: string;
+  client_id: string;
+  body: string;
+  created_at: string;
+  listing?: SharedListingRow | null;
+  photo?: { width: number; height: number } | null;
+};
 type ReportRow = {
   id: string;
   status: MessageReportStatus;
@@ -40,10 +51,11 @@ type ReportRow = {
   reason: string;
   details: string;
   message_body: string;
+  photo?: { width: number; height: number } | null;
   reviewed_at: string | null;
   review_notes: string;
 };
-type PresenceRow = { other_is_typing: boolean; typing_expires_at: string | null; other_last_read_message_id: number; server_time: string };
+export type PresenceRow = { other_is_typing: boolean; typing_expires_at: string | null; other_last_read_message_id: number; server_time: string };
 
 const path = (id: string) => `/direct-messages/${encodeURIComponent(id)}`;
 const get = <T>(url: string) => authenticatedRequest(() => apiRequest<T>(url));
@@ -66,18 +78,23 @@ function toConversation(row: ConversationRow): DirectConversation {
     isPinned: row.is_pinned ?? false,
     isArchived: row.is_archived ?? false,
     blockedByMe: row.blocked_by_me ?? false,
+    isMuted: row.is_muted ?? false,
   };
 }
 
+export function toSharedListing(row: SharedListingRow): SharedListing {
+  return { id: row.id, title: row.title, condition: row.condition, imageUrl: mediaUrl(row.image_url), status: row.status };
+}
+
 function toMessage(row: MessageRow): DirectMessage {
-  const listing = row.listing;
   return {
     id: row.id,
     senderId: row.sender_id,
     clientId: row.client_id,
     body: row.body,
     createdAt: row.created_at,
-    listing: listing ? { id: listing.id, title: listing.title, condition: listing.condition, imageUrl: mediaUrl(listing.image_url), status: listing.status } : null,
+    listing: row.listing ? toSharedListing(row.listing) : null,
+    photo: row.photo ? { width: row.photo.width, height: row.photo.height } : null,
   };
 }
 
@@ -91,6 +108,7 @@ function toReport(row: ReportRow): MessageReport {
     reason: row.reason,
     details: row.details,
     messageBody: row.message_body,
+    photo: row.photo ? { width: row.photo.width, height: row.photo.height } : null,
     reviewedAt: row.reviewed_at,
     reviewNotes: row.review_notes,
   };
@@ -140,6 +158,36 @@ export const directMessageService = {
     return toMessage(await post<MessageRow>(`${path(id)}/messages`, { body, client_id: clientId }));
   },
 
+  /** The photo must be a prepared file, and a retry must send that same file with the same `clientId`. */
+  async sendPhoto(id: string, fileUri: string, clientId: string): Promise<DirectMessage> {
+    return toMessage(await authenticatedRequest(() => apiUploadFile<MessageRow>(`${path(id)}/photos?client_id=${clientId}`, fileUri, 'image/jpeg')));
+  },
+
+  photoPath(id: string, messageId: number) {
+    return `${path(id)}/photos/${messageId}`;
+  },
+
+  reportPhotoPath(reportId: string) {
+    return `/direct-messages/reports/${encodeURIComponent(reportId)}/photo`;
+  },
+
+  /** Saved private messages, archived and blocked history included. Read-only: it never marks anything as read. */
+  async search(query: string, threadId?: string, beforeId?: number): Promise<MessageSearchPage> {
+    const params = `q=${encodeURIComponent(query)}&limit=20${beforeId ? `&before_id=${beforeId}` : ''}${threadId ? `&thread_id=${encodeURIComponent(threadId)}` : ''}`;
+    const page = await get<{ matches: { message: MessageRow & { conversation_id: string }; other: PersonRow }[]; has_more: boolean; next_before_id: number | null }>(`/direct-messages/search?${params}`);
+    return {
+      matches: page.matches.map((hit) => ({ message: toMessage(hit.message), conversationId: hit.message.conversation_id, other: toPerson(hit.other) })),
+      hasMore: page.has_more,
+      nextBeforeId: page.next_before_id,
+    };
+  },
+
+  /** A saved message with the messages around it, for opening a search result. */
+  async getContext(id: string, messageId: number): Promise<DirectMessagesPage> {
+    const page = await get<{ messages: MessageRow[]; has_more: boolean }>(`${path(id)}/messages/${messageId}/context?limit=20`);
+    return { messages: page.messages.map(toMessage), hasMore: page.has_more };
+  },
+
   /** Sends one of your active listings as a card. It never creates a trade proposal. */
   async shareListing(id: string, listingId: string, clientId: string): Promise<DirectMessage> {
     return toMessage(await post<MessageRow>(`${path(id)}/listings`, { listing_id: listingId, client_id: clientId }));
@@ -160,6 +208,11 @@ export const directMessageService = {
   /** Your private reminder; the other trader's read receipt and the message counts are untouched. */
   async setMarkedUnread(id: string, markedUnread: boolean): Promise<DirectConversation> {
     return toConversation(await post<ConversationRow>(`${path(id)}/unread`, { marked_unread: markedUnread }));
+  },
+
+  /** Stops bell alerts for future messages only; unread counts and history stay. */
+  async setMuted(id: string, muted: boolean): Promise<DirectConversation> {
+    return toConversation(await post<ConversationRow>(`${path(id)}/mute`, { muted }));
   },
 
   /** Private to you, like archive; neither changes activity time or read receipts. */

@@ -5,6 +5,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, maxFontScale } from '@/theme';
 
 const sizes = {
+  xsmall: { box: 32, font: 11 },
   small: { box: 38, font: 12 },
   medium: { box: 48, font: 14 },
   large: { box: 58, font: 17 },

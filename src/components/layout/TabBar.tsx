@@ -16,57 +16,59 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   const counts = useNotificationCounts();
 
   return (
-    <View style={[styles.bar, { backgroundColor: colors.surface, paddingBottom: Math.max(insets.bottom, 8) }, neu(colors, 2)]}>
+    <View
+      style={[
+        styles.bar,
+        { backgroundColor: colors.surface, paddingBottom: Math.max(insets.bottom, 7), boxShadow: `0 -4px 16px ${colors.neuDark}, 0 -1px 0 ${colors.neuLight}` },
+      ]}>
       <View style={[styles.row, { maxWidth: contentWidth }]}>
-      {state.routes.map((route, index) => {
-        const tab = tabs.find((entry) => entry.name === route.name);
-        if (!tab) return null;
-        const focused = state.index === index;
-        const color = focused ? colors.orange : colors.muted;
-        const Icon = tab.icon;
-        // Inbox shows unread trade messages; other tabs use their static badge, if any.
-        const badge = tab.name === 'inbox' ? counts?.unreadMessageCount : tab.badge;
-        return (
-          <PressableScale
-            key={route.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: focused }}
-            accessibilityLabel={tab.title}
-            scaleTo={0.92}
-            onPress={() => {
-              const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-              if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
-            }}
-            style={styles.tab}>
-            <View style={[styles.iconWrap, focused && [{ backgroundColor: colors.background }, neu(colors, 1, true)]]}>
-              <Icon size={21} color={color} strokeWidth={focused ? 2.4 : 2} />
-              {badge ? (
-                <View style={[styles.badge, { backgroundColor: colors.orange, borderColor: colors.surface }]}>
-                  <Text maxFontSizeMultiplier={maxFontScale} style={[styles.badgeText, { color: colors.onPrimary }]}>{badge > 99 ? '99+' : badge}</Text>
-                </View>
-              ) : null}
-            </View>
-            <Text maxFontSizeMultiplier={maxFontScale}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
-              style={[styles.label, { color, fontFamily: focused ? fonts.bold : fonts.medium }]}>
-              {tab.title}
-            </Text>
-          </PressableScale>
-        );
-      })}
+        {state.routes.map((route, index) => {
+          const tab = tabs.find((entry) => entry.name === route.name);
+          if (!tab) return null;
+          const focused = state.index === index;
+          const color = focused ? colors.orange : colors.muted;
+          const Icon = tab.icon;
+          // Inbox shows unread trade messages; other tabs use their static badge, if any.
+          const badge = tab.name === 'inbox' ? counts?.unreadMessageCount : tab.badge;
+          return (
+            <PressableScale
+              key={route.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
+              accessibilityLabel={tab.title}
+              scaleTo={0.92}
+              onPress={() => {
+                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+              }}
+              style={styles.tab}>
+              <View style={[styles.iconWrap, focused && [{ backgroundColor: colors.background }, neu(colors, 1, true)]]}>
+                <Icon size={21} color={color} />
+                {badge ? (
+                  <View style={[styles.badge, { backgroundColor: colors.orange, borderColor: colors.surface }]}>
+                    <Text maxFontSizeMultiplier={1} style={[styles.badgeText, { color: colors.onPrimary }]}>
+                      {badge > 99 ? '99+' : badge}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={[styles.label, { color }]}>
+                {tab.title}
+              </Text>
+            </PressableScale>
+          );
+        })}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bar: { paddingTop: 10, paddingHorizontal: 6, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
+  bar: { paddingTop: 7, paddingHorizontal: 8, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
   row: { flexDirection: 'row', width: '100%', alignSelf: 'center' },
-  tab: { flex: 1, alignItems: 'center', gap: 3, minWidth: 0 },
-  iconWrap: { width: 54, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 11, maxWidth: '100%' },
-  badge: { position: 'absolute', top: -3, right: 6, minWidth: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  badgeText: { fontFamily: fonts.extrabold, fontSize: 9 },
+  tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 0 },
+  iconWrap: { width: 42, height: 31, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  label: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 15, maxWidth: '100%' },
+  badge: { position: 'absolute', top: -3, right: 1, minWidth: 16, height: 16, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
+  badgeText: { fontFamily: fonts.bold, fontSize: 7 },
 });

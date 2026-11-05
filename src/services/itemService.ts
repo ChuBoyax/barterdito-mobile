@@ -201,8 +201,8 @@ async function save(draft: ItemDraft, id?: string): Promise<Item> {
   return toItem(result.post, result.profile);
 }
 
-/** Saves and hearts are device-local on the website too (no backend endpoint yet). */
-type Interactions = { savedIds: string[]; heartedIds: string[]; savedAt: Record<string, string> };
+/** Saves are device-local on the website too (no backend endpoint yet). */
+type Interactions = { savedIds: string[]; savedAt: Record<string, string> };
 const interactionsKey = (userId: string) => `${storageKeys.interactions}:${userId}`;
 
 export const itemService = {
@@ -280,7 +280,23 @@ export const itemService = {
 
   async getInteractions(userId: string): Promise<Interactions> {
     const saved = await readJson<Interactions>(interactionsKey(userId));
-    return { savedIds: saved?.savedIds ?? [], heartedIds: saved?.heartedIds ?? [], savedAt: saved?.savedAt ?? {} };
+    return { savedIds: saved?.savedIds ?? [], savedAt: saved?.savedAt ?? {} };
+  },
+
+  async getHeartedIds(): Promise<string[]> {
+    return (await authenticatedRequest(() => apiRequest<{ listing_ids: string[] }>('/marketplace/hearts'))).listing_ids;
+  },
+
+  /** Idempotent, so a repeated request can never count twice. Returns the new total. */
+  async setHeart(id: string, hearted: boolean): Promise<number> {
+    const result = await authenticatedRequest(() => apiRequest<{ heart_count: number }>(`/marketplace/items/${encodeURIComponent(id)}/heart`, { method: hearted ? 'PUT' : 'DELETE' }));
+    return result.heart_count;
+  },
+
+  /** Each signed-in trader counts once, the owner included. Returns the new total. */
+  async recordView(id: string): Promise<number> {
+    const result = await authenticatedRequest(() => apiRequest<{ view_count: number }>(`/marketplace/items/${encodeURIComponent(id)}/view`, { method: 'POST', body: {} }));
+    return result.view_count;
   },
 
   async setInteractions(userId: string, interactions: Interactions): Promise<void> {

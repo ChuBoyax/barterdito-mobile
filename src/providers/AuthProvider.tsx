@@ -6,9 +6,10 @@ import { authService, userService } from '@/services';
 import { isUnauthorized, onSessionExpired } from '@/services/api';
 import type { SignInInput, SignUpInput, TwoFactorChallenge } from '@/services/authService';
 import { setViewer } from '@/services/itemService';
+import { clearPrivatePhotos } from '@/services/privatePhotos';
 import type { ProfileWrite } from '@/services/userService';
 import type { User } from '@/types/models';
-import { readJson, removeKey, storageKeys, writeJson } from '@/utils/storage';
+import { readJson, removeKey, removeKeysWithPrefix, storageKeys, writeJson } from '@/utils/storage';
 import { queryClient } from './queryClient';
 import { queryKeys } from '@/services/queryKeys';
 
@@ -129,6 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const forgetSession = useCallback(async () => {
     revision.current++;
     apply(null);
+    // Unsent messages and private photos must not outlive the session on a shared phone.
+    clearPrivatePhotos();
+    await removeKeysWithPrefix(storageKeys.messageDrafts);
   }, [apply]);
 
   const signOut = useCallback(async () => {

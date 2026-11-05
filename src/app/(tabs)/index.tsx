@@ -1,19 +1,20 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ArrowUpRight, CalendarDays, Globe, Map, MapPin, Plus, RotateCcw, Search, SlidersHorizontal, Trophy, X, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, Globe, MapPin, Plus, RotateCcw, Search, Trophy, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AppHeader, MenuButton, NotificationBell } from '@/components/layout';
-import { FeaturedCard, featuredCardWidth, FilterSheet, ItemGridRow, TraderRow, useGridRows, useInteractionSets, type GridRow } from '@/components/marketplace';
-import { AppText, Avatar, Button, ChipRow, EmptyState, PressableScale, SectionHeading } from '@/components/ui';
+import { FeaturedCard, featuredCardWidth, FilterSheet, ItemGridRow, useGridRows, useInteractionSets, type GridRow } from '@/components/marketplace';
+import { AppText, Avatar, Button, ChipRow, EmptyState, FilterButton, PressableScale, SearchField, SectionHeading } from '@/components/ui';
 import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth, useMarketplace, useTheme } from '@/providers';
 import { itemService } from '@/services';
 import { NEARBY_RADIUS_KM } from '@/services/itemService';
-import { avatarPalette, elevation, fonts, neu, tone as getTone, type Tone, maxFontScale } from '@/theme';
-import type { ItemFilters, Trader } from '@/types/models';
+import { fonts, maxFontScale, neu } from '@/theme';
+import type { ItemFilters } from '@/types/models';
 import { firstName } from '@/utils/format';
 import { shortLocation } from '@/utils/location';
 import { openItem } from '@/utils/navigation';
@@ -33,15 +34,12 @@ function greeting() {
 }
 
 export default function BrowseScreen() {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const { gutter, innerWidth, columns, contentWidth } = useResponsive();
   const pad = { paddingHorizontal: gutter };
-  const hRow = [styles.hRow, pad];
   const featuredSnap = featuredCardWidth(innerWidth, columns) + 14;
-  // Exactly three trader cards fit across; the rest scroll in three at a time.
-  const traderWidth = Math.floor((innerWidth - TRADER_GAP * 2) / 3);
   const { user, requireAuth } = useAuth();
-  const { items, featuredTraders, loading, loadingMore, error, hasMore, refresh, loadMore, area, profileArea, setArea } = useMarketplace();
+  const { items, loading, loadingMore, error, hasMore, refresh, loadMore, area, profileArea, setArea } = useMarketplace();
   const [filters, setFilters] = useState(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersMounted = useMountOnOpen(filtersOpen);
@@ -51,14 +49,8 @@ export default function BrowseScreen() {
   const hotItems = useMemo(() => items.filter((item) => item.hot && item.status !== 'Traded'), [items]);
   // The profile area is the default, so only another place (or "Any location") counts as a filter.
   const areaChanged = (area?.id ?? null) !== (profileArea?.id ?? null);
-  const filtersActive = filters.condition !== defaultFilters.condition || filters.sort !== defaultFilters.sort || areaChanged;
-  const browsing = filters.search.trim() !== '' || filters.category !== defaultFilters.category || filtersActive;
-
-  // Ranked by the backend (completed trades, then verified ratings) for the browsing area.
-  const traders = useMemo<Trader[]>(
-    () => featuredTraders.map((trader, index) => ({ ...trader, color: avatarPalette[index % avatarPalette.length] })),
-    [featuredTraders],
-  );
+  const filterCount = [filters.condition !== defaultFilters.condition, filters.sort !== defaultFilters.sort, areaChanged].filter(Boolean).length;
+  const browsing = filters.search.trim() !== '' || filters.category !== defaultFilters.category || filterCount > 0;
 
   async function onRefresh() {
     setRefreshing(true);
@@ -72,8 +64,6 @@ export default function BrowseScreen() {
     setArea(profileArea);
   };
   const addLocation = () => requireAuth(() => router.push('/settings?edit=profile'));
-
-  const resultsLabel = loading ? 'Searching…' : `${visibleItems.length} ${visibleItems.length === 1 ? 'result' : 'results'}`;
 
   const rows = useGridRows(visibleItems, loading, columns);
   const { saved, hearted, toggleSaved, toggleHeart } = useInteractionSets();
@@ -115,122 +105,98 @@ export default function BrowseScreen() {
           }
         />
       </View>
-      <Animated.View entering={FadeInDown.duration(400)} style={[pad, styles.searchBlock]}>
-        <View style={[styles.search, { backgroundColor: colors.background, borderColor: 'transparent' }, neu(colors, 2, true)]}>
-          <Search size={20} color={colors.muted} strokeWidth={2} />
-          <TextInput
-            maxFontSizeMultiplier={maxFontScale}
-            value={filters.search}
-            onChangeText={(search) => update({ search })}
-            placeholder="What are you looking for?"
-            placeholderTextColor={colors.muted2}
-            selectionColor={colors.orange}
-            style={[styles.searchInput, { color: colors.ink }]}
-            accessibilityLabel="Search marketplace"
-            returnKeyType="search"
-            autoCorrect={false}
-          />
-          {filters.search ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Clear search"
-              onPress={() => update({ search: '' })}
-              hitSlop={10}
-              style={[styles.clearButton, { backgroundColor: colors.surface2 }]}>
-              <X size={14} color={colors.muted} strokeWidth={2.6} />
-            </Pressable>
-          ) : null}
-          <PressableScale
-            accessibilityRole="button"
-            accessibilityLabel={filtersActive ? 'Filters, active' : 'Filters'}
-            onPress={() => setFiltersOpen(true)}
-            scaleTo={0.9}
-            style={[styles.filterButton, { backgroundColor: filtersActive ? colors.orange : colors.surface2 }]}>
-            <SlidersHorizontal size={18} color={filtersActive ? colors.onPrimary : colors.ink} strokeWidth={2.2} />
-          </PressableScale>
-        </View>
-      </Animated.View>
-      <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.chips}>
-        <ChipRow inset={gutter} options={itemService.getCategories()} value={filters.category} onChange={(category) => update({ category })} />
-      </Animated.View>
-      <View style={[pad, styles.areaRow]}>
-        {area ? <MapPin size={14} color={colors.orange} strokeWidth={2.3} /> : <Globe size={14} color={colors.muted} strokeWidth={2.3} />}
-        <AppText variant="caption" numberOfLines={1} style={styles.flex}>
-          {area ? `Within ${NEARBY_RADIUS_KM} km of ${shortLocation(area.label)}` : 'Showing items from all locations'}
-        </AppText>
-        <Pressable accessibilityRole="button" onPress={profileArea || area ? () => setFiltersOpen(true) : addLocation} hitSlop={8}>
-          <AppText variant="caption" color="orange" weight="bold">
-            {profileArea || area ? 'Change' : 'Add your location'}
+
+      <Animated.View entering={FadeInDown.duration(400)} style={pad}>
+        <LinearGradient
+          colors={dark ? [colors.surface2, colors.surface] : ['#fbf1e7', '#f6efe8']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.heroTitle, { color: colors.ink }]}>
+            Shopping
+          </Text>
+          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.heroTitle, { color: colors.orange }]}>
+            without money.
+          </Text>
+          <AppText variant="body" style={styles.heroLead}>
+            Swap things you have for things you’ll love, no cash needed.
           </AppText>
-        </Pressable>
-      </View>
-      {browsing ? (
-        <Animated.View entering={FadeIn.duration(250)} style={pad}>
-          <View style={styles.resultsHeader}>
-            <AppText variant="h2" style={styles.flex}>
-              {resultsLabel}
-            </AppText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Clear search and filters"
-              onPress={clearAll}
-              hitSlop={8}
-              style={[styles.resetButton, { backgroundColor: colors.surface2 }]}>
-              <RotateCcw size={13} color={colors.ink} strokeWidth={2.4} />
-              <AppText variant="caption" weight="bold" color="ink">
-                Clear all
+          {!profileArea ? (
+            <Pressable accessibilityRole="button" hitSlop={8} onPress={addLocation} style={styles.heroLink}>
+              <AppText variant="small" color="orange" weight="bold">
+                Add your profile location for nearby items
               </AppText>
             </Pressable>
-          </View>
-        </Animated.View>
-      ) : (
-        <>
-          <Animated.View entering={FadeInDown.delay(120).duration(400)} style={[pad, styles.quick]}>
-            <PrimaryShortcut onPress={() => requireAuth(() => router.push('/post-item'))} />
-            <View style={styles.shortcutRow}>
-              <Shortcut icon={Map} tone="blue" title="Nearby" onPress={() => router.push('/map')} />
-              <Shortcut icon={CalendarDays} tone="green" title="Events" onPress={() => router.push('/events')} />
-              <Shortcut icon={Trophy} tone="yellow" title="Top traders" onPress={() => router.push('/leaderboard')} />
-            </View>
-          </Animated.View>
-          {traders.length ? (
-            <View>
-              <View style={pad}>
-                <SectionHeading eyebrow="Community" title="Featured traders" action="Leaderboard" onAction={() => router.push('/leaderboard')} />
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[...hRow, styles.tradersRow]}
-                decelerationRate="fast"
-                snapToInterval={(traderWidth + TRADER_GAP) * 3}>
-                {traders.map((trader, index) => (
-                  <TraderRow
-                    key={trader.id}
-                    trader={trader}
-                    variant="card"
-                    rank={index + 1}
-                    style={{ width: traderWidth, height: TILE_HEIGHT }}
-                    onPress={() => router.push(`/traders/${trader.id}`)}
-                  />
-                ))}
-              </ScrollView>
-            </View>
           ) : null}
-          {hotItems.length ? (
-            <View>
-              <View style={pad}>
-                <SectionHeading eyebrow="Trending" title="Hot swaps near you" action="See map" onAction={() => router.push('/map')} />
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hRow} decelerationRate="fast" snapToInterval={featuredSnap}>
-                {hotItems.map((item) => (
-                  <FeaturedCard key={item.id} item={item} onPress={() => openItem(item)} />
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
+        </LinearGradient>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(60).duration(400)} style={[pad, styles.shortcuts]}>
+        <Shortcut
+          icon={Plus}
+          title="Post a Trade"
+          text="List an item in minutes"
+          background={colors.orange}
+          foreground={colors.onPrimary}
+          tile="rgba(255, 255, 255, 0.19)"
+          onPress={() => requireAuth(() => router.push('/post-item'))}
+        />
+        <View style={styles.shortcutRow}>
+          <Shortcut
+            icon={Trophy}
+            title="Leaderboard"
+            text="Meet top local traders"
+            background={dark ? colors.yellowSoft : '#fff7e9'}
+            foreground={dark ? colors.warning : '#a56300'}
+            tile="rgba(165, 99, 0, 0.11)"
+            onPress={() => router.push('/leaderboard')}
+          />
+          <Shortcut
+            icon={CalendarDays}
+            title="Trade Events"
+            text="Swap face-to-face"
+            background={colors.greenSoft}
+            foreground={colors.green}
+            tile="rgba(63, 168, 121, 0.11)"
+            onPress={() => router.push('/events')}
+          />
+        </View>
+      </Animated.View>
+
+      {hotItems.length ? (
+        <View>
           <View style={pad}>
-            <SectionHeading eyebrow="Fresh finds" title="Latest items" />
+            <SectionHeading eyebrow="Discover" title="Hot swaps near you" action="View map" onAction={() => router.push('/map')} />
           </View>
-        </>
-      )}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.hRow, pad]} decelerationRate="fast" snapToInterval={featuredSnap}>
+            {hotItems.map((item) => (
+              <FeaturedCard key={item.id} item={item} onPress={() => openItem(item)} />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      <ChipRow inset={gutter} options={itemService.getCategories()} value={filters.category} onChange={(category) => update({ category })} />
+
+      <View style={[pad, styles.searchRow]}>
+        <SearchField
+          hero
+          value={filters.search}
+          onChangeText={(search) => update({ search })}
+          placeholder="Search items or services…"
+          maxLength={160}
+          right={<FilterButton compact count={filterCount} onPress={() => setFiltersOpen(true)} />}
+        />
+      </View>
+
+      <View style={pad}>
+        <SectionHeading
+          eyebrow="Discover"
+          title={`${visibleItems.length} fresh finds`}
+          action={browsing ? 'Clear all' : undefined}
+          onAction={browsing ? clearAll : undefined}
+        />
+      </View>
     </View>
   );
 
@@ -239,8 +205,8 @@ export default function BrowseScreen() {
       {browsing ? (
         <EmptyState
           icon={Search}
-          title="No matches found"
-          text="Try different keywords, pick another category, or clear your filters."
+          title="No matches yet"
+          text="Try a broader search, another category, or clear your filters."
           action="Clear all"
           actionIcon={RotateCcw}
           onAction={clearAll}
@@ -259,9 +225,9 @@ export default function BrowseScreen() {
       ) : (
         <EmptyState
           icon={Plus}
-          title="Nothing listed yet"
-          text="Be the first to post something to swap in your area."
-          action="Post a trade"
+          title="Be the first to post an item"
+          text="List something useful and let your next trade begin."
+          action="Post an item"
           onAction={() => requireAuth(() => router.push('/post-item'))}
         />
       )}
@@ -315,79 +281,47 @@ export default function BrowseScreen() {
   );
 }
 
-const TRADER_GAP = 10;
-/** Shared by the shortcut tiles and the Active traders cards so both rows line up. */
-const TILE_HEIGHT = 96;
 const rowKey = (row: GridRow) => row.key;
 const RowGap = () => <View style={styles.rowGap} />;
 
-function PrimaryShortcut({ onPress }: { onPress: () => void }) {
+type ShortcutProps = { icon: LucideIcon; title: string; text: string; background: string; foreground: string; tile: string; onPress: () => void };
+
+function Shortcut({ icon: Icon, title, text, background, foreground, tile, onPress }: ShortcutProps) {
   const { colors } = useTheme();
   return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel="Post a trade"
-      onPress={onPress}
-      scaleTo={0.98}
-      style={[styles.primary, { backgroundColor: colors.orange }, neu(colors, 2)]}>
-      <View style={[styles.primaryIcon, { borderColor: colors.onPrimary }]}>
-        <Plus size={22} color={colors.onPrimary} strokeWidth={2.4} />
+    <PressableScale accessibilityRole="button" accessibilityLabel={title} onPress={onPress} scaleTo={0.97} style={[styles.shortcut, { backgroundColor: background }, neu(colors, 1)]}>
+      <View style={[styles.shortcutIcon, { backgroundColor: tile }]}>
+        <Icon size={22} color={foreground} />
       </View>
       <View style={styles.flex}>
-        {/* Single lines that shrink to fit, so no screen size wraps the copy. */}
-        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.primaryTitle, { color: colors.onPrimary }]}>
-          Post a trade
+        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.shortcutTitle, { color: foreground }]}>
+          {title}
         </Text>
-        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.primaryText, { color: colors.onPrimary }]}>
-          List an item in minutes — no cash needed
+        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={2} style={[styles.shortcutText, { color: foreground }]}>
+          {text}
         </Text>
       </View>
-      <ArrowUpRight size={20} color={colors.onPrimary} strokeWidth={2.2} />
-    </PressableScale>
-  );
-}
-
-function Shortcut({ icon: Icon, tone, title, onPress }: { icon: LucideIcon; tone: Tone; title: string; onPress: () => void }) {
-  const { colors } = useTheme();
-  const palette = getTone(colors, tone);
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      onPress={onPress}
-      scaleTo={0.95}
-      style={[styles.shortcut, { backgroundColor: colors.surface, borderColor: 'transparent' }, elevation(1, colors)]}>
-      <Icon size={28} color={palette.fg} strokeWidth={1.9} />
-      <AppText variant="caption" weight="semibold" color="ink" numberOfLines={1} align="center">
-        {title}
-      </AppText>
     </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
   list: { width: '100%', alignSelf: 'center', paddingBottom: 40 },
-  headerStack: { gap: 24, paddingBottom: 14 },
+  headerStack: { gap: 16, paddingBottom: 2 },
   footer: { gap: 24, paddingTop: 22 },
-  rowGap: { height: 22 },
-  flex: { flex: 1 },
+  rowGap: { height: 12 },
+  flex: { flex: 1, minWidth: 0 },
   actions: { flexDirection: 'row', gap: 8 },
-  searchBlock: { marginTop: 4 },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, minHeight: 54, paddingLeft: 16, paddingRight: 6 },
-  searchInput: { flex: 1, fontFamily: fonts.medium, fontSize: 15, paddingVertical: 10 },
-  clearButton: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  filterButton: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  chips: { marginTop: -12 },
-  areaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -12 },
-  resultsHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  resetButton: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  quick: { gap: 12 },
-  shortcutRow: { flexDirection: 'row', gap: 10 },
-  primary: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 16 },
-  primaryIcon: { width: 46, height: 46, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', opacity: 0.95 },
-  primaryTitle: { fontFamily: fonts.extrabold, fontSize: 17 },
-  primaryText: { fontFamily: fonts.medium, fontSize: 12.5, opacity: 0.88 },
-  shortcut: { flex: 1, height: TILE_HEIGHT, alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 16, paddingHorizontal: 4 },
+  hero: { borderRadius: 19, paddingHorizontal: 16, paddingVertical: 24 },
+  heroTitle: { fontFamily: fonts.bold, fontSize: 36, lineHeight: 40, letterSpacing: -1.26 },
+  heroLead: { marginTop: 12, fontSize: 15, lineHeight: 24 },
+  heroLink: { marginTop: 12 },
+  shortcuts: { gap: 16 },
+  shortcutRow: { flexDirection: 'row', gap: 16 },
+  shortcut: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 16 },
+  shortcutIcon: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  shortcutTitle: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 21 },
+  shortcutText: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, opacity: 0.78 },
+  searchRow: { flexDirection: 'row' },
   hRow: { gap: 14, paddingBottom: 6 },
-  tradersRow: { gap: TRADER_GAP, paddingTop: 2 },
 });

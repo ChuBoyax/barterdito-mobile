@@ -15,8 +15,8 @@ export const queryKeys = {
   profile: (id: string) => ['profile', id] as const,
   connections: (kind?: ConnectionKind) => (kind ? (['connections', kind] as const) : (['connections'] as const)),
 
-  offers: (direction?: OfferDirection, status?: OfferFilter) =>
-    direction ? (status ? (['offers', direction, status] as const) : (['offers', direction] as const)) : (['offers'] as const),
+  offers: (direction?: OfferDirection, status?: OfferFilter, query = '', sort = 'newest', needsAction = false) =>
+    direction ? (status ? (['offers', direction, status, query, sort, needsAction] as const) : (['offers', direction] as const)) : (['offers'] as const),
   conversations: (filter?: 'all' | 'completed') => (filter ? (['conversations', filter] as const) : (['conversations'] as const)),
   reviews: (userId: string) => ['reviews', userId] as const,
   directConversations: (view?: 'all' | 'unread' | 'archived') => (view ? (['directConversations', view] as const) : (['directConversations'] as const)),
@@ -34,6 +34,10 @@ export const queryKeys = {
   accessRoles: ['access', 'roles'] as const,
   accessPermissions: ['access', 'permissions'] as const,
   accessAudit: ['access', 'audit'] as const,
+  activityEvents: (filters: string) => ['access', 'activityEvents', filters] as const,
+  activityAccounts: (query: string) => ['access', 'activityAccounts', query] as const,
+  activityReport: (report: string, range: string) => ['access', 'activityReport', report, range] as const,
+  monitoring: (filters: string) => ['access', 'monitoring', filters] as const,
 
   notifications: ['notifications'] as const,
   notificationList: ['notifications', 'list'] as const,

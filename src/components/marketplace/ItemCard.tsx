@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
-import { ArrowRightLeft, Bookmark, Flame, Heart, MapPin } from 'lucide-react-native';
+import { ArrowLeftRight, Bookmark, Eye, Heart, MapPin } from 'lucide-react-native';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppText, Glass, PhotoScrim, PressableScale, Skeleton } from '@/components/ui';
+import { AppText, PressableScale, Skeleton } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, maxFontScale, neu } from '@/theme';
+import { elevation, fonts, maxFontScale, neu } from '@/theme';
 import type { Item } from '@/types/models';
 import { distanceLabel, shortLocation } from '@/utils/location';
 
@@ -24,68 +24,99 @@ type ItemCardProps = {
   ageLabel?: string;
   onOpen: (item: Item) => void;
   onSave: (id: string) => void;
-  onHeart: (id: string) => void;
+  onHeart: (item: Item) => void;
 };
 
-
+/** Same layout as the website's phone view: photo with its chips, facts, "looking for", then counts. */
 export const ItemCard = memo(function ItemCard({ item, saved, hearted, ageLabel, onOpen: openItem, onSave: saveItem, onHeart: heartItem }: ItemCardProps) {
   const { colors } = useTheme();
   const onOpen = () => openItem(item);
   const onSave = () => saveItem(item.id);
-  const onHeart = () => heartItem(item.id);
+  const onHeart = () => heartItem(item);
+  const dot = item.status === 'Active' ? colors.green : item.status === 'In Negotiation' ? colors.warning : colors.muted;
+  const chip = [{ backgroundColor: colors.glass }, elevation(1, colors)];
   return (
     <View style={[styles.card, { backgroundColor: colors.surface }, neu(colors, 2)]}>
-      <PressableScale accessibilityRole="button" accessibilityLabel={`View ${item.title}`} onPress={onOpen} scaleTo={0.97} style={styles.media}>
-        <Image source={item.image} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={item.id} />
-        <PhotoScrim />
-        <View style={styles.topRow}>
-          {item.hot ? (
-            <View style={[styles.hot, { backgroundColor: colors.orange }]}>
-              <Flame size={11} color={colors.onPrimary} fill={colors.onPrimary} />
-              <Text maxFontSizeMultiplier={maxFontScale} style={[styles.hotText, { color: colors.onPrimary }]}>Hot</Text>
-            </View>
-          ) : (
-            <View />
-          )}
-          <Pressable accessibilityLabel="Heart item" hitSlop={6} onPress={onHeart}>
-            <Glass style={styles.heart} intensity={30}>
-              <Heart size={15} color={hearted ? colors.red : colors.ink} fill={hearted ? colors.red : 'none'} strokeWidth={2.2} />
-            </Glass>
-          </Pressable>
+      <View style={[styles.media, { backgroundColor: colors.surface2 }]}>
+        <PressableScale accessibilityRole="button" accessibilityLabel={`View ${item.title}`} onPress={onOpen} scaleTo={0.98} style={StyleSheet.absoluteFill}>
+          <Image source={item.image} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={item.id} />
+        </PressableScale>
+        <View pointerEvents="none" style={[styles.category, chip]}>
+          <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} style={[styles.categoryText, { color: colors.orange }]}>
+            {item.category}
+          </Text>
         </View>
-        <View style={styles.bottomRow}>
-          <View style={styles.inline}>
-            <MapPin size={11} color={colors.onPhoto} strokeWidth={2.4} />
-            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoText, { color: colors.onPhoto }]} numberOfLines={1}>
-              {placeLine(item)}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={saved ? 'Remove from saved items' : 'Save item'}
+          accessibilityState={{ selected: saved }}
+          hitSlop={6}
+          onPress={onSave}
+          style={[styles.save, chip]}>
+          <Bookmark size={15} color={saved ? colors.orange : colors.ink} fill={saved ? colors.orange : 'none'} />
+        </Pressable>
+        {item.hot ? (
+          <View pointerEvents="none" style={[styles.hot, { backgroundColor: colors.orange }]}>
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.hotText, { color: colors.onPrimary }]}>
+              🔥 Hot
             </Text>
           </View>
-          <View style={styles.inlineEnd}>
-            <Heart size={11} color={colors.onPhoto} fill={colors.onPhoto} />
-            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoText, { color: colors.onPhoto }]}>{item.hearts}</Text>
+        ) : null}
+        <View pointerEvents="none" style={[styles.status, chip]}>
+          <View style={[styles.dot, { backgroundColor: dot }]} />
+          <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} style={[styles.statusText, { color: colors.ink }]}>
+            {item.status}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.body}>
+        <Pressable onPress={onOpen}>
+          <AppText variant="small" color="ink" weight="semibold" numberOfLines={1} style={styles.title}>
+            {item.title}
+          </AppText>
+        </Pressable>
+        <View style={styles.facts}>
+          <AppText variant="caption" color="ink" weight="bold" numberOfLines={1} style={styles.condition}>
+            {item.condition}
+          </AppText>
+          <View style={styles.location}>
+            <MapPin size={12} color={colors.muted2} />
+            <AppText variant="caption" numberOfLines={1} style={styles.flex}>
+              {placeLine(item)}
+            </AppText>
           </View>
         </View>
-      </PressableScale>
-      <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <Pressable onPress={onOpen} style={styles.flex}>
-            <AppText variant="h3" numberOfLines={1}>
-              {item.title}
-            </AppText>
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove from saved items' : 'Save item'} hitSlop={8} onPress={onSave}>
-            <Bookmark size={17} color={saved ? colors.orange : colors.muted} fill={saved ? colors.orange : 'none'} strokeWidth={2.1} />
-          </Pressable>
+        <View style={[styles.wanted, { backgroundColor: colors.background }, neu(colors, 1, true)]}>
+          <View style={[styles.wantedIcon, { backgroundColor: colors.orangeSoft }]}>
+            <ArrowLeftRight size={12} color={colors.orange} />
+          </View>
+          <View style={styles.flex}>
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.wantedLabel, { color: colors.muted }]}>
+              Looking for
+            </Text>
+            <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} style={[styles.wantedText, { color: colors.ink }]}>
+              {item.wanted.trim() || 'Not specified'}
+            </Text>
+          </View>
         </View>
-        <View style={styles.inline}>
-          <ArrowRightLeft size={11} color={colors.orange} strokeWidth={2.4} />
-          <AppText variant="caption" color="ink" weight="medium" numberOfLines={1} style={styles.flex}>
-            {item.wanted}
-          </AppText>
+        <View style={styles.meta}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Heart item, ${item.hearts} likes`} accessibilityState={{ selected: hearted }} onPress={onHeart} style={styles.heart}>
+            <Heart size={13} color={hearted ? colors.orange : colors.muted} fill={hearted ? colors.orange : 'none'} />
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.metaText, { color: colors.muted }]}>
+              {item.hearts}
+            </Text>
+          </Pressable>
+          <View style={styles.views} accessibilityLabel={`${item.views} views`}>
+            <Eye size={13} color={colors.muted} />
+            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.metaText, { color: colors.muted }]}>
+              {item.views}
+            </Text>
+          </View>
+          <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} style={[styles.metaText, styles.age, { color: colors.muted }]}>
+            {ageLabel ?? item.age}
+          </Text>
         </View>
-        <AppText variant="caption" numberOfLines={1}>
-          {item.condition} · {ageLabel ?? item.age}
-        </AppText>
       </View>
     </View>
   );
@@ -96,9 +127,10 @@ export function ItemCardSkeleton() {
   return (
     <View style={[styles.card, { backgroundColor: colors.surface }, neu(colors, 2)]}>
       <Skeleton style={[styles.media, styles.skeletonMedia]} />
-      <View style={styles.body}>
+      <View style={[styles.body, styles.skeletonBody]}>
         <Skeleton style={styles.skeletonTitle} />
         <Skeleton style={styles.skeletonLine} />
+        <Skeleton style={styles.skeletonWanted} />
         <Skeleton style={styles.skeletonShort} />
       </View>
     </View>
@@ -106,21 +138,35 @@ export function ItemCardSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  card: { flex: 1, gap: 10, borderRadius: 24, padding: 8, paddingBottom: 12 },
-  flex: { flex: 1 },
-  media: { width: '100%', aspectRatio: 0.9, borderRadius: 18, overflow: 'hidden', justifyContent: 'space-between' },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 },
-  hot: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-  hotText: { fontFamily: fonts.extrabold, fontSize: 10 },
-  heart: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 11, gap: 6 },
-  inline: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  inlineEnd: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  photoText: { fontFamily: fonts.bold, fontSize: 10.5 },
-  body: { gap: 3, paddingHorizontal: 6 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  skeletonMedia: { borderRadius: 20 },
+  card: { flex: 1, minWidth: 0, borderRadius: 20, padding: 6 },
+  flex: { flex: 1, minWidth: 0 },
+  media: { width: '100%', aspectRatio: 1, borderRadius: 14, overflow: 'hidden' },
+  category: { position: 'absolute', top: 8, left: 8, maxWidth: '62%', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  categoryText: { fontFamily: fonts.bold, fontSize: 10, lineHeight: 14 },
+  save: { position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  hot: { position: 'absolute', left: 8, bottom: 34, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 },
+  hotText: { fontFamily: fonts.bold, fontSize: 10 },
+  status: { position: 'absolute', right: 8, bottom: 8, maxWidth: '86%', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { flexShrink: 1, fontFamily: fonts.bold, fontSize: 10, lineHeight: 16 },
+  body: { flex: 1, gap: 2, paddingTop: 8, paddingHorizontal: 2 },
+  title: { fontSize: 14, lineHeight: 19 },
+  facts: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  condition: { flexShrink: 0, maxWidth: '50%' },
+  location: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 3 },
+  wanted: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, paddingVertical: 4, paddingLeft: 4, paddingRight: 8 },
+  wantedIcon: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  wantedLabel: { fontFamily: fonts.regular, fontSize: 10, lineHeight: 13 },
+  wantedText: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 15 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40 },
+  heart: { flexDirection: 'row', alignItems: 'center', gap: 3, minWidth: 44, minHeight: 40 },
+  views: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaText: { fontFamily: fonts.medium, fontSize: 11 },
+  age: { flex: 1, minWidth: 0, textAlign: 'right' },
+  skeletonMedia: { borderRadius: 14 },
+  skeletonBody: { gap: 6, paddingBottom: 8 },
   skeletonTitle: { width: '85%', height: 15 },
   skeletonLine: { width: '65%', height: 11 },
+  skeletonWanted: { width: '100%', height: 34, borderRadius: 12 },
   skeletonShort: { width: '40%', height: 11 },
 });
