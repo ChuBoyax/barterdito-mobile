@@ -14,7 +14,7 @@ const DELAY_MS = 500;
 const SPACING_MS = 1100;
 
 /** Type a city or barangay and pick a suggestion (Photon via the backend), like the website's area search. */
-export function PlaceSearch({ onSelect }: { onSelect: (place: Place) => void }) {
+export function PlaceSearch({ onSelect, flat }: { onSelect: (place: Place) => void; flat?: boolean }) {
   const { colors } = useTheme();
   const [query, setQuery] = useState('');
   const [places, setPlaces] = useState<Place[]>([]);
@@ -68,6 +68,7 @@ export function PlaceSearch({ onSelect }: { onSelect: (place: Place) => void }) 
   return (
     <View style={styles.wrap}>
       <TextField
+        flat={flat}
         icon={Search}
         value={query}
         onChangeText={setQuery}
@@ -90,7 +91,7 @@ export function PlaceSearch({ onSelect }: { onSelect: (place: Place) => void }) 
         </View>
       ) : null}
       {places.length || searched ? (
-        <View style={[styles.list, { backgroundColor: colors.surface }, elevation(1, colors)]}>
+        <View style={[styles.list, { backgroundColor: colors.surface }, flat ? [styles.flatList, { borderColor: colors.line }] : elevation(1, colors)]}>
           {!places.length ? (
             <View style={styles.option}>
               <AppText variant="small">No places found. Try another city or barangay.</AppText>
@@ -146,5 +147,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   list: { borderRadius: 14, overflow: 'hidden' },
+  flatList: { borderWidth: 1 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 11 },
 });

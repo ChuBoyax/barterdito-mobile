@@ -189,7 +189,7 @@ export default function BrowseScreen() {
           hero
           value={filters.search}
           onChangeText={(search) => update({ search })}
-          placeholder={width < NARROW_WIDTH ? 'Search items…' : 'Search items or services…'}
+          placeholder="Search items…"
           maxLength={160}
           right={<FilterButton compact count={filterCount} onPress={() => setFiltersOpen(true)} />}
         />
@@ -288,7 +288,6 @@ export default function BrowseScreen() {
 }
 
 const BASE_WIDTH = 390;
-const NARROW_WIDTH = 360;
 const MIN_TEXT_SCALE = 0.85;
 
 const heroTitleSize = (scale: number) => ({ fontSize: 32 * scale, lineHeight: 36 * scale, letterSpacing: -1.1 * scale });

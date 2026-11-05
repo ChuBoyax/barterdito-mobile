@@ -15,10 +15,12 @@ type SelectFieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   error?: string;
+  /** Thin borders instead of shadows, on the field and its option sheet. */
+  flat?: boolean;
 };
 
 
-export function SelectField({ label, required, value, options, onChange, placeholder = 'Select…', error }: SelectFieldProps) {
+export function SelectField({ label, required, value, options, onChange, placeholder = 'Select…', error, flat }: SelectFieldProps) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   return (
@@ -33,14 +35,14 @@ export function SelectField({ label, required, value, options, onChange, placeho
         accessibilityRole="button"
         accessibilityLabel={label ?? placeholder}
         onPress={() => setOpen(true)}
-        style={[styles.field, { backgroundColor: colors.background, borderColor: error ? colors.red : 'transparent' }, neu(colors, 2, true)]}>
+        style={[styles.field, { backgroundColor: colors.background, borderColor: error ? colors.red : flat ? colors.line : 'transparent' }, !flat && neu(colors, 2, true)]}>
         <Text maxFontSizeMultiplier={maxFontScale} style={[styles.value, { color: value ? colors.ink : colors.muted2 }]} numberOfLines={1}>
           {value || placeholder}
         </Text>
         <ChevronDown size={18} color={colors.muted} />
       </Pressable>
       {error ? <Text maxFontSizeMultiplier={maxFontScale} style={[styles.error, { color: colors.red }]}>{error}</Text> : null}
-      <BottomSheet visible={open} onClose={() => setOpen(false)} title={label ?? placeholder}>
+      <BottomSheet visible={open} flat={flat} onClose={() => setOpen(false)} title={label ?? placeholder}>
         {options.map((option) => {
           const active = option === value;
           return (
@@ -50,7 +52,11 @@ export function SelectField({ label, required, value, options, onChange, placeho
                 onChange(option);
                 setOpen(false);
               }}
-              style={[styles.option, { backgroundColor: active ? colors.orangeSoft : colors.surface }, active ? neu(colors, 1, true) : neu(colors, 1)]}>
+              style={[
+                styles.option,
+                { backgroundColor: active ? colors.orangeSoft : colors.surface },
+                flat ? [styles.flatOption, { borderColor: active ? colors.orange : colors.line }] : neu(colors, 1, active),
+              ]}>
               <Text maxFontSizeMultiplier={maxFontScale} style={[styles.optionText, { color: active ? colors.orange : colors.ink }]}>{option}</Text>
               {active ? <Check size={18} color={colors.orange} /> : null}
             </Pressable>
@@ -82,6 +88,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
   },
+  flatOption: { borderWidth: 1 },
   optionText: { fontFamily: fonts.semibold, fontSize: 14 },
   error: { fontFamily: fonts.semibold, fontSize: 12 },
 });

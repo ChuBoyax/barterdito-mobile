@@ -13,9 +13,11 @@ type SegmentedControlProps<T extends string> = {
   onChange: (value: T) => void;
   /** Smaller labels that stay on one line and shrink to fit, for three or more long segments. */
   compact?: boolean;
+  /** A plain filled track instead of shadows. */
+  flat?: boolean;
 };
 
-export function SegmentedControl<T extends string>({ segments, value, onChange, compact }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ segments, value, onChange, compact, flat }: SegmentedControlProps<T>) {
   const { colors } = useTheme();
   const [width, setWidth] = useState(0);
   const index = Math.max(0, segments.findIndex((segment) => segment.value === value));
@@ -30,9 +32,9 @@ export function SegmentedControl<T extends string>({ segments, value, onChange, 
   return (
     <View
       onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
-      style={[styles.wrap, { backgroundColor: colors.background }, neu(colors, 2, true)]}>
+      style={[styles.wrap, { backgroundColor: flat ? colors.surface2 : colors.background }, !flat && neu(colors, 2, true)]}>
       {width ? (
-        <Animated.View style={[styles.indicator, { backgroundColor: colors.surface }, neu(colors, 1), indicatorStyle]} />
+        <Animated.View style={[styles.indicator, { backgroundColor: colors.surface }, !flat && neu(colors, 1), indicatorStyle]} />
       ) : null}
       {segments.map((segment) => {
         const active = segment.value === value;

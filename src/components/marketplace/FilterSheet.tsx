@@ -35,27 +35,38 @@ export function FilterSheet({ visible, onClose, filters, conditions, onChange, a
 
   function chooseScope(next: Scope) {
     setChoosing(next === 'other');
-    if (next === 'all') onAreaChange(null);
-    if (next === 'profile') onAreaChange(profileArea);
+    // "Other place" stays open so a place can be picked; everything else applies and closes right away.
+    if (next === 'other') return;
+    onAreaChange(next === 'all' ? null : profileArea);
+    onClose();
   }
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} eyebrow="Refine" title="Filters">
+    <BottomSheet visible={visible} flat onClose={onClose} eyebrow="Refine" title="Filters">
       <SelectField
+        flat
         label="Condition"
         value={filters.condition}
         options={['Any condition', ...conditions]}
-        onChange={(condition) => onChange({ condition })}
+        onChange={(condition) => {
+          onChange({ condition });
+          onClose();
+        }}
       />
       <SelectField
+        flat
         label="Sort by"
         value={filters.sort}
         options={sortOptions}
-        onChange={(sort) => onChange({ sort: sort as ItemFilters['sort'] })}
+        onChange={(sort) => {
+          onChange({ sort: sort as ItemFilters['sort'] });
+          onClose();
+        }}
       />
       <View style={styles.location}>
         <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: colors.ink }]}>Location</Text>
         <SegmentedControl<Scope>
+          flat
           value={scope}
           onChange={chooseScope}
           segments={[
@@ -82,14 +93,15 @@ export function FilterSheet({ visible, onClose, filters, conditions, onChange, a
           </View>
         ) : (
           <PlaceSearch
+            flat
             onSelect={(place) => {
               setChoosing(false);
               onAreaChange(place);
+              onClose();
             }}
           />
         )}
       </View>
-      <Button label="Show results" onPress={onClose} />
       <Button
         label="Clear filters"
         variant="ghost"
@@ -97,6 +109,7 @@ export function FilterSheet({ visible, onClose, filters, conditions, onChange, a
           setChoosing(false);
           onChange({ condition: 'Any condition', sort: 'Nearest first' });
           onAreaChange(profileArea);
+          onClose();
         }}
       />
     </BottomSheet>
