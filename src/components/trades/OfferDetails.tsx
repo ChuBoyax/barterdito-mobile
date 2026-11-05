@@ -50,13 +50,15 @@ export function OfferTradeProgress({ offer, userId }: { offer: TradeOffer; userI
         <View style={styles.flex}>
           {meetup ? (
             <>
-              <AppText variant="small" color="ink" weight="semibold">
+              <AppText variant="small" color="ink" weight="semibold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                 {progress.agreedMeetup ? 'Meetup agreed' : 'Meetup proposed'} · {meetupDate(meetup.startsAt)}
               </AppText>
               <AppText variant="caption">{meetup.location}</AppText>
             </>
           ) : (
-            <AppText variant="small">Agree on the details in your trade chat.</AppText>
+            <AppText variant="small" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              Agree on the details in your trade chat.
+            </AppText>
           )}
         </View>
       </View>
