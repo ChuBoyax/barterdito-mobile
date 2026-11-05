@@ -11,9 +11,11 @@ type SegmentedControlProps<T extends string> = {
   segments: Segment<T>[];
   value: T;
   onChange: (value: T) => void;
+  /** Smaller labels that stay on one line and shrink to fit, for three or more long segments. */
+  compact?: boolean;
 };
 
-export function SegmentedControl<T extends string>({ segments, value, onChange }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ segments, value, onChange, compact }: SegmentedControlProps<T>) {
   const { colors } = useTheme();
   const [width, setWidth] = useState(0);
   const index = Math.max(0, segments.findIndex((segment) => segment.value === value));
@@ -41,7 +43,14 @@ export function SegmentedControl<T extends string>({ segments, value, onChange }
             accessibilityState={{ selected: active }}
             onPress={() => onChange(segment.value)}
             style={styles.segment}>
-            <Text maxFontSizeMultiplier={maxFontScale} style={[styles.label, { color: active ? colors.ink : colors.muted }]}>{segment.label}</Text>
+            <Text
+              maxFontSizeMultiplier={maxFontScale}
+              numberOfLines={compact ? 1 : undefined}
+              adjustsFontSizeToFit={compact}
+              minimumFontScale={0.75}
+              style={[styles.label, compact && styles.labelCompact, { color: active ? colors.ink : colors.muted }]}>
+              {segment.label}
+            </Text>
             {segment.count !== undefined ? (
               <View style={[styles.count, { backgroundColor: active ? colors.orange : 'transparent' }]}>
                 <Text maxFontSizeMultiplier={maxFontScale} style={[styles.countText, { color: active ? colors.white : colors.muted }]}>{segment.count}</Text>
@@ -59,6 +68,7 @@ const styles = StyleSheet.create({
   indicator: { position: 'absolute', top: 5, bottom: 5, left: 5, borderRadius: 999 },
   segment: { flex: 1, minHeight: 40, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   label: { fontFamily: fonts.bold, fontSize: 13, flexShrink: 1, textAlign: 'center' },
+  labelCompact: { fontSize: 12 },
   count: { minWidth: 20, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1, alignItems: 'center' },
   countText: { fontFamily: fonts.extrabold, fontSize: 10 },
 });

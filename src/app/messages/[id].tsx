@@ -1,27 +1,27 @@
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronRight, Package, Plus, Search, X } from 'lucide-react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, Alert, AppState, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ArrowDown, ArrowLeftRight, Edit3, Package, Plus, Search, Trash2, X } from 'lucide-react-native';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ChatAttachments, ChatFrame, MessageBubble, MessageComposer, PrivatePhoto, SharedListingCard } from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
-import { shortDate } from '@/components/trades';
-import { AppText, Avatar, Badge, Button, IconButton, LoadingView, TextField } from '@/components/ui';
+import { TradeControls } from '@/components/trades';
+import { ActionSheet, AppText, Avatar, BottomSheet, Button, IconButton, LoadingView, PressableScale, TextField, type ActionSheetOption } from '@/components/ui';
 import { useDirectPresence } from '@/hooks/useDirectPresence';
 import { useMessageDraft } from '@/hooks/useMessageDraft';
+import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { usePolling, useTradeConversation } from '@/hooks/useTradeConversation';
 import { setNotificationCounts } from '@/hooks/useNotificationCounts';
 import { queryClient, useAuth, useTheme } from '@/providers';
 import { tradeService } from '@/services';
 import { notificationService } from '@/services/notificationService';
 import { queryKeys } from '@/services/queryKeys';
-import { neu } from '@/theme';
-import type { Conversation, TradeMessage } from '@/types/trades';
+import type { Conversation, OfferListing, TradeMessage } from '@/types/trades';
 import { confirmAction } from '@/utils/confirm';
 import { mergeById } from '@/utils/collections';
 import { errorMessage } from '@/utils/format';
-import { confirmations, otherTrader } from '@/utils/trades';
+import { otherTrader } from '@/utils/trades';
 
 export default function TradeChatScreen() {
   return (
@@ -33,20 +33,20 @@ export default function TradeChatScreen() {
 
 const SEARCH_DELAY_MS = 300;
 
+const clockTime = (value: string) => new Date(value).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+const dayLabel = (value: string) => new Date(value).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
 function messageTime(message: TradeMessage) {
-  const time = shortDate(message.createdAt);
+  const time = clockTime(message.createdAt);
   return message.editedAt && !message.deletedAt ? `${time} · edited` : time;
 }
 
-/** A few words on what happens next, shown in the trade strip. */
-function nextStep(data: Conversation, userId: string) {
-  if (data.status === 'completed') return 'Completed · Rate your trade';
-  if (data.status === 'cancelled') return 'Trade cancelled';
-  if (data.issues.some((entry) => entry.status === 'open')) return 'Paused · Problem reported';
-  const { mine, theirs } = confirmations(data, userId);
-  if (mine) return 'Waiting for their confirmation';
-  if (theirs) return 'They confirmed · Your turn';
-  return 'Arrange here, then confirm the exchange';
+/** Where the trade stands, under the other trader's name. */
+function statusLine(data: Conversation) {
+  if (data.issues.some((entry) => entry.status === 'open')) return { text: 'Completion paused: reported problem', color: 'orange' as const };
+  if (data.status === 'completed') return { text: 'Trade completed', color: 'muted' as const };
+  if (data.status === 'cancelled') return { text: 'Trade cancelled', color: 'muted' as const };
+  return { text: 'In progress', color: 'green' as const };
 }
 
 function TradeChat() {
@@ -64,6 +64,10 @@ function TradeChat() {
   const [olderBusy, setOlderBusy] = useState(false);
   const [error, setError] = useState('');
   const [attaching, setAttaching] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsMounted = useMountOnOpen(detailsOpen);
+  const [optionsFor, setOptionsFor] = useState<TradeMessage | null>(null);
+  const [atLatest, setAtLatest] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [results, setResults] = useState<{ query: string; messages: TradeMessage[] } | null>(null);
@@ -176,7 +180,7 @@ function TradeChat() {
   const mineFirst = data.offer.proposer.id === userId;
   const theirItem = mineFirst ? data.offer.requested : data.offer.offered;
   const yourItem = mineFirst ? data.offer.offered : data.offer.requested;
-  const step = nextStep(data, userId);
+  const status = statusLine(data);
   const typing = presence.typing && active;
   const shown = searching ? (results?.messages ?? []) : messages;
 
@@ -251,22 +255,10 @@ function TradeChat() {
     }
   }
 
-  function openActions(message: TradeMessage) {
-    // Photos and listing cards can only be removed.
-    const edit = message.photo || message.listing ? null : () => setEditing({ id: message.id, text: message.body });
-    if (Platform.OS === 'ios') {
-      const options = edit ? ['Edit', 'Remove', 'Cancel'] : ['Remove', 'Cancel'];
-      ActionSheetIOS.showActionSheetWithOptions({ options, destructiveButtonIndex: options.indexOf('Remove'), cancelButtonIndex: options.indexOf('Cancel') }, (index) => {
-        if (options[index] === 'Edit') edit?.();
-        if (options[index] === 'Remove') void remove(message);
-      });
-      return;
-    }
-    Alert.alert('Message', undefined, [
-      ...(edit ? [{ text: 'Edit', onPress: edit }] : []),
-      { text: 'Remove', style: 'destructive' as const, onPress: () => void remove(message) },
-      { text: 'Cancel', style: 'cancel' as const },
-    ]);
+  function jumpToLatest() {
+    followLatest.current = true;
+    setAtLatest(true);
+    scrollRef.current?.scrollToEnd({ animated: true });
   }
 
   return (
@@ -285,17 +277,14 @@ function TradeChat() {
                 <AppText variant="h3" numberOfLines={1} style={styles.name}>
                   {other.fullName}
                 </AppText>
-                {typing ? (
-                  <AppText variant="caption" color="green">
-                    typing…
-                  </AppText>
-                ) : null}
+                <AppText variant="caption" color={typing ? 'green' : status.color} numberOfLines={1} style={styles.name}>
+                  {typing ? 'typing…' : status.text}
+                </AppText>
               </View>
             </Pressable>
           ),
           headerRight: () => (
             <View style={styles.headerRight}>
-              {active ? null : <Badge label={data.status === 'completed' ? 'Completed' : 'Cancelled'} tone={data.status === 'completed' ? 'blue' : 'neutral'} />}
               <IconButton
                 icon={searchOpen ? X : Search}
                 label={searchOpen ? 'Close search' : 'Search this trade conversation'}
@@ -305,25 +294,29 @@ function TradeChat() {
                   setSearchText('');
                 }}
               />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open exchange details"
+                onPress={() => {
+                  presence.stop();
+                  setDetailsOpen(true);
+                }}
+                style={[styles.details, { borderColor: colors.line }]}>
+                <ArrowLeftRight size={16} color={colors.ink} />
+                <AppText variant="caption" color="ink" weight="bold">
+                  Details
+                </AppText>
+              </Pressable>
             </View>
           ),
         }}
       />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Trade status: ${step}`}
-        onPress={() => router.push(`/trade-complete/${id}`)}
-        style={[styles.strip, { backgroundColor: colors.background }, neu(colors, 1, true)]}>
-        <View style={styles.thumbs}>
-          <Thumb uri={theirItem.imageUrl} />
-          <Thumb uri={yourItem.imageUrl} overlap />
-        </View>
-        <AppText variant="small" color="ink" weight="semibold" numberOfLines={1} style={styles.flex}>
-          {step}
-        </AppText>
-        <ChevronRight size={18} color={colors.muted} />
-      </Pressable>
+      <View style={[styles.context, { borderBottomColor: colors.line }]}>
+        <ContextItem item={yourItem} label="You offer" />
+        <ArrowLeftRight size={17} color={colors.muted} />
+        <ContextItem item={theirItem} label="You receive" />
+      </View>
 
       {searchOpen ? (
         <View style={styles.search}>
@@ -332,71 +325,118 @@ function TradeChat() {
         </View>
       ) : null}
 
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        scrollEventThrottle={200}
-        onScroll={({ nativeEvent }) => {
-          const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
-          if (searching) return;
-          followLatest.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
-          if (followLatest.current) markRead();
-        }}>
-        {hasMore && !searching ? <Button label="Earlier messages" variant="ghost" compact loading={olderBusy} onPress={() => void older()} /> : null}
-        {!searching && loaded && !messages.length ? (
-          <AppText variant="caption" align="center">
-            Start the conversation and arrange your exchange.
-          </AppText>
-        ) : null}
-        {searching && !results ? (
-          <AppText variant="caption" align="center">
-            Searching…
-          </AppText>
-        ) : null}
-        {searching && results && !results.messages.length ? (
-          <AppText variant="caption" align="center">
-            No trade messages match this search.
-          </AppText>
-        ) : null}
-        {shown.map((message) => {
-          if (message.kind === 'system') {
-            return (
-              <AppText key={message.id} variant="caption" align="center" style={styles.system}>
-                {message.body}
-              </AppText>
-            );
-          }
-          const mine = message.senderId === userId;
-          const removed = Boolean(message.deletedAt);
-          return (
-            <MessageBubble
-              key={message.id}
-              message={{ id: String(message.id), mine, text: removed ? 'Message removed' : message.body, time: messageTime(message) }}
-              status={mine && !removed && !searching ? (message.id <= presence.peerRead ? 'read' : 'sent') : undefined}
-              attachment={
-                removed ? undefined : message.listing ? (
-                  <SharedListingCard listing={message.listing} />
-                ) : message.photo ? (
-                  <PrivatePhoto path={tradeService.photoPath(id, message.id)} photo={message.photo} />
-                ) : undefined
-              }
-              onLongPress={active && mine && !removed && !busy ? () => openActions(message) : undefined}
-            />
-          );
-        })}
-        {typing && !searching ? (
-          <View style={[styles.typing, { backgroundColor: colors.surface }]} accessibilityLabel={`${other.fullName} is typing`}>
-            <AppText variant="caption" weight="semibold">
-              {other.fullName.split(' ')[0]} is typing…
+      <View style={styles.flex}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={200}
+          onScroll={({ nativeEvent }) => {
+            const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+            if (searching) return;
+            followLatest.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+            setAtLatest(followLatest.current);
+            if (followLatest.current) markRead();
+          }}>
+          {hasMore && !searching ? <Button label="Earlier messages" variant="ghost" compact loading={olderBusy} onPress={() => void older()} /> : null}
+          {!searching && loaded && !messages.length ? (
+            <AppText variant="caption" align="center">
+              Start the conversation and arrange your exchange.
             </AppText>
-          </View>
+          ) : null}
+          {searching && !results ? (
+            <AppText variant="caption" align="center">
+              Searching…
+            </AppText>
+          ) : null}
+          {searching && results && !results.messages.length ? (
+            <AppText variant="caption" align="center">
+              No trade messages match this search.
+            </AppText>
+          ) : null}
+          {shown.map((message, index) => {
+            const previous = shown[index - 1];
+            const newDay = !previous || new Date(previous.createdAt).toDateString() !== new Date(message.createdAt).toDateString();
+            const dateLine = newDay ? (
+              <AppText variant="caption" align="center" style={styles.date}>
+                {dayLabel(message.createdAt)}
+              </AppText>
+            ) : null;
+            if (message.kind === 'system') {
+              return (
+                <Fragment key={message.id}>
+                  {dateLine}
+                  <AppText variant="caption" align="center" style={styles.system}>
+                    {message.body} · {clockTime(message.createdAt)}
+                  </AppText>
+                </Fragment>
+              );
+            }
+            const mine = message.senderId === userId;
+            const removed = Boolean(message.deletedAt);
+            const canChange = active && mine && !removed && !busy;
+            const bubble = (
+              <MessageBubble
+                message={{ id: String(message.id), mine, text: removed ? 'Message removed' : message.body, time: messageTime(message) }}
+                status={mine && !removed && !searching ? (message.id <= presence.peerRead ? 'read' : 'sent') : undefined}
+                attachment={
+                  removed ? undefined : message.listing ? (
+                    <SharedListingCard listing={message.listing} />
+                  ) : message.photo ? (
+                    <PrivatePhoto path={tradeService.photoPath(id, message.id)} photo={message.photo} />
+                  ) : undefined
+                }
+                onLongPress={canChange ? () => setOptionsFor(message) : undefined}
+                onOptions={canChange ? () => setOptionsFor(message) : undefined}
+              />
+            );
+            return (
+              <Fragment key={message.id}>
+                {dateLine}
+                {mine ? (
+                  bubble
+                ) : (
+                  <View style={styles.incoming}>
+                    {/* The avatar marks the end of a run of their messages. */}
+                    {shown[index + 1]?.senderId !== message.senderId ? (
+                      <View style={styles.incomingAvatar}>
+                        <Avatar initials={other.initials} imageUrl={other.avatarUrl} size="xsmall" />
+                      </View>
+                    ) : (
+                      <View style={styles.incomingGap} />
+                    )}
+                    {bubble}
+                  </View>
+                )}
+              </Fragment>
+            );
+          })}
+          {typing && !searching ? (
+            <View style={[styles.typing, { backgroundColor: colors.surface }]} accessibilityLabel={`${other.fullName} is typing`}>
+              <AppText variant="caption" weight="semibold">
+                {other.fullName.split(' ')[0]} is typing…
+              </AppText>
+            </View>
+          ) : null}
+        </ScrollView>
+        {!atLatest && !searching ? (
+          <PressableScale accessibilityRole="button" onPress={jumpToLatest} style={[styles.latest, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+            <ArrowDown size={16} color={colors.orange} />
+            <AppText variant="caption" color="ink" weight="bold">
+              Latest messages
+            </AppText>
+          </PressableScale>
         ) : null}
-      </ScrollView>
+      </View>
 
       {error || state.error ? (
         <AppText variant="caption" color="red" align="center" style={styles.error}>
           {error || state.error}
+        </AppText>
+      ) : null}
+      {active && (editing ? editing.text : draft.text) ? (
+        <AppText variant="caption" align="right" style={styles.count}>
+          {(editing ? editing.text : draft.text).length}/2000
         </AppText>
       ) : null}
       {active ? (
@@ -418,9 +458,12 @@ function TradeChat() {
           onCancelEdit={() => setEditing(null)}
         />
       ) : (
-        <AppText variant="caption" align="center" style={styles.readonly}>
-          This trade is closed. Your conversation history is still here.
-        </AppText>
+        <View style={styles.readonly}>
+          <AppText variant="caption" align="center">
+            This conversation is read-only.
+          </AppText>
+          {data.status === 'completed' ? <Button label="Rate your trade" variant="ghost" compact fullWidth={false} onPress={() => router.push(`/trade-review/${id}`)} /> : null}
+        </View>
       )}
       {active ? (
         <ChatAttachments
@@ -430,33 +473,86 @@ function TradeChat() {
           sendPhoto={async (fileUri, requestId) => attached(await tradeService.sendPhoto(id, fileUri, requestId))}
         />
       ) : null}
+      <MessageOptionsSheet
+        message={optionsFor}
+        onClose={() => setOptionsFor(null)}
+        onEdit={(message) => setEditing({ id: message.id, text: message.body })}
+        onRemove={(message) => void remove(message)}
+      />
+      {detailsMounted ? (
+        <BottomSheet visible={detailsOpen} onClose={() => setDetailsOpen(false)} title="Exchange details">
+          <TradeControls state={state} userId={userId} inChat />
+          {state.error ? (
+            <AppText variant="caption" color="red" align="center">
+              {state.error}
+            </AppText>
+          ) : null}
+          <Button
+            label="Trade status"
+            variant="secondary"
+            onPress={() => {
+              setDetailsOpen(false);
+              router.push(`/trade-complete/${id}`);
+            }}
+          />
+        </BottomSheet>
+      ) : null}
     </ChatFrame>
   );
 }
 
-function Thumb({ uri, overlap }: { uri: string | null; overlap?: boolean }) {
+type MessageOptionsSheetProps = { message: TradeMessage | null; onClose: () => void; onEdit: (message: TradeMessage) => void; onRemove: (message: TradeMessage) => void };
+
+function MessageOptionsSheet({ message, onClose, onEdit, onRemove }: MessageOptionsSheetProps) {
+  const options: ActionSheetOption[] = message
+    ? [
+        // Photos and listing cards can only be removed.
+        ...(message.photo || message.listing ? [] : [{ label: 'Edit', icon: Edit3, onPress: () => onEdit(message) }]),
+        { label: 'Remove', icon: Trash2, destructive: true, onPress: () => onRemove(message) },
+      ]
+    : [];
+  return <ActionSheet visible={message !== null} onClose={onClose} title="Message" options={options} />;
+}
+
+function ContextItem({ item, label }: { item: OfferListing; label: string }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.thumb, overlap && styles.overlap, { backgroundColor: colors.surface2, borderColor: colors.background }]}>
-      {uri ? <Image source={uri} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" /> : <Package size={14} color={colors.muted} />}
+    <View style={styles.contextItem}>
+      <View style={[styles.thumb, { backgroundColor: colors.surface2 }]}>
+        {item.imageUrl ? <Image source={item.imageUrl} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" /> : <Package size={16} color={colors.muted} />}
+      </View>
+      <View style={styles.flex}>
+        <AppText variant="caption" numberOfLines={1}>
+          {label}
+        </AppText>
+        <AppText variant="caption" color="ink" weight="bold" numberOfLines={2}>
+          {item.title}
+        </AppText>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  flex: { flex: 1, minWidth: 0 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  name: { maxWidth: 180 },
+  name: { maxWidth: 130 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  strip: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 6, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10 },
-  thumbs: { flexDirection: 'row' },
-  thumb: { width: 34, height: 34, borderRadius: 10, borderWidth: 2, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  overlap: { marginLeft: -10 },
+  details: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 12, paddingHorizontal: 9 },
+  context: { flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 10 },
+  contextItem: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  thumb: { width: 42, height: 42, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  date: { alignSelf: 'center', marginVertical: 4 },
+  incoming: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  incomingAvatar: { marginBottom: 20 },
+  incomingGap: { width: 32 },
+  latest: { position: 'absolute', alignSelf: 'center', bottom: 8, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
+  count: { paddingHorizontal: 18 },
   search: { gap: 6, paddingHorizontal: 16, paddingTop: 10 },
   list: { flexGrow: 1, width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, gap: 12 },
   system: { alignSelf: 'center', maxWidth: '85%', paddingVertical: 2 },
   typing: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
   error: { paddingHorizontal: 16 },
-  readonly: { padding: 16 },
+  readonly: { alignItems: 'center', gap: 4, padding: 16 },
 });

@@ -32,17 +32,17 @@ export function DirectThreadRow({ conversation, onOptions }: DirectThreadRowProp
         <Avatar initials={other.initials} imageUrl={other.avatarUrl} size="large" />
         <View style={styles.body}>
           <View style={styles.row}>
-            <AppText variant="h3" weight="bold" numberOfLines={1} style={styles.flex}>
+            <AppText variant="h3" weight="bold" numberOfLines={1} style={[styles.flex, styles.name]}>
               {other.fullName}
             </AppText>
             {isMuted ? <BellOff size={13} color={colors.muted} accessibilityLabel="Muted" /> : null}
             {isPinned ? <Pin size={13} color={colors.orange} /> : null}
-            <AppText variant="caption" color={unread ? 'orange' : 'muted'} weight={unread ? 'bold' : 'medium'}>
+            <AppText variant="caption" color={unread ? 'orange' : 'muted'} weight={unread ? 'bold' : 'medium'} style={styles.time}>
               {shortDate(conversation.updatedAt)}
             </AppText>
           </View>
           <View style={styles.row}>
-            <AppText variant="small" color={unread ? 'ink' : 'muted'} weight={unread ? 'semibold' : 'medium'} numberOfLines={1} style={styles.flex}>
+            <AppText variant="small" color={unread ? 'ink' : 'muted'} weight={unread ? 'semibold' : 'medium'} numberOfLines={1} style={[styles.flex, styles.preview]}>
               {lastMessage || 'Say hello'}
             </AppText>
             {unreadCount > 0 ? (
@@ -75,6 +75,9 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 3 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   flex: { flex: 1 },
+  name: { fontSize: 14, lineHeight: 19 },
+  time: { fontSize: 11 },
+  preview: { fontSize: 13, lineHeight: 18 },
   badge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   badgeText: { fontFamily: fonts.extrabold, fontSize: 11 },
   dot: { width: 10, height: 10, borderRadius: 5 },

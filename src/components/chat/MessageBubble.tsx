@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Check, CheckCheck, Flag } from 'lucide-react-native';
+import { Check, CheckCheck, Flag, MoreHorizontal } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -15,11 +15,13 @@ type MessageBubbleProps = {
   /** Shown in place of the text, such as a shared listing card. */
   attachment?: ReactNode;
   onReport?: () => void;
+  /** Shows a "…" button beside the time. */
+  onOptions?: () => void;
 };
 
 const statusLabels = { sending: 'Sending…', sent: 'Sent', read: 'Read' } as const;
 
-export function MessageBubble({ message, onLongPress, status, attachment, onReport }: MessageBubbleProps) {
+export function MessageBubble({ message, onLongPress, status, attachment, onReport, onOptions }: MessageBubbleProps) {
   const { colors } = useTheme();
   const mine = message.mine;
   const content = (
@@ -42,6 +44,11 @@ export function MessageBubble({ message, onLongPress, status, attachment, onRepo
             {status === 'read' ? <CheckCheck size={12} color={colors.blue} /> : status === 'sent' ? <Check size={12} color={colors.muted} /> : null}
             <Text maxFontSizeMultiplier={maxFontScale} style={[styles.time, { color: status === 'read' ? colors.blue : colors.muted }]}>{statusLabels[status]}</Text>
           </View>
+        ) : null}
+        {onOptions ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Message options" hitSlop={12} onPress={onOptions} style={styles.report}>
+            <MoreHorizontal size={15} color={colors.muted} />
+          </Pressable>
         ) : null}
         {onReport ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Report message" hitSlop={12} onPress={onReport} style={styles.report}>

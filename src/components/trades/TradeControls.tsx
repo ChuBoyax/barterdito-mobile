@@ -11,10 +11,15 @@ import { neu } from '@/theme';
 import { confirmAction } from '@/utils/confirm';
 import { confirmations, meetupDate } from '@/utils/trades';
 
-type TradeControlsProps = { state: TradeConversationState; userId: string };
+type TradeControlsProps = {
+  state: TradeConversationState;
+  userId: string;
+  /** Already inside the trade chat, so no link back to it. */
+  inChat?: boolean;
+};
 
 /** Two-person confirmation and problem reports — the same rules the backend enforces. */
-export function TradeControls({ state, userId }: TradeControlsProps) {
+export function TradeControls({ state, userId, inChat }: TradeControlsProps) {
   const { colors } = useTheme();
   const [acknowledged, setAcknowledged] = useState(false);
   const [issue, setIssue] = useState('');
@@ -92,7 +97,7 @@ export function TradeControls({ state, userId }: TradeControlsProps) {
             </AppText>
           </View>
         ))}
-        <Button label="Open trade chat" icon={MessageCircle} variant="secondary" compact onPress={() => router.push(`/messages/${id}`)} />
+        {inChat ? null : <Button label="Open trade chat" icon={MessageCircle} variant="secondary" compact onPress={() => router.push(`/messages/${id}`)} />}
       </Card>
 
       <Card style={styles.card}>

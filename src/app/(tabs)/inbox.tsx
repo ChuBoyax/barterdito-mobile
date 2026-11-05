@@ -101,6 +101,7 @@ function InboxContent() {
     <Screen refreshing={query.refreshing} onRefresh={() => void query.refresh()} header={<AppHeader title="Inbox" />}>
       <View style={[styles.panel, { backgroundColor: colors.surface }, neu(colors, 2)]}>
         <SegmentedControl<Tab>
+          compact
           value={tab}
           onChange={(next) => {
             setTab(next);
@@ -118,11 +119,11 @@ function InboxContent() {
         </View>
         {direct ? (
           <View style={styles.actions}>
-            <Button label="New message" icon={Plus} style={styles.flex} onPress={() => setComposing(true)} />
-            <Button label="Search history" icon={Search} variant="secondary" style={styles.flex} onPress={() => setSearching(true)} />
+            <Button label="New message" icon={Plus} compact singleLine style={styles.action} onPress={() => setComposing(true)} />
+            <Button label="Search history" icon={Search} variant="secondary" compact singleLine style={styles.action} onPress={() => setSearching(true)} />
           </View>
         ) : (
-          <Button label="View proposals" variant="secondary" onPress={() => router.navigate('/offers')} />
+          <Button label="View proposals" variant="secondary" compact singleLine style={styles.proposals} onPress={() => router.navigate('/offers')} />
         )}
         {query.isPending ? (
           <LoadingView variant="list" inline />
@@ -210,5 +211,7 @@ const styles = StyleSheet.create({
   panel: { gap: 10, borderRadius: 20, padding: 12 },
   tools: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   actions: { flexDirection: 'row', gap: 8 },
+  action: { flex: 1, minWidth: 0, minHeight: 44, gap: 6, paddingHorizontal: 10 },
+  proposals: { minHeight: 44 },
   list: { gap: 4 },
 });
