@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   bar: { paddingTop: 7, paddingHorizontal: 8, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
   row: { flexDirection: 'row', width: '100%', alignSelf: 'center' },
   tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 0 },
-  iconWrap: { width: 42, height: 31, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 42, height: 31, borderRadius: 15.5, alignItems: 'center', justifyContent: 'center' },
   label: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 15, maxWidth: '100%' },
   badge: { position: 'absolute', top: -3, right: 1, minWidth: 16, height: 16, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
   badgeText: { fontFamily: fonts.bold, fontSize: 7 },

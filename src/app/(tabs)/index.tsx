@@ -35,7 +35,9 @@ function greeting() {
 
 export default function BrowseScreen() {
   const { colors, dark } = useTheme();
-  const { gutter, innerWidth, columns, contentWidth } = useResponsive();
+  const { gutter, innerWidth, columns, contentWidth, width } = useResponsive();
+  // Text follows the screen width, so narrow phones keep the same line breaks as larger ones.
+  const textScale = Math.min(1, Math.max(MIN_TEXT_SCALE, width / BASE_WIDTH));
   const pad = { paddingHorizontal: gutter };
   const featuredSnap = featuredCardWidth(innerWidth, columns) + 14;
   const { user, requireAuth } = useAuth();
@@ -112,13 +114,13 @@ export default function BrowseScreen() {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}>
-          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.heroTitle, { color: colors.ink }]}>
+          <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.heroTitle, heroTitleSize(textScale), { color: colors.ink }]}>
             Shopping
           </Text>
-          <Text maxFontSizeMultiplier={maxFontScale} style={[styles.heroTitle, { color: colors.orange }]}>
+          <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.heroTitle, heroTitleSize(textScale), { color: colors.orange }]}>
             without money.
           </Text>
-          <AppText variant="body" style={styles.heroLead}>
+          <AppText variant="body" style={[styles.heroLead, { fontSize: 14 * textScale, lineHeight: 21 * textScale }]}>
             Swap things you have for things you’ll love, no cash needed.
           </AppText>
           {!profileArea ? (
@@ -136,6 +138,7 @@ export default function BrowseScreen() {
           icon={Plus}
           title="Post a Trade"
           text="List an item in minutes"
+          scale={textScale}
           background={colors.orange}
           foreground={colors.onPrimary}
           tile="rgba(255, 255, 255, 0.19)"
@@ -145,7 +148,8 @@ export default function BrowseScreen() {
           <Shortcut
             icon={Trophy}
             title="Leaderboard"
-            text="Meet top local traders"
+            text="Top local traders"
+            scale={textScale}
             background={dark ? colors.yellowSoft : '#fff7e9'}
             foreground={dark ? colors.warning : '#a56300'}
             tile="rgba(165, 99, 0, 0.11)"
@@ -155,6 +159,7 @@ export default function BrowseScreen() {
             icon={CalendarDays}
             title="Trade Events"
             text="Swap face-to-face"
+            scale={textScale}
             background={colors.greenSoft}
             foreground={colors.green}
             tile="rgba(63, 168, 121, 0.11)"
@@ -183,7 +188,7 @@ export default function BrowseScreen() {
           hero
           value={filters.search}
           onChangeText={(search) => update({ search })}
-          placeholder="Search items or services…"
+          placeholder={width < NARROW_WIDTH ? 'Search items…' : 'Search items or services…'}
           maxLength={160}
           right={<FilterButton compact count={filterCount} onPress={() => setFiltersOpen(true)} />}
         />
@@ -281,23 +286,29 @@ export default function BrowseScreen() {
   );
 }
 
+const BASE_WIDTH = 390;
+const NARROW_WIDTH = 360;
+const MIN_TEXT_SCALE = 0.85;
+
+const heroTitleSize = (scale: number) => ({ fontSize: 32 * scale, lineHeight: 36 * scale, letterSpacing: -1.1 * scale });
 const rowKey = (row: GridRow) => row.key;
 const RowGap = () => <View style={styles.rowGap} />;
 
-type ShortcutProps = { icon: LucideIcon; title: string; text: string; background: string; foreground: string; tile: string; onPress: () => void };
+type ShortcutProps = { icon: LucideIcon; title: string; text: string; scale: number; background: string; foreground: string; tile: string; onPress: () => void };
 
-function Shortcut({ icon: Icon, title, text, background, foreground, tile, onPress }: ShortcutProps) {
+/** Title and description stay on one line each and shrink to fit, so side-by-side cards always match. */
+function Shortcut({ icon: Icon, title, text, scale, background, foreground, tile, onPress }: ShortcutProps) {
   const { colors } = useTheme();
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={title} onPress={onPress} scaleTo={0.97} style={[styles.shortcut, { backgroundColor: background }, neu(colors, 1)]}>
       <View style={[styles.shortcutIcon, { backgroundColor: tile }]}>
-        <Icon size={22} color={foreground} />
+        <Icon size={19} color={foreground} />
       </View>
       <View style={styles.flex}>
-        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.shortcutTitle, { color: foreground }]}>
+        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.shortcutTitle, { fontSize: 14 * scale, lineHeight: 19 * scale, color: foreground }]}>
           {title}
         </Text>
-        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={2} style={[styles.shortcutText, { color: foreground }]}>
+        <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.shortcutText, { fontSize: 11 * scale, lineHeight: 15 * scale, color: foreground }]}>
           {text}
         </Text>
       </View>
@@ -313,15 +324,15 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   actions: { flexDirection: 'row', gap: 8 },
   hero: { borderRadius: 19, paddingHorizontal: 16, paddingVertical: 24 },
-  heroTitle: { fontFamily: fonts.bold, fontSize: 36, lineHeight: 40, letterSpacing: -1.26 },
-  heroLead: { marginTop: 12, fontSize: 15, lineHeight: 24 },
+  heroTitle: { fontFamily: fonts.bold },
+  heroLead: { marginTop: 10 },
   heroLink: { marginTop: 12 },
-  shortcuts: { gap: 16 },
-  shortcutRow: { flexDirection: 'row', gap: 16 },
-  shortcut: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 16 },
-  shortcutIcon: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  shortcutTitle: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 21 },
-  shortcutText: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, opacity: 0.78 },
+  shortcuts: { gap: 12 },
+  shortcutRow: { flexDirection: 'row', gap: 12 },
+  shortcut: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 12 },
+  shortcutIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  shortcutTitle: { fontFamily: fonts.bold },
+  shortcutText: { fontFamily: fonts.regular, opacity: 0.78 },
   searchRow: { flexDirection: 'row' },
   hRow: { gap: 14, paddingBottom: 6 },
 });
