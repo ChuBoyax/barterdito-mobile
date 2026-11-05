@@ -9,6 +9,9 @@ the service implementations; screens do not need to change.
 
 ## Run it
 
+For Android production builds, signing, and Google Play uploads, see
+[Google Play release setup](docs/GOOGLE_PLAY_RELEASE.md).
+
 ```bash
 npm install
 npx expo start        # press a (Android), i (iOS), or w (web); or scan the QR with Expo Go
