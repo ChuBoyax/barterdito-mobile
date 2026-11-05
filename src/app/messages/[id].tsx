@@ -19,6 +19,7 @@ import { queryKeys } from '@/services/queryKeys';
 import { neu } from '@/theme';
 import type { Conversation, TradeMessage } from '@/types/trades';
 import { confirmAction } from '@/utils/confirm';
+import { mergeById } from '@/utils/collections';
 import { errorMessage } from '@/utils/format';
 import { confirmations, otherTrader } from '@/utils/trades';
 
@@ -35,10 +36,6 @@ const SEARCH_DELAY_MS = 300;
 function messageTime(message: TradeMessage) {
   const time = shortDate(message.createdAt);
   return message.editedAt && !message.deletedAt ? `${time} · edited` : time;
-}
-
-function merge(current: TradeMessage[], incoming: TradeMessage[]) {
-  return [...new Map([...current, ...incoming].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.id - b.id);
 }
 
 /** A few words on what happens next, shown in the trade strip. */
@@ -87,7 +84,7 @@ function TradeChat() {
     try {
       const page = await tradeService.getMessages(id);
       if (current !== revision.current) return;
-      setMessages((old) => merge(old, page.messages));
+      setMessages((old) => mergeById(old, page.messages));
       setLoaded((wasLoaded) => {
         if (!wasLoaded) setHasMore(page.hasMore);
         return true;
@@ -191,12 +188,12 @@ function TradeChat() {
     try {
       if (editing) {
         const updated = await tradeService.editMessage(id, editing.id, text);
-        setMessages((old) => merge(old, [updated]));
+        setMessages((old) => mergeById(old, [updated]));
         setEditing(null);
       } else {
         // Reuse the request id when retrying the same text so it is not saved twice.
         const sent = await tradeService.sendMessage(id, text, draft.requestFor(text));
-        setMessages((old) => merge(old, [sent]));
+        setMessages((old) => mergeById(old, [sent]));
         draft.clear();
       }
       followLatest.current = true;
@@ -214,7 +211,7 @@ function TradeChat() {
     followLatest.current = true;
     setSearchOpen(false);
     setSearchText('');
-    setMessages((old) => merge(old, [sent]));
+    setMessages((old) => mergeById(old, [sent]));
   }
 
   async function remove(message: TradeMessage) {
@@ -226,7 +223,7 @@ function TradeChat() {
     setBusy(true);
     try {
       const removed = await tradeService.removeMessage(id, message.id);
-      setMessages((old) => merge(old, [removed]));
+      setMessages((old) => mergeById(old, [removed]));
       if (editing?.id === message.id) setEditing(null);
     } catch (caught) {
       setError(errorMessage(caught, 'Could not remove the message.'));
@@ -242,7 +239,7 @@ function TradeChat() {
     followLatest.current = false;
     try {
       const page = await tradeService.getMessages(id, messages[0]!.id);
-      setMessages((old) => merge(old, page.messages));
+      setMessages((old) => mergeById(old, page.messages));
       setHasMore(page.hasMore);
     } catch (caught) {
       setError(errorMessage(caught, 'Could not load older messages.'));

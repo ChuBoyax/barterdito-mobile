@@ -78,9 +78,8 @@ function InboxContent() {
     selectTrades,
   );
   const query = direct ? pms : trades;
-  usePolling(() => {
-    if (query.data && !query.isFetching) void query.refetch();
-  }, INBOX_POLL_MS);
+  const { poll } = query;
+  usePolling(poll, INBOX_POLL_MS);
 
   const needle = search.trim().toLowerCase();
   const visiblePms = useMemo(
@@ -98,7 +97,7 @@ function InboxContent() {
   const shown = direct ? visiblePms.length : visibleTrades.length;
 
   return (
-    <Screen refreshing={query.isRefetching && !query.isFetchingNextPage} onRefresh={() => void query.refetch()} header={<AppHeader title="Inbox" />}>
+    <Screen refreshing={query.refreshing} onRefresh={() => void query.refresh()} header={<AppHeader title="Inbox" />}>
       <View style={[styles.panel, { backgroundColor: colors.surface }, neu(colors, 2)]}>
         <SegmentedControl<Tab>
           value={tab}

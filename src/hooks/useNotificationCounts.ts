@@ -28,6 +28,8 @@ export function useNotificationCounts(): NotificationCounts | undefined {
     enabled: Boolean(user),
     staleTime: 0,
     refetchInterval: POLL_MS,
+    // Polled constantly and useless after a restart; saving it would keep rewriting the cache.
+    meta: { persist: false },
   });
   return user ? data : undefined;
 }

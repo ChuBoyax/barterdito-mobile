@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { RotateCcw, Search, Users } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText, Badge, BottomSheet, Button, Card, EmptyState, LoadingView, TextField } from '@/components/ui';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { queryClient, useAuth, useToast } from '@/providers';
 import { accessService, type AccessRole, type AccessUser } from '@/services/accessService';
@@ -11,18 +12,13 @@ import { queryKeys } from '@/services/queryKeys';
 import { errorMessage } from '@/utils/format';
 import { CheckRow } from './CheckRow';
 
-const SEARCH_DELAY_MS = 350;
 const selectUsers = (page: { users: AccessUser[]; total: number }) => page.users;
 
 export function AccountsPanel({ canManage }: { canManage: boolean }) {
   const [search, setSearch] = useState('');
-  const [needle, setNeedle] = useState('');
   const [editing, setEditing] = useState<AccessUser | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setNeedle(search.trim()), SEARCH_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const needle = useDebouncedValue(search.trim());
 
   const users = usePagedQuery(queryKeys.accessUsers(needle), (offset) => accessService.getUsers(needle, offset), selectUsers, { persist: false });
   const { data: roles = [] } = useQuery({ queryKey: queryKeys.accessRoles, queryFn: () => accessService.getRoles(), enabled: canManage, meta: { persist: false } });

@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppText, PressableScale, Skeleton } from '@/components/ui';
 import { useTheme } from '@/providers/ThemeProvider';
-import { elevation, fonts, maxFontScale, neu } from '@/theme';
+import { fonts, maxFontScale, neu } from '@/theme';
 import type { Item } from '@/types/models';
 import { distanceLabel, shortLocation } from '@/utils/location';
 
@@ -34,12 +34,12 @@ export const ItemCard = memo(function ItemCard({ item, saved, hearted, ageLabel,
   const onSave = () => saveItem(item.id);
   const onHeart = () => heartItem(item);
   const dot = item.status === 'Active' ? colors.green : item.status === 'In Negotiation' ? colors.warning : colors.muted;
-  const chip = [{ backgroundColor: colors.glass }, elevation(1, colors)];
+  const chip = { backgroundColor: colors.glass };
   return (
     <View style={[styles.card, { backgroundColor: colors.surface }, neu(colors, 2)]}>
       <View style={[styles.media, { backgroundColor: colors.surface2 }]}>
         <PressableScale accessibilityRole="button" accessibilityLabel={`View ${item.title}`} onPress={onOpen} scaleTo={0.98} style={StyleSheet.absoluteFill}>
-          <Image source={item.image} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={item.id} />
+          <Image source={item.image} cachePolicy="memory-disk" style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={item.id} />
         </PressableScale>
         <View pointerEvents="none" style={[styles.category, chip]}>
           <Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} style={[styles.categoryText, { color: colors.orange }]}>

@@ -57,7 +57,7 @@ function FollowersContent() {
   }
 
   return (
-    <Screen refreshing={query.isRefetching} onRefresh={() => void query.refetch()}>
+    <Screen refreshing={query.refreshing} onRefresh={() => void query.refresh()}>
       <SegmentedControl<ConnectionKind>
         value={tab}
         onChange={changeTab}

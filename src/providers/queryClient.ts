@@ -5,6 +5,9 @@ import type { PersistQueryClientOptions } from '@tanstack/react-query-persist-cl
 import Constants from 'expo-constants';
 import { AppState, Platform } from 'react-native';
 
+/** Saving serializes the whole cache on the JS thread, so it runs at most this often. */
+const SAVE_THROTTLE_MS = 10_000;
+
 /** How long a saved cache is trusted for an instant first paint. */
 const CACHE_MAX_AGE = 24 * 60 * 60_000;
 
@@ -26,7 +29,7 @@ export const queryClient = new QueryClient({
  * results are saved; the cache is reset whenever the signed-in account changes.
  */
 export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
-  persister: createAsyncStoragePersister({ storage: AsyncStorage, key: 'barterdito-query-cache', throttleTime: 1000 }),
+  persister: createAsyncStoragePersister({ storage: AsyncStorage, key: 'barterdito-query-cache', throttleTime: SAVE_THROTTLE_MS }),
   maxAge: CACHE_MAX_AGE,
   // A new app version discards caches shaped by older code.
   buster: Constants.expoConfig?.version ?? '1',

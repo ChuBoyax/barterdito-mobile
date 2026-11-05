@@ -138,7 +138,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
         current?.key === key
           ? {
               ...current,
-              items: [...current.items, ...page.items.filter((item) => !current.items.some((entry) => entry.id === item.id))],
+              items: appendNew(current.items, page.items),
               fetched: current.fetched + page.items.length,
               total: page.total,
             }
@@ -269,7 +269,10 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
       (loaded ?? []).map((item) => {
         const live = counts[item.id];
         const mine = Boolean(userId) && item.userId === userId;
-        return live || mine !== Boolean(item.mine) ? { ...item, mine, hearts: live?.hearts ?? item.hearts, views: live?.views ?? item.views } : item;
+        const hearts = live?.hearts ?? item.hearts;
+        const views = live?.views ?? item.views;
+        // Unchanged listings keep their object, so their cards do not re-render.
+        return hearts === item.hearts && views === item.views && mine === Boolean(item.mine) ? item : { ...item, mine, hearts, views };
       }),
     [loaded, counts, userId],
   );
@@ -313,6 +316,11 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
       <MarketplaceContext.Provider value={value}>{children}</MarketplaceContext.Provider>
     </MarketplaceActionsContext.Provider>
   );
+}
+
+function appendNew(current: Item[], incoming: Item[]) {
+  const known = new Set(current.map((item) => item.id));
+  return [...current, ...incoming.filter((item) => !known.has(item.id))];
 }
 
 export function useMarketplace() {

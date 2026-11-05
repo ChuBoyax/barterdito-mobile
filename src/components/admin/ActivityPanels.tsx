@@ -1,9 +1,10 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Activity, BarChart3, RotateCcw, Search, ShieldAlert } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText, Badge, Button, Card, Chip, EmptyState, LoadingView, ProgressBar, SegmentedControl, TextField } from '@/components/ui';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { useTheme } from '@/providers';
 import { activityService, daysAgo, type ActivityAccount, type MonitoringGroup, type MonitoringPage } from '@/services/activityService';
@@ -34,12 +35,7 @@ export function ActivityPanel() {
   const [source, setSource] = useState('');
   const [account, setAccount] = useState<ActivityAccount | null>(null);
   const [search, setSearch] = useState('');
-  const [needle, setNeedle] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => setNeedle(search.trim()), 350);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const needle = useDebouncedValue(search.trim());
 
   const actorId = account?.id;
   const events = useInfiniteQuery({

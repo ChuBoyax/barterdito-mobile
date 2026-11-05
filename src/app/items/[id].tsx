@@ -7,14 +7,11 @@ import {
   ArrowRight,
   BadgeCheck,
   Bookmark,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Eye,
   Flag,
   Heart,
   MapPin,
-  Maximize2,
   Package,
   Share2,
   ShieldCheck,
@@ -23,14 +20,13 @@ import {
   User,
   UserCheck,
   UserPlus,
-  X,
   type LucideIcon,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
+import { ItemGallery, PHOTO_GLASS, ProposeSwapSheet, ReportSheet } from '@/components/marketplace';
 import { AppText, Avatar, Badge, Button, EmptyState, IconButton, LoadingView, PressableScale, Screen, SectionHeading } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useMountOnOpen } from '@/hooks/useMountOnOpen';
@@ -44,26 +40,20 @@ import { proposalReturn } from '@/utils/proposalReturn';
 import { shareItem } from '@/utils/share';
 import { queryKeys } from '@/services/queryKeys';
 
-/** The dark glass over photos; the same in both themes so it reads on any picture. */
-const GLASS = 'rgba(30, 27, 24, 0.84)';
-
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { height, width, contentWidth, innerWidth, gutter } = useResponsive();
+  const { width, contentWidth, innerWidth, gutter } = useResponsive();
   const { requireAuth, authenticated } = useAuth();
   const showToast = useToast();
   const { items, savedIds, heartedIds, counts, toggleSaved, toggleHeart, recordView } = useMarketplace();
   const { data: fetched, loading, error } = useAsync(queryKeys.item(id), () => itemService.getItem(id));
-  const [activeImage, setActiveImage] = useState(0);
-  const [viewerOpen, setViewerOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapSeed, setSwapSeed] = useState<{ selected: string | null; message: string }>({ selected: null, message: '' });
   // Set while the user is adding a listing from the proposal; the proposal reopens on return.
   const pendingProposal = useRef<{ message: string } | null>(null);
-  const galleryRef = useRef<ScrollView>(null);
   const [following, setFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const swapMounted = useMountOnOpen(swapOpen);
@@ -121,7 +111,6 @@ export default function ItemDetailScreen() {
   const hearts = counts[item.id]?.hearts ?? item.hearts;
   const views = counts[item.id]?.views ?? item.views;
   const more = items.filter((other) => other.userId === item.userId && other.id !== item.id && other.status !== 'Traded');
-  const photoHeight = Math.round(Math.min(innerWidth, height * 0.7));
   const sideInset = Math.max(gutter, (width - contentWidth) / 2 + gutter);
 
   function toggleFollow() {
@@ -154,11 +143,6 @@ export default function ItemDetailScreen() {
       setSwapSeed({ selected: null, message: '' });
       setSwapOpen(true);
     });
-  }
-
-  function showPhoto(index: number) {
-    setActiveImage(index);
-    galleryRef.current?.scrollTo({ x: index * innerWidth, animated: true });
   }
 
   const viewTrader = () => item.userId && router.push(`/traders/${item.userId}`);
@@ -212,86 +196,47 @@ export default function ItemDetailScreen() {
           </PressableScale>
         </View>
 
-        <View>
-          <View style={[styles.photoShadow, { height: photoHeight, backgroundColor: colors.surface2 }, neu(colors, 2)]}>
-            <View style={styles.photoClip}>
-              <ScrollView
-                ref={galleryRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(event) => setActiveImage(Math.round(event.nativeEvent.contentOffset.x / innerWidth))}>
-                {gallery.map((uri, index) => (
-                  <Pressable key={uri + index} accessibilityRole="imagebutton" accessibilityLabel={`${item.title} photo ${index + 1}, view full size`} onPress={() => setViewerOpen(true)}>
-                    <Image source={uri} cachePolicy="memory-disk" priority={index === 0 ? 'high' : 'normal'} style={{ width: innerWidth, height: photoHeight }} contentFit="cover" transition={250} />
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-
-            <View pointerEvents="none" style={styles.badges}>
-              <PhotoBadge label={item.category} background={colors.orangeSoft} color={colors.orange} />
-              <PhotoBadge label={item.status} background={statusTone.bg} color={statusTone.fg} />
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="View photo" hitSlop={6} onPress={() => setViewerOpen(true)} style={styles.zoom}>
-              <Maximize2 size={16} color={colors.onPhoto} strokeWidth={2.25} />
-            </Pressable>
-            {activeImage > 0 ? <GalleryArrow icon={ChevronLeft} label="Previous photo" side="left" onPress={() => showPhoto(activeImage - 1)} /> : null}
-            {activeImage < gallery.length - 1 ? <GalleryArrow icon={ChevronRight} label="Next photo" side="right" onPress={() => showPhoto(activeImage + 1)} /> : null}
-
-            <View pointerEvents="none" style={styles.photoMetaWrap}>
-              <View style={styles.photoMeta}>
-                <View style={styles.photoMetaEntry}>
-                  <Clock size={14} color={colors.onPhoto} />
-                  <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoMetaText, { color: colors.onPhoto }]}>
-                    Posted {item.age}
-                  </Text>
-                </View>
-                <View style={styles.photoMetaEntry}>
-                  <Eye size={14} color={colors.onPhoto} />
-                  <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoMetaText, { color: colors.onPhoto }]}>
-                    {views} {views === 1 ? 'view' : 'views'}
-                  </Text>
-                </View>
+        <ItemGallery images={gallery} title={item.title}>
+          <View pointerEvents="none" style={styles.badges}>
+            <PhotoBadge label={item.category} background={colors.orangeSoft} color={colors.orange} />
+            <PhotoBadge label={item.status} background={statusTone.bg} color={statusTone.fg} />
+          </View>
+          <View pointerEvents="none" style={styles.photoMetaWrap}>
+            <View style={styles.photoMeta}>
+              <View style={styles.photoMetaEntry}>
+                <Clock size={14} color={colors.onPhoto} />
+                <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoMetaText, { color: colors.onPhoto }]}>
+                  Posted {item.age}
+                </Text>
+              </View>
+              <View style={styles.photoMetaEntry}>
+                <Eye size={14} color={colors.onPhoto} />
+                <Text maxFontSizeMultiplier={maxFontScale} style={[styles.photoMetaText, { color: colors.onPhoto }]}>
+                  {views} {views === 1 ? 'view' : 'views'}
+                </Text>
               </View>
             </View>
-            <View style={styles.photoActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Heart item, ${hearts} ${hearts === 1 ? 'heart' : 'hearts'}`}
-                accessibilityState={{ selected: hearted }}
-                onPress={() => toggleHeart(item)}
-                style={styles.photoHeart}>
-                <Heart size={18} color={hearted ? colors.orange : colors.onPhoto} fill={hearted ? colors.orange : 'none'} />
-                <Text maxFontSizeMultiplier={1.2} style={[styles.photoHeartCount, { color: hearted ? colors.orange : colors.onPhoto }]}>
-                  {hearts}
-                </Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove from saved items' : 'Save item'} accessibilityState={{ selected: saved }} onPress={toggleSave} style={styles.photoAction}>
-                <Bookmark size={18} color={saved ? colors.orange : colors.onPhoto} fill={saved ? colors.orange : 'none'} />
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Share item" onPress={() => void shareItem(item)} style={styles.photoAction}>
-                <Share2 size={18} color={colors.onPhoto} />
-              </Pressable>
-            </View>
           </View>
-
-          {gallery.length > 1 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbs}>
-              {gallery.map((uri, index) => (
-                <Pressable
-                  key={uri + index}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Show photo ${index + 1}`}
-                  accessibilityState={{ selected: activeImage === index }}
-                  onPress={() => showPhoto(index)}
-                  style={[styles.thumb, { backgroundColor: colors.surface2 }, activeImage === index ? { borderColor: colors.orange } : styles.thumbIdle]}>
-                  <Image source={uri} cachePolicy="memory-disk" style={styles.fill} contentFit="cover" />
-                </Pressable>
-              ))}
-            </ScrollView>
-          ) : null}
-        </View>
+          <View style={styles.photoActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Heart item, ${hearts} ${hearts === 1 ? 'heart' : 'hearts'}`}
+              accessibilityState={{ selected: hearted }}
+              onPress={() => toggleHeart(item)}
+              style={styles.photoHeart}>
+              <Heart size={18} color={hearted ? colors.orange : colors.onPhoto} fill={hearted ? colors.orange : 'none'} />
+              <Text maxFontSizeMultiplier={1.2} style={[styles.photoHeartCount, { color: hearted ? colors.orange : colors.onPhoto }]}>
+                {hearts}
+              </Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove from saved items' : 'Save item'} accessibilityState={{ selected: saved }} onPress={toggleSave} style={styles.photoAction}>
+              <Bookmark size={18} color={saved ? colors.orange : colors.onPhoto} fill={saved ? colors.orange : 'none'} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Share item" onPress={() => void shareItem(item)} style={styles.photoAction}>
+              <Share2 size={18} color={colors.onPhoto} />
+            </Pressable>
+          </View>
+        </ItemGallery>
 
         <View style={styles.location}>
           <MapPin size={16} color={colors.orange} style={styles.locationIcon} />
@@ -381,8 +326,6 @@ export default function ItemDetailScreen() {
         {!item.mine ? <IconButton icon={Flag} label="Report this item" dimension={48} onPress={() => requireAuth(() => setReportOpen(true))} /> : null}
       </View>
 
-      {viewerOpen ? <PhotoViewer images={gallery} title={item.title} initial={activeImage} onClose={() => setViewerOpen(false)} onSelect={showPhoto} /> : null}
-
       {swapMounted ? (
         <ProposeSwapSheet
           visible={swapOpen}
@@ -431,15 +374,6 @@ function PhotoBadge({ label, background, color }: { label: string; background: s
   );
 }
 
-function GalleryArrow({ icon: Icon, label, side, onPress }: { icon: LucideIcon; label: string; side: 'left' | 'right'; onPress: () => void }) {
-  const { colors } = useTheme();
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.arrow, side === 'left' ? styles.arrowLeft : styles.arrowRight]}>
-      <Icon size={20} color={colors.onPhoto} strokeWidth={2.25} />
-    </Pressable>
-  );
-}
-
 function Fact({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
   const { colors } = useTheme();
   return (
@@ -460,41 +394,11 @@ function Fact({ label, value, icon: Icon }: { label: string; value: string; icon
   );
 }
 
-type PhotoViewerProps = { images: string[]; title: string; initial: number; onClose: () => void; onSelect: (index: number) => void };
-
-/** Full-screen photos; the gallery behind follows whichever one is showing. */
-function PhotoViewer({ images, title, initial, onClose, onSelect }: PhotoViewerProps) {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { width } = useResponsive();
-  return (
-    <Modal visible animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <View style={styles.viewer}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          contentOffset={{ x: initial * width, y: 0 }}
-          onMomentumScrollEnd={(event) => onSelect(Math.round(event.nativeEvent.contentOffset.x / width))}>
-          {images.map((uri, index) => (
-            <Image key={uri + index} source={uri} cachePolicy="memory-disk" style={{ width }} contentFit="contain" accessibilityLabel={`${title} photo ${index + 1}`} />
-          ))}
-        </ScrollView>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close photo" onPress={onClose} style={[styles.viewerClose, { top: insets.top + 8 }]}>
-          <X size={20} color={colors.onPhoto} />
-        </Pressable>
-      </View>
-    </Modal>
-  );
-}
-
 /** Room for the floating action bar so the last section is never hidden under it. */
 const ACTION_BAR_SPACE = 88;
-const ARROW = 44;
 
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
-  fill: { width: '100%', height: '100%' },
   content: { width: '100%', alignSelf: 'center', gap: 18 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   title: { flex: 1, minWidth: 0, fontFamily: fonts.extrabold, fontSize: 22, lineHeight: 29, letterSpacing: -0.5, textAlign: 'right' },
@@ -503,26 +407,17 @@ const styles = StyleSheet.create({
   rating: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   follow: { minWidth: 80, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
   dimmed: { opacity: 0.6 },
-  photoShadow: { width: '100%', borderRadius: 20 },
-  photoClip: { ...StyleSheet.absoluteFillObject, borderRadius: 20, overflow: 'hidden' },
   badges: { position: 'absolute', top: 12, left: 12, right: 60, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   photoBadge: { maxWidth: '100%', minHeight: 26, justifyContent: 'center', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 4, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)' },
   photoBadgeText: { fontFamily: fonts.bold, fontSize: 12 },
-  zoom: { position: 'absolute', top: 12, right: 16, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: GLASS },
-  arrow: { position: 'absolute', top: '50%', marginTop: -ARROW / 2, width: ARROW, height: ARROW, borderRadius: ARROW / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: GLASS },
-  arrowLeft: { left: 12 },
-  arrowRight: { right: 12 },
   photoMetaWrap: { position: 'absolute', left: 12, right: 64, bottom: 8, alignItems: 'flex-start' },
-  photoMeta: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 2, columnGap: 12, borderRadius: 16, paddingHorizontal: 13, paddingVertical: 6, backgroundColor: GLASS },
+  photoMeta: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 2, columnGap: 12, borderRadius: 16, paddingHorizontal: 13, paddingVertical: 6, backgroundColor: PHOTO_GLASS },
   photoMetaEntry: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   photoMetaText: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 17 },
-  photoActions: { position: 'absolute', right: 16, bottom: 8, borderRadius: 999, backgroundColor: GLASS },
+  photoActions: { position: 'absolute', right: 16, bottom: 8, borderRadius: 999, backgroundColor: PHOTO_GLASS },
   photoHeart: { minWidth: 44, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 4 },
   photoHeartCount: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 12 },
   photoAction: { minWidth: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  thumbs: { gap: 8, paddingHorizontal: 4, paddingTop: 12, paddingBottom: 4 },
-  thumb: { width: 88, height: 88, borderRadius: 14, borderWidth: 2, borderColor: 'transparent', overflow: 'hidden' },
-  thumbIdle: { opacity: 0.8 },
   location: { flexDirection: 'row', alignItems: 'flex-start', gap: 5 },
   locationIcon: { marginTop: 2 },
   facts: { gap: 10 },
@@ -543,6 +438,4 @@ const styles = StyleSheet.create({
   mini: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 10 },
   miniImage: { width: 72, height: 64, borderRadius: 12 },
   actionbar: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 22, padding: 8 },
-  viewer: { flex: 1, backgroundColor: '#000' },
-  viewerClose: { position: 'absolute', right: 14, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: GLASS },
 });

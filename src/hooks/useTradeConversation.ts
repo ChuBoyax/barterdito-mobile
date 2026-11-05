@@ -5,6 +5,7 @@ import { AppState } from 'react-native';
 import { queryClient, useMarketplaceActions } from '@/providers';
 import { tradeService } from '@/services';
 import type { Conversation } from '@/types/trades';
+import { keepIfSame } from '@/utils/collections';
 import { errorMessage } from '@/utils/format';
 import { queryKeys } from '@/services/queryKeys';
 
@@ -52,7 +53,7 @@ export function useTradeConversation(id: string) {
     try {
       const next = await tradeService.getConversation(id);
       if (!mutating.current && current === revision.current) {
-        setData(next);
+        setData((current) => keepIfSame(current, next));
         setLoadError('');
       }
     } catch (error) {
