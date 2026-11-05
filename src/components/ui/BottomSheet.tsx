@@ -15,10 +15,12 @@ type BottomSheetProps = {
   eyebrow?: string;
   /** Tall sheet without its own ScrollView, for content that scrolls itself (e.g. a FlatList). */
   fill?: boolean;
+  /** Sheet and close button without the raised shadow, for flat, bordered content. */
+  flat?: boolean;
   children: ReactNode;
 };
 
-export function BottomSheet({ visible, onClose, title, eyebrow, fill, children }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, title, eyebrow, fill, flat, children }: BottomSheetProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -26,7 +28,7 @@ export function BottomSheet({ visible, onClose, title, eyebrow, fill, children }
       {/* Android is edge-to-edge since SDK 54, so the window no longer resizes for the keyboard; pad on both platforms. */}
       <KeyboardAvoidingView behavior="padding" style={styles.flex}>
         <Pressable style={[styles.backdrop, { backgroundColor: colors.overlay }]} onPress={onClose} />
-        <Glass strong intensity={60} style={[styles.sheet, fill && styles.tall, { paddingBottom: insets.bottom + 18 }]}>
+        <Glass strong intensity={60} noShadow={flat} style={[styles.sheet, fill && styles.tall, { paddingBottom: insets.bottom + 18 }]}>
           <View style={[styles.handle, { backgroundColor: colors.muted2 }]} />
           {title ? (
             <View style={styles.header}>
@@ -34,7 +36,7 @@ export function BottomSheet({ visible, onClose, title, eyebrow, fill, children }
                 {eyebrow ? <AppText variant="eyebrow">{eyebrow}</AppText> : null}
                 <AppText variant="h1">{title}</AppText>
               </View>
-              <IconButton icon={X} label="Close" onPress={onClose} size={18} dimension={40} />
+              <IconButton icon={X} label="Close" onPress={onClose} size={18} dimension={40} tone={flat ? 'plain' : 'default'} style={flat ? [styles.flatClose, { backgroundColor: colors.surface2 }] : undefined} />
             </View>
           ) : null}
           {fill ? (
@@ -57,5 +59,6 @@ const styles = StyleSheet.create({
   tall: { height: '82%' },
   handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, marginBottom: 14, opacity: 0.5 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  flatClose: { borderRadius: 20 },
   content: { gap: 14, paddingBottom: 8 },
 });
