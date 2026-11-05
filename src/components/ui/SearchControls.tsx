@@ -33,7 +33,9 @@ export function SearchField({ value, onChangeText, placeholder = 'Search', maxLe
         <Search size={17} color={colors.muted} />
       )}
       <TextInput
-        maxFontSizeMultiplier={maxFontScale}
+        // A larger system font would push the placeholder under the Filter button.
+        maxFontSizeMultiplier={hero ? 1.15 : maxFontScale}
+        numberOfLines={1}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -96,14 +98,14 @@ export function FilterMenuSheet({ visible, onClose, title, count, onReset, child
 
 const styles = StyleSheet.create({
   field: { flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, paddingHorizontal: 14 },
-  fieldHero: { minHeight: 52, borderRadius: 999, gap: 6, padding: 4 },
-  heroIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
+  fieldHero: { minHeight: 52, borderRadius: 999, gap: 8, padding: 4, paddingRight: 6 },
+  heroIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   input: { flex: 1, minWidth: 0, fontFamily: fonts.medium, fontSize: 14, paddingVertical: 8 },
-  inputHero: { fontSize: 16, minHeight: 44 },
+  inputHero: { fontSize: 14, minHeight: 44, paddingHorizontal: 0 },
   clear: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center' },
   filter: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, paddingLeft: 13, paddingRight: 16 },
   filterTall: { height: 50 },
-  filterCompact: { height: 44 },
+  filterCompact: { height: 42, gap: 6, paddingLeft: 10, paddingRight: 12 },
   filterLabel: { fontFamily: fonts.bold, fontSize: 13 },
   count: { position: 'absolute', top: -6, right: -6, minWidth: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   countText: { fontFamily: fonts.bold, fontSize: 10 },
