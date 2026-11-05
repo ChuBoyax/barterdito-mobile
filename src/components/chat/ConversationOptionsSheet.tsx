@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Mail, MailOpen, Pin, PinOff, ShieldBan, ShieldCheck } from 'lucide-react-native';
+import { Archive, ArchiveRestore, Bell, BellOff, Mail, MailOpen, Pin, PinOff, Search, ShieldBan, ShieldCheck } from 'lucide-react-native';
 
 import { ActionSheet, type ActionSheetOption } from '@/components/ui';
 import { queryClient, useToast } from '@/providers';
@@ -15,12 +15,14 @@ type ConversationOptionsSheetProps = {
   onChanged?: (conversation: DirectConversation) => void;
   /** Reading an open chat clears a reminder straight away, so it is only offered from the Inbox. */
   showUnread?: boolean;
+  /** Opens a search limited to this conversation. */
+  onSearch?: () => void;
 };
 
 /** Private organizing and safety actions for one conversation; none of them notify the other trader. */
-export function ConversationOptionsSheet({ visible, conversation, onClose, onChanged, showUnread }: ConversationOptionsSheetProps) {
+export function ConversationOptionsSheet({ visible, conversation, onClose, onChanged, showUnread, onSearch }: ConversationOptionsSheetProps) {
   const showToast = useToast();
-  const { id, other, isPinned, isArchived, blockedByMe, unreadReminderId, lastMessage } = conversation;
+  const { id, other, isPinned, isArchived, isMuted, blockedByMe, unreadReminderId, lastMessage } = conversation;
 
   async function run(action: () => Promise<DirectConversation>, done: string) {
     try {
@@ -46,6 +48,7 @@ export function ConversationOptionsSheet({ visible, conversation, onClose, onCha
   }
 
   const options: ActionSheetOption[] = [
+    ...(onSearch ? [{ label: 'Search this conversation', icon: Search, onPress: onSearch }] : []),
     {
       label: isPinned ? 'Unpin conversation' : 'Pin conversation',
       icon: isPinned ? PinOff : Pin,
@@ -58,6 +61,12 @@ export function ConversationOptionsSheet({ visible, conversation, onClose, onCha
       onPress: () => void run(() => directMessageService.setArchived(id, !isArchived), isArchived ? 'Moved to inbox' : 'Conversation archived'),
     },
   ];
+  options.push({
+    label: isMuted ? 'Unmute conversation' : 'Mute conversation',
+    icon: isMuted ? Bell : BellOff,
+    description: isMuted ? undefined : 'No alerts for new messages. They still count as unread.',
+    onPress: () => void run(() => directMessageService.setMuted(id, !isMuted), isMuted ? 'Conversation unmuted' : 'Conversation muted'),
+  });
   if (showUnread && lastMessage) {
     options.push({
       label: unreadReminderId ? 'Clear unread reminder' : 'Mark as unread',

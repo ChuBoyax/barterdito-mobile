@@ -9,11 +9,14 @@ const PULSE_MS = 2000;
 /** Stop "typing" after this long without a keystroke. */
 const IDLE_MS = 1800;
 
+type PresenceApi = Pick<typeof directMessageService, 'getPresence' | 'setTyping'>;
+
 /**
- * Typing indicator and read receipts for a private chat, like the website: polls the other
- * trader's state, and publishes our own typing on/off (never the draft itself).
+ * Typing indicator and read receipts for a chat, like the website: polls the other trader's
+ * state, and publishes our own typing on/off (never the draft itself). Pass a stable `api`;
+ * trade chats use tradeService.
  */
-export function useDirectPresence(conversationId: string, enabled: boolean, canType: boolean) {
+export function useDirectPresence(conversationId: string, enabled: boolean, canType: boolean, api: PresenceApi = directMessageService) {
   const [typing, setTyping] = useState(false);
   const [peerRead, setPeerRead] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -27,7 +30,7 @@ export function useDirectPresence(conversationId: string, enabled: boolean, canT
       if (running || AppState.currentState !== 'active') return;
       running = true;
       try {
-        const presence = await directMessageService.getPresence(conversationId);
+        const presence = await api.getPresence(conversationId);
         if (!active) return;
         clearTimeout(expiry);
         setPeerRead((current) => Math.max(current, presence.otherLastReadMessageId));
@@ -51,7 +54,7 @@ export function useDirectPresence(conversationId: string, enabled: boolean, canT
       clearInterval(timer);
       clearTimeout(expiry);
     };
-  }, [conversationId, enabled]);
+  }, [conversationId, enabled, api]);
 
   // Our own typing state: one request in flight, the last wanted state always wins.
   const controls = useRef<{ activity: (hasText: boolean) => void; stop: () => void }>({ activity: () => {}, stop: () => {} });
@@ -70,7 +73,7 @@ export function useDirectPresence(conversationId: string, enabled: boolean, canT
         while (sent !== wanted) {
           sent = wanted;
           // An offline failure is fine: the server lease simply expires.
-          await directMessageService.setTyping(conversationId, sent).catch(() => undefined);
+          await api.setTyping(conversationId, sent).catch(() => undefined);
         }
       } finally {
         sending = false;
@@ -105,7 +108,7 @@ export function useDirectPresence(conversationId: string, enabled: boolean, canT
       subscription.remove();
       controls.current = { activity: () => {}, stop: () => {} };
     };
-  }, [conversationId, enabled, canType]);
+  }, [conversationId, enabled, canType, api]);
 
   return {
     typing: enabled && typing,

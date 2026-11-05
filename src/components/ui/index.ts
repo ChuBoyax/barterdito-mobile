@@ -17,6 +17,7 @@ export { Logo } from './Logo';
 export { PhotoScrim } from './PhotoScrim';
 export { PressableScale } from './PressableScale';
 export { Screen } from './Screen';
+export { FilterButton, FilterMenuSheet, SearchField } from './SearchControls';
 export { SectionHeading } from './SectionHeading';
 export { SegmentedControl, type Segment } from './SegmentedControl';
 export { SearchSelect, type SearchOption } from './SearchSelect';

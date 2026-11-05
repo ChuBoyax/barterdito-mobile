@@ -1,26 +1,39 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { MoreHorizontal, PackagePlus } from 'lucide-react-native';
+import { MoreHorizontal, Plus } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ChatFrame, ConversationOptionsSheet, ListingShareSheet, MessageBubble, MessageComposer, ReportMessageSheet, SharedListingCard } from '@/components/chat';
+import {
+  ChatAttachments,
+  ChatFrame,
+  ConversationOptionsSheet,
+  MessageBubble,
+  MessageComposer,
+  MessageSearchSheet,
+  PrivatePhoto,
+  ReportMessageSheet,
+  SharedListingCard,
+} from '@/components/chat';
 import { RequireAuth } from '@/components/layout';
 import { shortDate } from '@/components/trades';
 import { AppText, Avatar, Button, IconButton, LoadingView } from '@/components/ui';
+import { useMessageDraft } from '@/hooks/useMessageDraft';
 import { useMountOnOpen } from '@/hooks/useMountOnOpen';
 import { useDirectPresence } from '@/hooks/useDirectPresence';
 import { usePolling } from '@/hooks/useTradeConversation';
 import { queryClient, useAuth, useTheme } from '@/providers';
 import { directMessageService } from '@/services';
 import { queryKeys } from '@/services/queryKeys';
-import { clientId } from '@/services/tradeService';
 import type { DirectConversation, DirectMessage } from '@/types/directMessages';
 import { errorMessage } from '@/utils/format';
 
 export default function DirectChatScreen() {
+  const { id, message } = useLocalSearchParams<{ id: string; message?: string }>();
+  const focused = Number(message);
+  const focusedMessageId = Number.isInteger(focused) && focused > 0 ? focused : undefined;
   return (
     <RequireAuth>
-      <DirectChat />
+      <DirectChat key={`${id}:${focusedMessageId ?? 'latest'}`} id={id} focusedMessageId={focusedMessageId} />
     </RequireAuth>
   );
 }
@@ -32,46 +45,58 @@ function merge(current: DirectMessage[], incoming: DirectMessage[]) {
   return [...new Map([...current, ...incoming].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.id - b.id);
 }
 
-function DirectChat() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+/** With `focusedMessageId` it shows a saved message from search instead of the latest ones, and marks nothing as read. */
+function DirectChat({ id, focusedMessageId }: { id: string; focusedMessageId?: number }) {
   const { colors } = useTheme();
   const { user } = useAuth();
   const [thread, setThread] = useState<DirectConversation | null>(null);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState<string | null>(null);
+  const draft = useMessageDraft(`${user?.id ?? ''}:direct:${id}`);
+  const [sending, setSending] = useState<{ body: string; client: string } | null>(null);
   const [olderBusy, setOlderBusy] = useState(false);
   const [error, setError] = useState('');
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const sharingMounted = useMountOnOpen(sharing);
+  const [attaching, setAttaching] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const searchMounted = useMountOnOpen(searching);
   const [reporting, setReporting] = useState<DirectMessage | null>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const pending = useRef<{ body: string; client: string } | null>(null);
   const fetching = useRef(false);
-  const followLatest = useRef(true);
+  const loadedOnce = useRef(false);
+  const viewingSaved = focusedMessageId !== undefined;
+  const followLatest = useRef(!viewingSaved);
+  const targetY = useRef<number | null>(null);
   const presence = useDirectPresence(id, Boolean(thread), Boolean(thread?.canMessage));
 
   const load = useCallback(async () => {
     if (fetching.current) return;
     fetching.current = true;
     try {
-      const [conversation, page] = await Promise.all([directMessageService.getConversation(id), directMessageService.getMessages(id)]);
+      if (focusedMessageId !== undefined && loadedOnce.current) {
+        // Viewing a saved message: only the conversation's state keeps refreshing, so the view stays still.
+        setThread(await directMessageService.getConversation(id));
+        return;
+      }
+      const [conversation, page] = await Promise.all([
+        directMessageService.getConversation(id),
+        focusedMessageId === undefined ? directMessageService.getMessages(id) : directMessageService.getContext(id, focusedMessageId),
+      ]);
       setThread(conversation);
       setMessages((old) => merge(old, page.messages));
       setLoaded((wasLoaded) => {
         if (!wasLoaded) setHasMore(page.hasMore);
         return true;
       });
+      loadedOnce.current = true;
       setError('');
     } catch (caught) {
       setError(errorMessage(caught, 'Could not load private messages.'));
     } finally {
       fetching.current = false;
     }
-  }, [id]);
+  }, [id, focusedMessageId]);
 
   usePolling(() => void load(), POLL_MS);
 
@@ -89,7 +114,7 @@ function DirectChat() {
     const newest = newestRef.current;
     const token = reminderRef.current;
     const done = acknowledged.current;
-    if (!newest || !followLatest.current || AppState.currentState !== 'active') return;
+    if (!newest || viewingSaved || !followLatest.current || AppState.currentState !== 'active') return;
     if (newest <= done.through && (!token || token === done.reminder)) return;
     acknowledged.current = { through: Math.max(newest, done.through), reminder: token };
     directMessageService
@@ -103,7 +128,7 @@ function DirectChat() {
       .catch(() => {
         acknowledged.current = done;
       });
-  }, [id]);
+  }, [id, viewingSaved]);
 
   useEffect(() => {
     if (loaded) markRead();
@@ -135,26 +160,31 @@ function DirectChat() {
   const typing = presence.typing && thread.canMessage;
 
   async function send() {
-    const text = draft.trim();
+    const text = draft.text.trim();
     if (sending || !text || !thread?.canMessage) return;
     presence.stop();
     // Reuse the request id when retrying the same text so it is saved only once.
-    if (!pending.current || pending.current.body !== text) pending.current = { body: text, client: clientId() };
-    const request = pending.current;
-    setSending(request.body);
+    const request = { body: text, client: draft.requestFor(text) };
+    setSending(request);
     setError('');
     followLatest.current = true;
     try {
       const sent = await directMessageService.send(id, request.body, request.client);
       setMessages((old) => merge(old, [sent]));
-      pending.current = null;
-      setDraft('');
+      draft.clear();
       void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
     } catch (caught) {
       setError(errorMessage(caught, 'Message could not be sent. Try again.'));
     } finally {
       setSending(null);
     }
+  }
+
+  /** Photos and listings leave any typed text in place. */
+  function attached(sent: DirectMessage) {
+    followLatest.current = true;
+    setMessages((old) => merge(old, [sent]));
+    void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
   }
 
   async function older() {
@@ -197,6 +227,14 @@ function DirectChat() {
         }}
       />
 
+      {viewingSaved ? (
+        <View style={[styles.savedBanner, { backgroundColor: colors.orangeSoft }]}>
+          <AppText variant="caption" color="ink" style={styles.flex}>
+            Viewing a saved message. New messages stay unread.
+          </AppText>
+          <Button label="Back to latest" variant="ghost" compact fullWidth={false} onPress={() => router.setParams({ message: undefined })} />
+        </View>
+      ) : null}
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.list}
@@ -222,17 +260,39 @@ function DirectChat() {
         {messages.map((message) => {
           const mine = message.senderId === userId;
           return (
-            <MessageBubble
+            <View
               key={message.id}
-              message={{ id: String(message.id), mine, text: message.body, time: shortDate(message.createdAt) }}
-              status={mine ? (message.id <= presence.peerRead ? 'read' : 'sent') : undefined}
-              attachment={message.listing ? <SharedListingCard listing={message.listing} /> : undefined}
-              onReport={mine ? undefined : () => setReporting(message)}
-            />
+              onLayout={
+                message.id === focusedMessageId
+                  ? ({ nativeEvent }) => {
+                      if (targetY.current !== null) return;
+                      targetY.current = nativeEvent.layout.y;
+                      scrollRef.current?.scrollTo({ y: Math.max(0, nativeEvent.layout.y - 80), animated: false });
+                    }
+                  : undefined
+              }>
+              {message.id === focusedMessageId ? (
+                <AppText variant="caption" color="orange" weight="bold" align={mine ? 'right' : 'left'}>
+                  Matched message
+                </AppText>
+              ) : null}
+              <MessageBubble
+                message={{ id: String(message.id), mine, text: message.body, time: shortDate(message.createdAt) }}
+                status={mine && !viewingSaved ? (message.id <= presence.peerRead ? 'read' : 'sent') : undefined}
+                attachment={
+                  message.listing ? (
+                    <SharedListingCard listing={message.listing} />
+                  ) : message.photo ? (
+                    <PrivatePhoto path={directMessageService.photoPath(id, message.id)} photo={message.photo} />
+                  ) : undefined
+                }
+                onReport={mine ? undefined : () => setReporting(message)}
+              />
+            </View>
           );
         })}
-        {sending && !messages.some((entry) => entry.senderId === userId && entry.clientId === pending.current?.client) ? (
-          <MessageBubble message={{ id: 'pending', mine: true, text: sending, time: '' }} status="sending" />
+        {sending && !messages.some((entry) => entry.senderId === userId && entry.clientId === sending.client) ? (
+          <MessageBubble message={{ id: 'pending', mine: true, text: sending.body, time: '' }} status="sending" />
         ) : null}
         {typing ? (
           <View style={[styles.typing, { backgroundColor: colors.surface }]} accessibilityLabel={`${other.fullName} is typing`}>
@@ -253,18 +313,18 @@ function DirectChat() {
           {error}
         </AppText>
       ) : null}
-      {thread.canMessage ? (
+      {viewingSaved ? null : thread.canMessage ? (
         <MessageComposer
-          value={draft}
+          value={draft.text}
           onChange={(value) => {
             const next = value.slice(0, MAX_LENGTH);
-            setDraft(next);
+            draft.setText(next);
             presence.activity(Boolean(next.trim()));
           }}
           onSend={() => void send()}
-          onAttach={() => setSharing(true)}
-          attachIcon={PackagePlus}
-          attachLabel="Share a listing"
+          onAttach={() => setAttaching(true)}
+          attachIcon={Plus}
+          attachLabel="Add a photo or listing"
         />
       ) : (
         <AppText variant="caption" align="center" style={styles.readonly}>
@@ -274,19 +334,16 @@ function DirectChat() {
           Your conversation history is still here.
         </AppText>
       )}
-      <ConversationOptionsSheet visible={optionsOpen} conversation={thread} onClose={() => setOptionsOpen(false)} onChanged={setThread} />
-      {sharingMounted ? (
-        <ListingShareSheet
-          visible={sharing}
-          conversationId={id}
-          onClose={() => setSharing(false)}
-          onShared={(shared) => {
-            followLatest.current = true;
-            setMessages((old) => merge(old, [shared]));
-            void queryClient.invalidateQueries({ queryKey: queryKeys.directConversations() });
-          }}
+      <ConversationOptionsSheet visible={optionsOpen} conversation={thread} onClose={() => setOptionsOpen(false)} onChanged={setThread} onSearch={() => setSearching(true)} />
+      {thread.canMessage ? (
+        <ChatAttachments
+          visible={attaching}
+          onClose={() => setAttaching(false)}
+          shareListing={async (listingId, requestId) => attached(await directMessageService.shareListing(id, listingId, requestId))}
+          sendPhoto={async (fileUri, requestId) => attached(await directMessageService.sendPhoto(id, fileUri, requestId))}
         />
       ) : null}
+      {searchMounted ? <MessageSearchSheet visible={searching} onClose={() => setSearching(false)} threadId={id} traderName={other.fullName} /> : null}
       {reporting ? <ReportMessageSheet key={reporting.id} conversationId={id} message={reporting} onClose={() => setReporting(null)} /> : null}
     </ChatFrame>
   );
@@ -301,5 +358,6 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 24 },
   typing: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
   note: { paddingHorizontal: 16 },
+  savedBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16, paddingRight: 8, paddingVertical: 4 },
   readonly: { padding: 16 },
 });

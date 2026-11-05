@@ -6,20 +6,18 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { AppText, BottomSheet, Button, EmptyState, LoadingView } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useTheme } from '@/providers';
-import { directMessageService, itemService } from '@/services';
+import { itemService } from '@/services';
 import { queryKeys } from '@/services/queryKeys';
 import { clientId } from '@/services/tradeService';
-import type { DirectMessage } from '@/types/directMessages';
 import { errorMessage } from '@/utils/format';
 
 type ListingShareSheetProps = {
   visible: boolean;
-  conversationId: string;
   onClose: () => void;
-  onShared: (message: DirectMessage) => void;
+  onShare: (listingId: string, requestId: string) => Promise<void>;
 };
 
-export function ListingShareSheet({ visible, conversationId, onClose, onShared }: ListingShareSheetProps) {
+export function ListingShareSheet({ visible, onClose, onShare }: ListingShareSheetProps) {
   const { colors } = useTheme();
   const { data: items = [], loading, error: loadError, reload } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
   const [busy, setBusy] = useState<string | null>(null);
@@ -35,7 +33,7 @@ export function ListingShareSheet({ visible, conversationId, onClose, onShared }
     setBusy(listingId);
     setError('');
     try {
-      onShared(await directMessageService.shareListing(conversationId, listingId, request));
+      await onShare(listingId, request);
       requests.current.delete(listingId);
       onClose();
     } catch (caught) {
@@ -46,7 +44,7 @@ export function ListingShareSheet({ visible, conversationId, onClose, onShared }
   }
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} eyebrow="Private message" title="Share a listing">
+    <BottomSheet visible={visible} onClose={onClose} eyebrow="Message" title="Share a listing">
       <AppText variant="small">Choose one of your active items. Sharing a listing does not send a trade proposal.</AppText>
       {error ? (
         <AppText variant="caption" color="red" weight="semibold">

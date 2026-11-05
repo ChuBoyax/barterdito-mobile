@@ -3,7 +3,8 @@ import { apiRequest, authenticatedRequest } from './api';
 /** Shapes from the backend's /notifications endpoints (app/schemas/notification.py). */
 export type AppNotification = {
   id: number;
-  offerId: string;
+  /** Null for private-message alerts, which open their conversation through `href`. */
+  offerId: string | null;
   messageId: number | null;
   kind: string;
   text: string;
@@ -35,7 +36,7 @@ type CountsRow = {
 };
 type NotificationRow = {
   id: number;
-  offer_id: string;
+  offer_id: string | null;
   message_id: number | null;
   kind: string;
   text: string;

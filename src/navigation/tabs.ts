@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Compass, Grid2X2, MessageCircle, User, type LucideIcon } from 'lucide-react-native';
+import { ArrowRight, Compass, Grid2X2, Inbox, User, type LucideIcon } from 'lucide-react-native';
 
 export type TabConfig = {
   name: 'index' | 'offers' | 'inbox' | 'my-items' | 'profile';
@@ -9,8 +9,8 @@ export type TabConfig = {
 
 export const tabs: TabConfig[] = [
   { name: 'index', title: 'Browse', icon: Compass },
-  { name: 'offers', title: 'Offers', icon: ArrowRightLeft },
-  { name: 'inbox', title: 'Inbox', icon: MessageCircle },
+  { name: 'offers', title: 'Offers', icon: ArrowRight },
+  { name: 'inbox', title: 'Inbox', icon: Inbox },
   { name: 'my-items', title: 'My Items', icon: Grid2X2 },
   { name: 'profile', title: 'Profile', icon: User },
 ];

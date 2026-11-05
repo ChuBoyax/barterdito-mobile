@@ -1,19 +1,19 @@
 import { router } from 'expo-router';
-import { CheckCircle2, Edit3, Eye, Inbox, Package, Plus, RotateCcw, Share2, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, Edit3, Eye, Heart, Inbox, Package, Plus, RotateCcw, Share2, Trash2, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppHeader, RequireAuth } from '@/components/layout';
-import { ListingsOverview, ManagedItemCard } from '@/components/listing';
-import { ActionSheet, Button, ChipRow, EmptyState, LoadingView, Screen, type ActionSheetOption } from '@/components/ui';
+import { ManagedItemCard } from '@/components/listing';
+import { ActionSheet, AppText, Button, EmptyState, FilterButton, FilterMenuSheet, LoadingView, Screen, SearchField, SelectField, type ActionSheetOption } from '@/components/ui';
 import { itemStatuses } from '@/constants/status';
 import { useAsync } from '@/hooks/useAsync';
-import { useResponsive } from '@/hooks/useResponsive';
-import { queryClient, useMarketplaceActions, useToast } from '@/providers';
+import { queryClient, useMarketplaceActions, useTheme, useToast } from '@/providers';
 import { itemService } from '@/services';
+import { neu } from '@/theme';
 import type { Item, ItemStatus } from '@/types/models';
 import { confirmAction } from '@/utils/confirm';
-import { errorMessage } from '@/utils/format';
+import { errorMessage, formatNumber } from '@/utils/format';
 import { openItem } from '@/utils/navigation';
 import { shareItem } from '@/utils/share';
 import { queryKeys } from '@/services/queryKeys';
@@ -33,29 +33,34 @@ export default function MyItemsScreen() {
 }
 
 function MyItemsContent() {
+  const { colors } = useTheme();
   const showToast = useToast();
   const { removeItem, upsertItem } = useMarketplaceActions();
   // Active first, like the website; "All" comes last.
   const [tab, setTab] = useState('Active');
+  const [search, setSearch] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [menuItem, setMenuItem] = useState<Item | null>(null);
   const { data: items = [], loading, refreshing, error, setData, reload } = useAsync(queryKeys.myItems, () => itemService.getMyItems());
-  const { gutter } = useResponsive();
 
   const summary = useMemo(() => {
-    const counts: Record<ItemStatus, number> = { Active: 0, 'In Negotiation': 0, Traded: 0 };
     let views = 0;
     let hearts = 0;
     for (const item of items) {
-      counts[item.status] += 1;
       views += item.views;
       hearts += item.hearts;
     }
-    return { counts, views, hearts };
+    return { views, hearts };
   }, [items]);
-  const options = [...itemStatuses.map((status) => (summary.counts[status] ? `${status} · ${summary.counts[status]}` : status)), 'All'];
-  const selected = options.find((option) => option.startsWith(tab)) ?? options[0];
-  const visible = useMemo(() => items.filter((item) => tab === 'All' || item.status === tab), [items, tab]);
+  const needle = search.trim().toLowerCase();
+  const visible = useMemo(
+    () => items.filter((item) => (tab === 'All' || item.status === tab) && (!needle || [item.title, item.category].join(' ').toLowerCase().includes(needle))),
+    [items, tab, needle],
+  );
+  const rows = useMemo(() => Array.from({ length: Math.ceil(visible.length / 2) }, (_, index) => visible.slice(index * 2, index * 2 + 2)), [visible]);
   const openMenu = useCallback((item: Item) => setMenuItem(item), []);
+  const editItem = useCallback((item: Item) => router.push(`/post-item?edit=${item.id}`), []);
+  const total = tab === 'All' ? items.length : items.filter((item) => item.status === tab).length;
 
   function replace(updated: Item) {
     setData((current = []) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
@@ -109,7 +114,7 @@ function MyItemsContent() {
     const options: (ActionSheetOption | false)[] = [
       { label: 'View listing', icon: Eye, description: 'See it the way traders do', onPress: () => openItem(item) },
       // Only active listings can be edited; the backend rejects edits to reserved or traded ones.
-      open && { label: 'Edit listing', icon: Edit3, description: 'Update photos, details, status, or what you want', onPress: () => router.push(`/post-item?edit=${item.id}`) },
+      open && { label: 'Edit listing', icon: Edit3, description: 'Update photos, details, status, or what you want', onPress: () => editItem(item) },
       { label: 'Share', icon: Share2, description: 'Send the link to friends', onPress: () => void shareItem(item) },
       open && { label: 'Mark as traded', icon: CheckCircle2, description: 'Remove it from the marketplace', onPress: () => void changeStatus(item, 'Traded') },
       { label: 'Delete listing', icon: Trash2, description: 'Permanently delete it and its photos', destructive: true, onPress: () => void remove(item) },
@@ -118,44 +123,54 @@ function MyItemsContent() {
   };
 
   return (
-    <Screen
-      refreshing={refreshing}
-      onRefresh={() => void reload()}
-      header={
-        <AppHeader
-          title="My Items"
-          actions={<Button label="New" icon={Plus} compact onPress={() => router.push('/post-item')} />}
-        />
-      }>
+    <Screen refreshing={refreshing} onRefresh={() => void reload()} header={<AppHeader title="My Items" />}>
       {error && !items.length ? (
         <EmptyState icon={Package} title="Could not load your listings" text={error} action="Try again" actionIcon={RotateCcw} onAction={() => void reload()} />
-      ) : !loading && !items.length ? (
-        <EmptyState
-          icon={Package}
-          title="No listings yet"
-          text="Post something you no longer need."
-          action="Post an item"
-          onAction={() => router.push('/post-item')}
-        />
       ) : (
         <>
-          <ListingsOverview total={items.length} views={summary.views} hearts={summary.hearts} />
-          <View style={{ marginHorizontal: -gutter }}>
-            <ChipRow inset={gutter} options={options} value={selected} onChange={(option) => setTab(option.split(' · ')[0])} />
+          <View style={styles.summary}>
+            <SummaryCard icon={Package} value={total} label={tab === 'All' ? 'Total listings' : `${tab} listings`} />
+            <SummaryCard icon={Eye} value={summary.views} label="Total views" />
+            <SummaryCard icon={Heart} value={summary.hearts} label="Total hearts" />
           </View>
-          {loading && !items.length ? (
-            <LoadingView variant="cards" inline />
-          ) : visible.length ? (
-            <View style={styles.list}>
-              {visible.map((item) => (
-                <ManagedItemCard key={item.id} item={item} onOptions={openMenu} />
-              ))}
+          <View style={[styles.panel, { backgroundColor: colors.surface }, neu(colors, 2)]}>
+            <View style={styles.tools}>
+              <SearchField value={search} onChangeText={setSearch} />
+              <FilterButton count={tab === 'Active' ? 0 : 1} onPress={() => setFilterOpen(true)} />
             </View>
-          ) : (
-            <EmptyState icon={Package} title={`No ${tab.toLowerCase()} items`} text={emptyCopy[tab as ItemStatus] ?? ''} />
-          )}
+            <Button label="New listing" icon={Plus} onPress={() => router.push('/post-item')} />
+            {loading && !items.length ? (
+              <LoadingView variant="cards" inline />
+            ) : items.length && needle && !visible.length ? (
+              <AppText variant="small" align="center" style={styles.noMatch}>
+                No listings match “{search.trim()}”.
+              </AppText>
+            ) : visible.length ? (
+              <View style={styles.grid}>
+                {rows.map((row) => (
+                  <View key={row[0]!.id} style={styles.row}>
+                    {row.map((item) => (
+                      <ManagedItemCard key={item.id} item={item} onEdit={editItem} onDelete={(entry) => void remove(entry)} onOptions={openMenu} />
+                    ))}
+                    {row.length < 2 ? <View style={styles.cell} /> : null}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <EmptyState
+                icon={Package}
+                title={items.length ? `No ${tab.toLowerCase()} items` : 'No items here'}
+                text={items.length ? (emptyCopy[tab as ItemStatus] ?? '') : 'Post an item or choose a different status.'}
+                action={items.length ? undefined : 'Post an item'}
+                onAction={items.length ? undefined : () => router.push('/post-item')}
+              />
+            )}
+          </View>
         </>
       )}
+      <FilterMenuSheet visible={filterOpen} onClose={() => setFilterOpen(false)} title="Filter listings" count={tab === 'Active' ? 0 : 1} onReset={() => setTab('Active')}>
+        <SelectField label="Status" value={tab} options={[...itemStatuses, 'All']} onChange={setTab} />
+      </FilterMenuSheet>
       <ActionSheet
         visible={Boolean(menuItem)}
         onClose={() => setMenuItem(null)}
@@ -167,6 +182,31 @@ function MyItemsContent() {
   );
 }
 
+function SummaryCard({ icon: Icon, value, label }: { icon: LucideIcon; value: number; label: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.summaryCard, { backgroundColor: colors.surface }, neu(colors, 2)]}>
+      <View style={[styles.summaryIcon, { backgroundColor: colors.orangeSoft }]}>
+        <Icon size={20} color={colors.orange} />
+      </View>
+      <AppText variant="h2" align="center">
+        {formatNumber(value)}
+      </AppText>
+      <AppText variant="caption" align="center" numberOfLines={2}>
+        {label}
+      </AppText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  list: { gap: 12 },
+  summary: { flexDirection: 'row', gap: 10 },
+  summaryCard: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6, borderRadius: 18, paddingHorizontal: 8, paddingVertical: 12 },
+  summaryIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  panel: { gap: 12, borderRadius: 20, padding: 12 },
+  tools: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  grid: { gap: 12, marginTop: 4 },
+  row: { flexDirection: 'row', gap: 12 },
+  cell: { flex: 1 },
+  noMatch: { paddingHorizontal: 12, paddingVertical: 32 },
 });

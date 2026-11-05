@@ -28,7 +28,9 @@ type MarketplaceContextValue = {
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
   toggleSaved: (id: string) => void;
-  toggleHeart: (id: string) => void;
+  counts: LiveCounts;
+  toggleHeart: (item: Pick<Item, 'id' | 'hearts'>) => void;
+  recordView: (id: string) => void;
   upsertItem: (item: Item) => void;
   removeItem: (id: string) => void;
 };
@@ -38,7 +40,8 @@ type Feed = { key: string; items: Item[]; featured: Trader[]; fetched: number; t
 
 const MarketplaceContext = createContext<MarketplaceContextValue | null>(null);
 
-type MarketplaceActions = Pick<MarketplaceContextValue, 'refresh' | 'toggleSaved' | 'toggleHeart' | 'upsertItem' | 'removeItem'>;
+type MarketplaceActions = Pick<MarketplaceContextValue, 'refresh' | 'toggleSaved' | 'toggleHeart' | 'recordView' | 'upsertItem' | 'removeItem'>;
+type LiveCounts = Record<string, { hearts?: number; views?: number }>;
 const MarketplaceActionsContext = createContext<MarketplaceActions | null>(null);
 const noIds: string[] = [];
 const noSavedAt: Record<string, string> = {};
@@ -74,8 +77,10 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [savedAt, setSavedAt] = useState<Record<string, string>>({});
   const [heartedIds, setHeartedIds] = useState<string[]>([]);
-  // Local heart adjustments; the backend has no heart endpoint yet (same as the website).
-  const [heartDelta, setHeartDelta] = useState<Record<string, number>>({});
+  // The latest totals from the backend: the feed and the detail screen load separate copies of a listing.
+  const [counts, setCounts] = useState<LiveCounts>({});
+  const pendingHearts = useRef(new Set<string>());
+  const recordedViews = useRef(new Set<string>());
   // A place chosen in Filters; it belongs to the account that chose it.
   const [selection, setSelection] = useState<{ userId: string | null; place: Place | null } | null>(null);
   const request = useRef(0);
@@ -155,23 +160,24 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
     setSavedIds([]);
     setSavedAt({});
     setHeartedIds([]);
-    setHeartDelta({});
+    setCounts({});
     if (!userId) return;
     let active = true;
     void itemService.getInteractions(userId).then((result) => {
       if (!active) return;
       setSavedIds(result.savedIds);
       setSavedAt(result.savedAt);
-      setHeartedIds(result.heartedIds);
     });
+    // Hearts still work if this fails; they just do not show as filled until the next load.
+    void itemService.getHeartedIds().then((ids) => active && setHeartedIds(ids)).catch(() => undefined);
     return () => {
       active = false;
     };
   }, [userId]);
 
   const persist = useCallback(
-    (nextSaved: string[], nextHearted: string[], nextSavedAt: Record<string, string>) => {
-      if (userId) void itemService.setInteractions(userId, { savedIds: nextSaved, heartedIds: nextHearted, savedAt: nextSavedAt });
+    (nextSaved: string[], nextSavedAt: Record<string, string>) => {
+      if (userId) void itemService.setInteractions(userId, { savedIds: nextSaved, savedAt: nextSavedAt });
     },
     [userId],
   );
@@ -197,23 +203,52 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
         savedAtRef.current = nextSavedAt;
         setSavedIds(next);
         setSavedAt(nextSavedAt);
-        persist(next, heartedRef.current, nextSavedAt);
+        persist(next, nextSavedAt);
       }),
     [requireAuth, persist],
   );
 
   const toggleHeart = useCallback(
-    (id: string) =>
+    (item: Pick<Item, 'id' | 'hearts'>) =>
       requireAuth(() => {
-        const wasHearted = heartedRef.current.includes(id);
-        const next = wasHearted ? heartedRef.current.filter((entry) => entry !== id) : [...heartedRef.current, id];
-        heartedRef.current = next;
-        setHeartedIds(next);
-        setHeartDelta((current) => ({ ...current, [id]: (current[id] ?? 0) + (wasHearted ? -1 : 1) }));
-        persist(savedRef.current, next, savedAtRef.current);
-        showToast(wasHearted ? 'Heart removed' : 'You hearted this item');
+        const { id } = item;
+        // One request per listing at a time, so quick double taps cannot finish out of order.
+        if (pendingHearts.current.has(id)) return;
+        pendingHearts.current.add(id);
+        const hearted = !heartedRef.current.includes(id);
+        const mark = (value: boolean) => {
+          heartedRef.current = value ? [...heartedRef.current, id] : heartedRef.current.filter((entry) => entry !== id);
+          setHeartedIds(heartedRef.current);
+        };
+        const adjust = (change: number) =>
+          setCounts((current) => ({ ...current, [id]: { ...current[id], hearts: Math.max(0, (current[id]?.hearts ?? item.hearts) + change) } }));
+        mark(hearted);
+        adjust(hearted ? 1 : -1);
+        itemService
+          .setHeart(id, hearted)
+          .then((hearts) => setCounts((current) => ({ ...current, [id]: { ...current[id], hearts } })))
+          .catch((caught) => {
+            mark(!hearted);
+            adjust(hearted ? -1 : 1);
+            showToast(errorMessage(caught, 'Could not update your heart. Please try again.'));
+          })
+          .finally(() => pendingHearts.current.delete(id));
       }),
-    [requireAuth, persist, showToast],
+    [requireAuth, showToast],
+  );
+
+  const recordView = useCallback(
+    (id: string) => {
+      const key = `${userId}:${id}`;
+      if (!userId || recordedViews.current.has(key)) return;
+      recordedViews.current.add(key);
+      itemService
+        .recordView(id)
+        .then((views) => setCounts((current) => ({ ...current, [id]: { ...current[id], views } })))
+        // A missed view never interrupts browsing.
+        .catch(() => recordedViews.current.delete(key));
+    },
+    [userId],
   );
 
   const upsertItem = useCallback((item: Item) => {
@@ -232,11 +267,11 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   const items = useMemo(
     () =>
       (loaded ?? []).map((item) => {
-        const delta = heartDelta[item.id] ?? 0;
+        const live = counts[item.id];
         const mine = Boolean(userId) && item.userId === userId;
-        return delta || mine !== Boolean(item.mine) ? { ...item, mine, hearts: Math.max(0, item.hearts + delta) } : item;
+        return live || mine !== Boolean(item.mine) ? { ...item, mine, hearts: live?.hearts ?? item.hearts, views: live?.views ?? item.views } : item;
       }),
-    [loaded, heartDelta, userId],
+    [loaded, counts, userId],
   );
 
   const scopeError = error?.key === scopeKey ? error.message : null;
@@ -255,20 +290,22 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
       savedIds: userId ? savedIds : noIds,
       savedAt: userId ? savedAt : noSavedAt,
       heartedIds: userId ? heartedIds : noIds,
+      counts,
       refresh,
       loadMore,
       toggleSaved,
       toggleHeart,
+      recordView,
       upsertItem,
       removeItem,
     }),
-    [items, source, live, scopeError, loadingMore, area, profileArea, setArea, userId, savedIds, savedAt, heartedIds, refresh, loadMore, toggleSaved, toggleHeart, upsertItem, removeItem],
+    [items, source, live, scopeError, loadingMore, area, profileArea, setArea, userId, savedIds, savedAt, heartedIds, counts, recordView, refresh, loadMore, toggleSaved, toggleHeart, upsertItem, removeItem],
   );
 
   // Stable callbacks only: screens that just trigger updates do not re-render when the feed changes.
   const actions = useMemo(
-    () => ({ refresh, toggleSaved, toggleHeart, upsertItem, removeItem }),
-    [refresh, toggleSaved, toggleHeart, upsertItem, removeItem],
+    () => ({ refresh, toggleSaved, toggleHeart, recordView, upsertItem, removeItem }),
+    [refresh, toggleSaved, toggleHeart, recordView, upsertItem, removeItem],
   );
 
   return (

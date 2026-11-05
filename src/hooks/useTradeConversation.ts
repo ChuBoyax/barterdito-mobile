@@ -34,7 +34,7 @@ export function usePolling(task: () => void, interval = POLL_MS) {
   );
 }
 
-/** Accepted-trade state (meetups, confirmations, problem reports, reviews), polled like the website. */
+/** Accepted-trade state (confirmations, problem reports, reviews), polled like the website. */
 export function useTradeConversation(id: string) {
   const { refresh: refreshListings } = useMarketplaceActions();
   const [data, setData] = useState<Conversation | null>(null);

@@ -1,71 +1,8 @@
 import type {
-  AnalyticsSummary,
-  Campaign,
   Faq,
-  ForumThread,
   PolicySection,
   ReferralSummary,
-  TradeEvent,
 } from '@/types/models';
-
-export const mockEvents: TradeEvent[] = [
-  {
-    id: 'e1',
-    title: 'Quezon City Community Swap',
-    date: 'Aug 02 · 10:00 AM–4:00 PM',
-    day: '02',
-    month: 'AUG',
-    location: 'Quezon Memorial Circle',
-    attending: 184,
-    color: '#ff8a34',
-  },
-  {
-    id: 'e2',
-    title: 'Makati Gadget Trade Day',
-    date: 'Aug 09 · 1:00–6:00 PM',
-    day: '09',
-    month: 'AUG',
-    location: 'Ayala Triangle Gardens',
-    attending: 96,
-    color: '#1e66d0',
-  },
-  {
-    id: 'e3',
-    title: 'Pasig Home & Hobby Exchange',
-    date: 'Aug 16 · 9:00 AM–3:00 PM',
-    day: '16',
-    month: 'AUG',
-    location: 'Capitol Commons',
-    attending: 73,
-    color: '#3fa879',
-  },
-];
-
-export const mockForumThreads: ForumThread[] = [
-  { id: 'f1', title: 'Best public meetup spots around Metro Manila', author: 'Mika S.', replies: 28, time: '8 min ago', pinned: true },
-  { id: 'f2', title: 'How do you value used electronics fairly?', author: 'Paolo R.', replies: 16, time: '1h ago' },
-  { id: 'f3', title: 'Show us your most memorable swap!', author: 'Bea M.', replies: 42, time: '3h ago' },
-];
-
-export const mockCampaign: Campaign = {
-  id: 'c1',
-  title: 'Trade Kits for 100 Students',
-  description: 'Help equip public school learners with notebooks, bags, and reusable supplies.',
-  raised: 34200,
-  goal: 50000,
-};
-
-export const mockAnalytics: AnalyticsSummary = {
-  metrics: [
-    { key: 'views', label: 'Total views', value: '2,418', change: '+18%' },
-    { key: 'hearts', label: 'Hearts', value: '184', change: '+12%' },
-    { key: 'offers', label: 'Offers', value: '37', change: '+8%' },
-    { key: 'conversion', label: 'Conversion', value: '14.6%', change: '+2.1%' },
-  ],
-  viewsSeries: [28, 42, 34, 58, 50, 74, 68, 88, 61, 92, 78, 100],
-  seriesLabels: ['Jun 24', 'Jul 8', 'Jul 23'],
-  growth: '+18.4%',
-};
 
 export const mockReferral: ReferralSummary = {
   link: 'barterdito.ph/r/johnramirez',

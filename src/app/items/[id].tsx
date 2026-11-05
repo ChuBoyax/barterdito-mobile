@@ -44,10 +44,8 @@ export default function ItemDetailScreen() {
   const { width, height, contentWidth, gutter } = useResponsive();
   const { requireAuth, authenticated } = useAuth();
   const showToast = useToast();
-  const { items, savedIds, heartedIds, toggleSaved, toggleHeart } = useMarketplace();
+  const { items, savedIds, heartedIds, counts, toggleSaved, toggleHeart, recordView } = useMarketplace();
   const { data: fetched, loading, error } = useAsync(queryKeys.item(id), () => itemService.getItem(id));
-  // Hearts are local and this item comes from its own request, so the feed's count update never reaches it.
-  const [initiallyHearted] = useState(() => heartedIds.includes(id));
   const [activeImage, setActiveImage] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
@@ -63,6 +61,11 @@ export default function ItemDetailScreen() {
   // The fetched detail is authoritative; the feed copy only fills in while it loads.
   const item = fetched ?? items.find((entry) => entry.id === id);
   const ownerId = item?.userId;
+  const loadedId = item?.id;
+
+  useEffect(() => {
+    if (loadedId) recordView(loadedId);
+  }, [loadedId, recordView]);
 
   useEffect(() => {
     if (!authenticated || !ownerId || item?.mine) return;
@@ -175,8 +178,8 @@ export default function ItemDetailScreen() {
           </View>
           <AppText variant="hero">{item.title}</AppText>
           <View style={styles.metaRow}>
-            <Meta icon={Eye} label={`${item.views} views`} />
-            <Meta icon={Heart} label={`${Math.max(0, item.hearts + (hearted ? 1 : 0) - (initiallyHearted ? 1 : 0))} likes`} />
+            <Meta icon={Eye} label={`${counts[item.id]?.views ?? item.views} views`} />
+            <Meta icon={Heart} label={`${counts[item.id]?.hearts ?? item.hearts} likes`} />
           </View>
 
           <View style={[styles.wants, { backgroundColor: colors.orangeSoft, borderColor: colors.orange }]}>
@@ -308,7 +311,7 @@ export default function ItemDetailScreen() {
             size={18}
             onPress={() => void shareItem(item)}
           />
-          <IconButton icon={Heart} label="Heart item" tone="glass" size={18} active={hearted} filled={hearted} onPress={() => toggleHeart(item.id)} />
+          <IconButton icon={Heart} label="Heart item" tone="glass" size={18} active={hearted} filled={hearted} onPress={() => toggleHeart(item)} />
         </View>
       </View>
 
