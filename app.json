@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Barterdito",
+    "name": "BarterDito",
     "slug": "barterdito-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,14 +11,16 @@
       "icon": "./assets/images/icon.png"
     },
     "android": {
+      "package": "com.barterdito.app",
+      "versionCode": 1,
+      "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#ffcd57",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "package": "com.yaxxxx.barterditomobile"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "single",
@@ -50,6 +52,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Barterdito uses your photos so you can add them to your listings, profile, and dispute evidence.",
+          "cameraPermission": false,
           "microphonePermission": false
         }
       ]
