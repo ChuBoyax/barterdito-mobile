@@ -84,7 +84,7 @@ export function ActionSheet({ visible, onClose, title, subtitle, options }: Acti
 
 const styles = StyleSheet.create({
   flex: { flex: 1, gap: 1 },
-  backdrop: { ...StyleSheet.absoluteFillObject },
+  backdrop: { ...StyleSheet.absoluteFill },
   sheet: { width: '100%', maxWidth: 640, alignSelf: 'center', marginTop: 'auto', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 14, paddingTop: 10 },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, marginBottom: 12, opacity: 0.5 },
   header: { paddingHorizontal: 8, paddingBottom: 10, gap: 2 },

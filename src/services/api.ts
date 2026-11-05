@@ -92,7 +92,8 @@ export async function apiUploadFile<T>(path: string, fileUri: string, contentTyp
   const timer = setTimeout(() => controller.abort(), timeout);
   let response: Response;
   try {
-    const file = await (await fetch(fileUri)).blob();
+    // Raw bytes, not a Blob: fetch would replace Content-Type with the Blob's own (empty) type.
+    const file = await (await fetch(fileUri)).arrayBuffer();
     response = await fetch(`${API_URL}${path}`, {
       method: 'POST',
       credentials: 'include',
@@ -106,6 +107,13 @@ export async function apiUploadFile<T>(path: string, fileUri: string, contentTyp
     clearTimeout(timer);
   }
   return readResult<T>(response);
+}
+
+function base64FromBytes(bytes: Uint8Array) {
+  const CHUNK = 0x8000;
+  let binary = '';
+  for (let start = 0; start < bytes.length; start += CHUNK) binary += String.fromCharCode(...bytes.subarray(start, start + CHUNK));
+  return btoa(binary);
 }
 
 /**
@@ -127,13 +135,12 @@ export async function apiDataUrl(path: string, timeout = 30_000): Promise<string
     const result: unknown = await response.json().catch(() => null);
     throw await failure(response, result && typeof result === 'object' && 'detail' in result ? result.detail : null);
   }
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new ApiError('This photo could not be opened.'));
-    reader.readAsDataURL(blob);
-  });
+  try {
+    const type = response.headers.get('content-type') || 'image/jpeg';
+    return `data:${type};base64,${base64FromBytes(new Uint8Array(await response.arrayBuffer()))}`;
+  } catch {
+    throw new ApiError('This photo could not be opened.');
+  }
 }
 
 export async function apiRequest<T>(path: string, { method = 'GET', body, timeout = 20_000 }: RequestOptions = {}): Promise<T> {

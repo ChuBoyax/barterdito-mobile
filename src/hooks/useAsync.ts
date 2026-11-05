@@ -1,5 +1,5 @@
 import { hashKey, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { errorMessage } from '@/utils/format';
 
@@ -31,7 +31,9 @@ export function useAsync<T>(key: QueryKey, loader: () => Promise<T>): AsyncState
   // Callers pass a fresh key array each render; depend on its hash so setData stays stable.
   const keyHash = hashKey(key);
   const keyRef = useRef(key);
-  keyRef.current = key;
+  useEffect(() => {
+    keyRef.current = key;
+  });
   const setData = useCallback(
     (updater: T | ((current: T | undefined) => T)) => {
       queryClient.setQueryData<T>(keyRef.current, (current) =>

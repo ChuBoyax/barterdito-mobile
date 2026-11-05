@@ -61,8 +61,8 @@ function OffersContent() {
   );
   // The badges count every proposal, so they stay put while another filter loads.
   const filterCount = [statusFilter !== 'pending', sort !== 'newest', needsAction].filter(Boolean).length;
-  const counts = useRef<{ receivedCount: number; sentCount: number } | null>(null);
-  if (query.firstPage) counts.current = query.firstPage;
+  const [counts, setCounts] = useState(query.firstPage);
+  if (query.firstPage && query.firstPage !== counts) setCounts(query.firstPage);
 
   // This tab stays mounted, so a later `/offers?tab=…` link arrives as a param change. Clearing it lets the same link work again.
   useEffect(() => {
@@ -146,8 +146,8 @@ function OffersContent() {
             setApplied(filters[next].search.trim());
           }}
           segments={[
-            { value: 'received', label: 'Received', count: counts.current?.receivedCount || undefined },
-            { value: 'sent', label: 'Sent', count: counts.current?.sentCount || undefined },
+            { value: 'received', label: 'Received', count: counts?.receivedCount || undefined },
+            { value: 'sent', label: 'Sent', count: counts?.sentCount || undefined },
           ]}
         />
         <View style={styles.tools}>

@@ -122,10 +122,13 @@ function TradeChat() {
 
   const newestId = messages.at(-1)?.id;
   const newestRef = useRef<number | undefined>(undefined);
-  newestRef.current = newestId;
   const acknowledged = useRef(0);
   const searchingRef = useRef(searching);
-  searchingRef.current = searching;
+  // Declared before the effects that read them, so those always see this render's values.
+  useEffect(() => {
+    newestRef.current = newestId;
+    searchingRef.current = searching;
+  }, [newestId, searching]);
 
   // Like the website: acknowledge only when the newest message is on screen (scrolled to the bottom).
   const markRead = useCallback(() => {

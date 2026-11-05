@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Archive, MessageCircle, MessageSquare, Plus, RotateCcw, Search } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ConversationOptionsSheet, DirectThreadRow, MessageSearchSheet, NewMessageSheet } from '@/components/chat';
@@ -64,11 +64,12 @@ function InboxContent() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const pms = usePagedQuery(queryKeys.directConversations(view), (offset) => directMessageService.getConversations(offset, view), selectDirect);
   // Keep the last known totals visible while the other view loads.
-  const totals = useRef({ all: undefined as number | undefined, unread: undefined as number | undefined, archived: undefined as number | undefined });
-  if (pms.firstPage) totals.current = { all: pms.firstPage.allTotal, unread: pms.firstPage.unreadTotal, archived: pms.firstPage.archivedTotal };
+  const [lastPage, setLastPage] = useState(pms.firstPage);
+  if (pms.firstPage && pms.firstPage !== lastPage) setLastPage(pms.firstPage);
+  const totals: Record<DirectView, number | undefined> = { all: lastPage?.allTotal, unread: lastPage?.unreadTotal, archived: lastPage?.archivedTotal };
 
   const viewOption = (value: DirectView) => {
-    const count = totals.current[value];
+    const count = totals[value];
     return `${viewLabels[value]}${count === undefined ? '' : ` (${count})`}`;
   };
 
